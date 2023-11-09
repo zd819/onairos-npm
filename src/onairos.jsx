@@ -1,7 +1,7 @@
 import React from 'react';
 import onairosLogo from "./OnairosBlack.png";
 
-function Onairos() {
+function Onairos( {sendData, onairosID, access_token}) {
   const OnairosAnime = async () => {
     try {
       console.log("Clicked Onairos Connect")
@@ -13,43 +13,18 @@ function Onairos() {
   };
 
   const ConnectOnairos = async () => {
-    console.log("Sending Data to Extension")
-
     // Title here has to match a model in the Users : accountInfo.AccountInfo.models
     // Prepare the data to be sent
-    const dataToSend = {
-      interestModel: {
-        title:'Interest',
-        books:'',
-        descriptions:'',
-        reward:"10% Discount"
-      },
-      personalityModel:{
-        title:'Personality',
-        books:'',
-        descriptions:'',
-        reward:"2 USDC"
-      },
-      intelectModel:{
-        title:'Intellect',
-        books:'',
-        descriptions:'',
-        reward:"2 USDC"
-      },
-    };
-
-    const access_token="access_token";
     // Send the data to the content script
-    window.postMessage({ source: 'bookstore', type: 'GET_API_URL' }, '*');
     window.postMessage({
       source: 'webpage',
       type: 'GET_API_URL',
       webpage: 'proxy book store',
+      onairosID:onairosID,
       access_token:access_token,
       account:"ConnectedAccountRef.current", //No Longer needed, REMOVE
-      requestData: dataToSend,
+      requestData: sendData,
     });
-    // chrome.runtime.sendMessage({ source: 'bookstore', type: 'GET_API_URL'});
   };
 
   return (
@@ -58,7 +33,7 @@ function Onairos() {
         className="OnairosConnect flex flex-col items-center justify-center text-white font-bold py-2 px-4 rounded cursor-pointer"
         onClick={OnairosAnime}
       >
-        <img src={onairosLogo} alt="Onairos Logo" className="w-10 h-10 mb-2" />
+        <img src={onairosLogo} alt="Onairos Logo" className="w-5 h-5 max-w-10 object-scale-down mb-2" />
         <span>Connect to Onairos</span>
       </button>
     </div>
