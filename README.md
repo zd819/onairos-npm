@@ -37,25 +37,26 @@ First create the Request Object which Users will Authorize (or not) in the exten
 
 ```
 RequestObject.size key:
-Small - Upto 16 inference items
-Medium - Upto 32 inference items
-Large - Upto 64 inference items
+ - `Small` - Upto 16 inference items
+ - `Medium` - Upto 32 inference items
+ - `Large` - Upto 64 inference items
 
-type: Only the Personality key is valid at this time (represents the users Onairos Personality)
-description: Description to display to users about your request
-reward: Reward Given to User for granting Data Request
+Individual Request Information:
+ - `type`: Only the Personality key is valid at this time (represents the users Onairos Personality)
+ - `description`: Description to display to users about your request
+ - `reward`: Reward Given to User for granting Data Request
 
-  Then instantiate the Onairos object from the Onairos package - passing in your Onairos Developer ID and your Request Object
-  ```jsx
-  <Onairos requestData={requestData} onairosID={onairosID} access_token={access_token} webpageName={webpageName} proofMode={proofMode} />
-  ```
+Then instantiate the Onairos object from the Onairos package - passing in your Onairos Developer ID and your Request Object
+```jsx
+<Onairos requestData={requestData} onairosID={onairosID} access_token={access_token} webpageName={webpageName} proofMode={proofMode} />
+```
 
-  Onairos Object fields:
-  requestData - Request Object - Json
-  onairosID - App Assigned Onairos ID - String
-  access_token - App Assigned Access Token - String
-  webpageName - App Display Name - String 
-  proofMode - Wish to recieve ZK proof after recieving Data , default FALSE - boolean
+Onairos Object fields:
+ - `requestData` - Request Object - Json
+ - `onairosID` - App Assigned Onairos ID - String
+ - `access_token` - App Assigned Access Token - String
+ - `webpageName` - App Display Name - String 
+ - `proofMode` - Wish to recieve ZK proof after recieving Data , default FALSE - boolean
 
 That is all for the initial setup
 
