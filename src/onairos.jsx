@@ -1,7 +1,7 @@
 import React from 'react';
 import onairosLogo from "./OnairosBlack.png";
 
-function Onairos( {sendData, onairosID, access_token}) {
+function Onairos( {requestData, onairosID, access_token, proofMode=false,webpageName}) {
   const OnairosAnime = async () => {
     try {
       console.log("Clicked Onairos Connect")
@@ -19,11 +19,12 @@ function Onairos( {sendData, onairosID, access_token}) {
     window.postMessage({
       source: 'webpage',
       type: 'GET_API_URL',
-      webpage: 'proxy book store',
+      webpageName: webpageName,
       onairosID:onairosID,
       access_token:access_token,
       account:"ConnectedAccountRef.current", //No Longer needed, REMOVE
-      requestData: sendData,
+      requestData: requestData,
+      proofMode:proofMode
     });
   };
 

@@ -18,30 +18,44 @@ npm install onairos
 First create the Request Object which Users will Authorize (or not) in the extension popup
 ```json
 "RequestObject":{ 
-    "interestModel": {
-      "title":"Interest",
+    "Small": {
+      "type":"Personality",
       "descriptions":"Insight into your Interests",
       "reward":"10% Discount"
     },
-    "personalityModel":{
-      "title":"Personality",
+    "Medium":{
+      "type":"Personality",
       "descriptions":"Insight into your Interests",
       "reward":"2 USDC"
     },
-    "intelectModel":{
-      "title":"Intellect",
+    "Large":{
+      "type":"Personality",
       "descriptions":"Insight into your Interests",
       "reward":"2 USDC"
     }
   }
 
 ```
-Only the personalityModel request object is valid at this time
+RequestObject.size key:
+Small - Upto 16 inference items
+Medium - Upto 32 inference items
+Large - Upto 64 inference items
+
+type: Only the Personality key is valid at this time (represents the users Onairos Personality)
+description: Description to display to users about your request
+reward: Reward Given to User for granting Data Request
 
   Then instantiate the Onairos object from the Onairos package - passing in your Onairos Developer ID and your Request Object
   ```jsx
-  <Onairos sendData={sendData} onairosID={onairosID} />
+  <Onairos requestData={requestData} onairosID={onairosID} access_token={access_token} webpageName={webpageName} proofMode={proofMode} />
   ```
+
+  Onairos Object fields:
+  requestData - Request Object - Json
+  onairosID - App Assigned Onairos ID - String
+  access_token - App Assigned Access Token - String
+  webpageName - App Display Name - String 
+  proofMode - Wish to recieve ZK proof after recieving Data , default FALSE - boolean
 
 That is all for the initial setup
 
@@ -54,6 +68,22 @@ event.data.source === 'content-script'
 event.data.type === 'API_URL_RESPONSE'
 ```
 
+For example:
+
+``` jsx
+export default async function UseAPIURL(event){
+    if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE') {
+      //Fetch Onairos Data from Returned API url
+  }
+}
+useEffect(() => {
+  window.addEventListener('message', UseAPIURL);
+  return () => {
+    window.removeEventListener('message', UseAPIURL);
+  };
+}, []);
+```
+
 ## Using the Inference API
 
 The Inference API provides a machine learning model that can generate predictions based on the provided data. This documentation will guide you on how to properly format your input for the API and interpret the results received from the API.
@@ -62,9 +92,9 @@ The Inference API provides a machine learning model that can generate prediction
 
 Send a POST request to the API endpoint with a JSON payload containing a set of entries for prediction. Each entry should include the following information:
 
-- `title`: The title of the content (String).
-- `category`: The category to which the content belongs (String).
-- `img_url`: The URL of an image associated with the content (String).
+- `text`: The text input for the inference result (String) - required
+- `category`: The category to which the content belongs (String) - required
+- `img_url`: The URL of an image associated with the content (String) - optional
 
 Example JSON body for the POST request:
 
@@ -72,17 +102,17 @@ Example JSON body for the POST request:
 
   "Input": {
     "input1": {
-      "title": "Example Title 1",
+      "text": "Example text input 1",
       "category": "Example Category 1",
       "img_url": "http://example.com/image1.jpg"
     },
     "input2": {
-      "title": "Example Title 2",
+      "text": "Example text input 2",
       "category": "Example Category 2",
       "img_url": "http://example.com/image2.jpg"
     },
     "input3": {
-      "title": "Example Title 3",
+      "text": "Example text input 3",
       "category": "Example Category 3",
       "img_url": "http://example.com/image3.jpg"
     }
@@ -110,6 +140,7 @@ export default async function UseAPIURL(event){
       .catch(error => console.error(error));
       
     }}
+  
 ```
 
 ### 6. Output Format
