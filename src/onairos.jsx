@@ -31,11 +31,11 @@ function Onairos( {requestData, onairosID, access_token, proofMode=false,webpage
   return (
     <div>
       <button
-        className="OnairosConnect flex flex-col items-center justify-center text-white font-bold py-2 px-4 rounded cursor-pointer"
+        className="OnairosConnect w-20 h-20 flex flex-col items-center justify-center text-white font-bold py-2 px-4 rounded cursor-pointer"
         onClick={OnairosAnime}
       >
-        <img src={onairosLogo} alt="Onairos Logo" className="w-5 h-5 max-w-10 object-scale-down mb-2" />
-        <span>Connect to Onairos</span>
+        <img src={onairosLogo} alt="Onairos Logo" className="w-16 h-16 object-contain mb-2" /> {/* Adjust size as needed */}
+        <span className="whitespace-nowrap">Connect to Onairos</span> {/* Prevent text from wrapping */}
       </button>
     </div>
   );

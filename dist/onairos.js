@@ -9,9 +9,11 @@ var _OnairosBlack = _interopRequireDefault(require("./OnairosBlack.png"));
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 function Onairos(_ref) {
   let {
-    sendData,
+    requestData,
     onairosID,
-    access_token
+    access_token,
+    proofMode = false,
+    webpageName
   } = _ref;
   const OnairosAnime = async () => {
     try {
@@ -29,21 +31,24 @@ function Onairos(_ref) {
     window.postMessage({
       source: 'webpage',
       type: 'GET_API_URL',
-      webpage: 'proxy book store',
+      webpageName: webpageName,
       onairosID: onairosID,
       access_token: access_token,
       account: "ConnectedAccountRef.current",
       //No Longer needed, REMOVE
-      requestData: sendData
+      requestData: requestData,
+      proofMode: proofMode
     });
   };
   return /*#__PURE__*/_react.default.createElement("div", null, /*#__PURE__*/_react.default.createElement("button", {
-    className: "OnairosConnect flex flex-col items-center justify-center text-white font-bold py-2 px-4 rounded cursor-pointer",
+    className: "OnairosConnect w-20 h-20 flex flex-col items-center justify-center text-white font-bold py-2 px-4 rounded cursor-pointer",
     onClick: OnairosAnime
   }, /*#__PURE__*/_react.default.createElement("img", {
     src: _OnairosBlack.default,
     alt: "Onairos Logo",
-    className: "w-5 h-5 max-w-10 object-scale-down mb-2"
-  }), /*#__PURE__*/_react.default.createElement("span", null, "Connect to Onairos")));
+    className: "w-16 h-16 object-contain mb-2"
+  }), " ", /*#__PURE__*/_react.default.createElement("span", {
+    className: "whitespace-nowrap"
+  }, "Connect to Onairos"), " "));
 }
 var _default = exports.default = Onairos;
