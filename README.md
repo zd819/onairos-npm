@@ -3,7 +3,7 @@
 
 ### 1. Create a Developer Account
 
-Create a Developer account and retrieve your Onairos developer ID and access token
+Create a Developer account to access Onairos services. Register your domain to ensure secure API access.
 
 https://Onairos.uk/dev-board
 
@@ -46,15 +46,13 @@ Individual Request Information:
  - `description`: Description to display to users about your request
  - `reward`: Reward Given to User for granting Data Request
 
-Then instantiate the Onairos object from the Onairos package - passing in your Onairos Developer ID and your Request Object
+Then instantiate the Onairos object from the Onairos package - passing in your Request Object and other meta info
 ```jsx
-<Onairos requestData={requestData} onairosID={onairosID} access_token={access_token} webpageName={webpageName} proofMode={proofMode} />
+<Onairos requestData={requestData} webpageName={webpageName} proofMode={proofMode} />
 ```
 
 Onairos Object fields:
  - `requestData` - Request Object - Json
- - `onairosID` - App Assigned Onairos ID - String
- - `access_token` - App Assigned Access Token - String
  - `webpageName` - App Display Name - String 
  - `proofMode` - Wish to recieve ZK proof after recieving Data , default FALSE - boolean
 
@@ -69,11 +67,16 @@ event.data.source === 'content-script'
 event.data.type === 'API_URL_RESPONSE'
 ```
 
+You will also be given an ACCESS TOKEN which you must use in any API requests from that specific client.
+
+This is a short lived token, for usage on your developer registered domain only, and lasts for 1 hour from issue.
+
 For example:
 
 ``` jsx
 export default async function UseAPIURL(event){
     if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE') {
+      const { APIurl, accessToken } = event.data;
       //Fetch Onairos Data from Returned API url
   }
 }
@@ -97,6 +100,7 @@ Send a POST request to the API endpoint with a JSON payload containing a set of 
 - `category`: The category to which the content belongs (String) - required
 - `img_url`: The URL of an image associated with the content (String) - optional
 
+
 Example JSON body for the POST request:
 
 ```json
@@ -116,23 +120,27 @@ Example JSON body for the POST request:
       "text": "Example text input 3",
       "category": "Example Category 3",
       "img_url": "http://example.com/image3.jpg"
-    }
+    },
   }
     // Additional entries can be added here
   
 
 ```
 
-You can then call the Inference API with the Inference object created above
+You can then call the Inference API with the Inference object created above.
+
+Remember to include the access token in the Authorization header of your API request.
+
 
 ```jsx
 export default async function UseAPIURL(event){
     if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE') {
-      const apiUrl = event.data.APIurl;
+      const { apiUrl, accessToken } = event.data;
       await fetch(apiUrl, {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}` // Include the access token in the Authorization header
           },
           body: JSON.stringify(InputData),
       }).then(async (data)=>{
@@ -181,11 +189,12 @@ function App() {
 
     async function UseAPIURL(event){
      if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE') {
-       const apiUrl = event.data.APIurl;
+      const { apiUrl, accessToken } = event.data;
        await fetch(apiUrl, {
            method: 'POST',
            headers: {
                'Content-Type': 'application/json',
+               'Authorization': `Bearer ${accessToken}` // Include the access token in the Authorization header
            },
            body: JSON.stringify(InputData),
        }).then(async (data)=>{
@@ -195,19 +204,19 @@ function App() {
       
     }}
 
-  const sendData = {
-    interestModel: {
-      title:'Interest',
+  const sendData = { 
+    Small: {
+      type:"Personality",
       descriptions:"Insight into your Interests",
       reward:"10% Discount"
     },
-    personalityModel:{
-      title:'Personality',
+    Medium:{
+      type:"Personality",
       descriptions:"Insight into your Interests",
       reward:"2 USDC"
     },
-    intelectModel:{
-      title:'Intellect',
+    Large:{
+      type:"Personality",
       descriptions:"Insight into your Interests",
       reward:"2 USDC"
     },
@@ -221,7 +230,8 @@ function App() {
 
   const onairosID = 'test';
   return (
-      <Onairos sendData={sendData} onairosID={onairosID} />
+      <Onairos sendData={sendData} webpageName={webpageName} proofMode={proofMode} />
+
   );
 }
 export default InferenceComponent;
