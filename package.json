@@ -1,6 +1,6 @@
 {
   "name": "onairos",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "dependencies": {
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
@@ -48,7 +48,7 @@
   "main": "dist/onairos.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zd819/OnairosNPM.git"
+    "url": "git+https://github.com/zd819/onairos-npm"
   },
   "keywords": [
     "Onairos",

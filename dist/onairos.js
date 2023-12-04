@@ -4,17 +4,18 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-var _react = _interopRequireDefault(require("react"));
+var _react = _interopRequireWildcard(require("react"));
 var _OnairosBlack = _interopRequireDefault(require("./OnairosBlack.png"));
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
+function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; }
 function Onairos(_ref) {
   let {
     requestData,
-    onairosID,
-    access_token,
     proofMode = false,
     webpageName
   } = _ref;
+  const [token, setToken] = (0, _react.useState)();
   const OnairosAnime = async () => {
     try {
       console.log("Clicked Onairos Connect");
@@ -24,18 +25,36 @@ function Onairos(_ref) {
       console.error("Error connecting to Onairos", error);
     }
   };
+  const requestToken = async () => {
+    const domain = window.location.hostname;
+    const response = await fetch('https://api2.onairos.uk/dev/request-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        domain
+      })
+    });
+    if (!response.ok) {
+      throw new Error('Token request failed: ' + response.statusText);
+    }
+    const data = await response.json();
+    setToken(data.token);
+    // this.token = data.token; // Store the token
+  };
+
   const ConnectOnairos = async () => {
     // Title here has to match a model in the Users : accountInfo.AccountInfo.models
     // Prepare the data to be sent
     // Send the data to the content script
+
+    await requestToken();
     window.postMessage({
       source: 'webpage',
       type: 'GET_API_URL',
       webpageName: webpageName,
-      onairosID: onairosID,
-      access_token: access_token,
-      account: "ConnectedAccountRef.current",
-      //No Longer needed, REMOVE
+      access_token: token,
       requestData: requestData,
       proofMode: proofMode
     });
