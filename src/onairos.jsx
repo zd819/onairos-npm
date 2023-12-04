@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import onairosLogo from "./OnairosBlack.png";
 
 function Onairos( {requestData, proofMode=false,webpageName}) {
-  const [token,setToken] = useState();
+  // const [token,setToken] = useState('');
   const OnairosAnime = async () => {
     try {
       console.log("Clicked Onairos Connect")
@@ -13,8 +13,9 @@ function Onairos( {requestData, proofMode=false,webpageName}) {
     }
   };
 
-  const requestToken = async () =>{
-    const domain = window.location.hostname;
+  var token;
+  async function requestToken(){
+    const domain = window.location.href;
     const response = await fetch('https://api2.onairos.uk/dev/request-token', {
         method: 'POST',
         headers: {
@@ -28,7 +29,7 @@ function Onairos( {requestData, proofMode=false,webpageName}) {
     }
 
     const data = await response.json();
-    setToken(data.token);
+    token = data.token;
     // this.token = data.token; // Store the token
   }
 

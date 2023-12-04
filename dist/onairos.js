@@ -15,7 +15,7 @@ function Onairos(_ref) {
     proofMode = false,
     webpageName
   } = _ref;
-  const [token, setToken] = (0, _react.useState)();
+  // const [token,setToken] = useState('');
   const OnairosAnime = async () => {
     try {
       console.log("Clicked Onairos Connect");
@@ -25,8 +25,9 @@ function Onairos(_ref) {
       console.error("Error connecting to Onairos", error);
     }
   };
-  const requestToken = async () => {
-    const domain = window.location.hostname;
+  var token;
+  async function requestToken() {
+    const domain = window.location.href;
     const response = await fetch('https://api2.onairos.uk/dev/request-token', {
       method: 'POST',
       headers: {
@@ -40,10 +41,9 @@ function Onairos(_ref) {
       throw new Error('Token request failed: ' + response.statusText);
     }
     const data = await response.json();
-    setToken(data.token);
+    token = data.token;
     // this.token = data.token; // Store the token
-  };
-
+  }
   const ConnectOnairos = async () => {
     // Title here has to match a model in the Users : accountInfo.AccountInfo.models
     // Prepare the data to be sent
