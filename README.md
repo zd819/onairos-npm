@@ -13,6 +13,12 @@ https://Onairos.uk/dev-board
 npm install onairos
 ```
 
+Import the package as a default import 
+
+```jsx
+import Onairos from 'onairos';
+```
+
 ### 3. Setup the Onairos Connection Object
 
 First create the Request Object which Users will Authorize (or not) in the extension popup
@@ -204,7 +210,7 @@ function App() {
       
     }}
 
-  const sendData = { 
+  const requestData = { 
     Small: {
       type:"Personality",
       descriptions:"Insight into your Interests",
@@ -230,7 +236,7 @@ function App() {
 
   const onairosID = 'test';
   return (
-      <Onairos sendData={sendData} webpageName={webpageName} proofMode={proofMode} />
+      <Onairos requestData={requestData} webpageName={webpageName} proofMode={proofMode} />
 
   );
 }
