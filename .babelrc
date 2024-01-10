@@ -1,8 +1,16 @@
 {
   "presets": [
     ["@babel/preset-env", {
-      "targets": "> 0.25%, not dead"
+      "targets": "> 0.25%, not dead", // Define browser targets here
+      "useBuiltIns": "usage",
+      "corejs": 3 // Specify the core-js version
     }],
     "@babel/preset-react"
+  ],
+  "plugins": [
+    "@babel/plugin-syntax-dynamic-import",
+    ["@babel/plugin-transform-runtime", {
+      "regenerator": true
+    }]
   ]
 }
