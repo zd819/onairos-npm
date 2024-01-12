@@ -39,8 +39,7 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
       hashedOthentSub = sha256(userDetails.sub).toString();
 
       const encryptedPin = await getPin(hashedOthentSub);
-      const encryptedPinBuffer = Buffer.from(encryptedPin, 'base64');
-      userPin = await othentKMS.decrypt(encryptedPinBuffer);
+      userPin = await othentKMS.decrypt(encryptedPin);
 
     }catch(e){
       console.error("Error Connecting to Othent : ", e);
