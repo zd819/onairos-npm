@@ -16,9 +16,7 @@ function pemToBuffer(pem) {
 // Function to encrypt data using RSA
 export async function rsaEncrypt(publicKeyPem, data) {
     try {
-        console.log("Converting PEM to ArrayBuffer...");
         const publicKeyBuffer = pemToBuffer(publicKeyPem);
-        console.log("Importing key...");
         const importedKey = await window.crypto.subtle.importKey(
             'spki',
             publicKeyBuffer,
@@ -29,13 +27,11 @@ export async function rsaEncrypt(publicKeyPem, data) {
             true,
             ['encrypt']
         );
-        console.log("Encrypting data... : ", data);
         const encrypted = await window.crypto.subtle.encrypt(
             { name: 'RSA-OAEP' },
             importedKey,
             new TextEncoder().encode(data)
         );
-        console.log("Conversion to Base64...");
         return bufferToBase64(encrypted);
     } catch (error) {
         console.error("rsaEncrypt error:", error);

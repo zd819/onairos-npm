@@ -6,9 +6,9 @@ import getPin from './getPin';
 
 // import Buffer
 export function Onairos( {requestData, webpageName, proofMode=false}) {
+  
   const OnairosAnime = async () => {
     try {
-      console.log("Clicked Onairos Connect")
       await ConnectOnairos();
     } catch (error) {
       // Handle any errors here
@@ -39,7 +39,8 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
       hashedOthentSub = sha256(userDetails.sub).toString();
 
       const encryptedPin = await getPin(hashedOthentSub);
-      userPin = await othentKMS.decrypt(encryptedPin);
+      const encryptedPinBuffer = Buffer.from(encryptedPin, 'base64');
+      userPin = await othentKMS.decrypt(encryptedPinBuffer);
 
     }catch(e){
       console.error("Error Connecting to Othent : ", e);
@@ -47,7 +48,6 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
     
     rsaEncrypt(OnairosPublicKey, userPin)
     .then(encryptedData => {
-      console.log("Encrypted Data:", encryptedData);
         // Prepare the data to be sent
         window.postMessage({
           source: 'webpage',
