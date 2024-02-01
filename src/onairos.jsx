@@ -1,14 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import * as othentKMS from '@othent/kms';
-import sha256 from 'crypto-js/sha256';
+import React from 'react';
+// import {connect, decrypt} from '@othent/kms';
+// import sha256 from 'crypto-js/sha256';
 import { rsaEncrypt } from './RSA';
 import getPin from './getPin';
+// import { Buffer } from 'buffer';
+
+// Dynamic import example:
+const loadSha256 = async () => {
+  const module = await import('crypto-js/sha256');
+  return module.default;
+};
+
+const loadOthentKms = () => import('@othent/kms');
+
 
 // import Buffer
 export function Onairos( {requestData, webpageName, proofMode=false}) {
+
+  const validateRequestData = () => {
+    const validKeys = ['Small', 'Medium', 'Large'];
+    const requiredProperties = ['type', 'descriptions', 'reward'];
+    if( typeof webpageName !== 'string'){
+      throw new Error(`Property webpageName must be a String`);
+
+    }
+    for (const key of validKeys) {
+      if (!(key in requestData)) {
+        throw new Error(`Missing key '${key}' in requestData.`);
+      }
+      for (const prop of requiredProperties) {
+        if (!(prop in requestData[key])) {
+          throw new Error(`Missing property '${prop}' in requestData.${key}.`);
+        }
+        if (prop !== 'reward' && typeof requestData[key][prop] !== 'string') {
+          throw new Error(`Property '${prop}' in requestData.${key} must be a string.`);
+        }
+        if (prop !== 'reward' && requestData[key][prop].trim() === '') {
+          throw new Error(`Property '${prop}' in requestData.${key} cannot be empty.`);
+        }
+      }
+    }
+    // Add any other validation rules as necessary
+  };
   
   const OnairosAnime = async () => {
     try {
+      validateRequestData();
       await ConnectOnairos();
     } catch (error) {
       // Handle any errors here
@@ -31,41 +68,62 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
   const domain = window.location.href;
 
   const ConnectOnairos = async () => {
-    let hashedOthentSub, userPin;
-    
     try{
-      // Testing User Secure Details
-      const userDetails = await othentKMS.connect();
-      hashedOthentSub = sha256(userDetails.sub).toString();
+      // Get User Othent Secure Details
+      const { connect} = await loadOthentKms();
 
+      const userDetails = await connect();
+      // console.log("userDetails : ", hashedOthentSub);
+      const sha256 = (await loadSha256()).default;
+      const hashedOthentSub = sha256(userDetails.sub).toString();
       const encryptedPin = await getPin(hashedOthentSub);
-      userPin = await othentKMS.decrypt(encryptedPin);
+
+      function convertToBuffer(string) {
+        try {
+          // Decode base64 string
+          const encodedData = window.atob(string);
+          const uint8Array = new Uint8Array(encodedData.length);
+          for (let i = 0; i < encodedData.length; i++) {
+            uint8Array[i] = encodedData.charCodeAt(i);
+          }
+          return uint8Array.buffer; // This is an ArrayBuffer
+        } catch (e) {
+          console.error("Error converting to Buffer :", e);
+        }
+      }
+      
+      const bufferPIN = convertToBuffer(encryptedPin.result);
+
+      console.log("bufferPIN : ", bufferPIN);
+
+      const {decrypt }= await loadOthentKms();
+      const userPin = await decrypt(bufferPIN);
+
+      // RSA Encrypt the PIN to transmit to Terminal and backend
+      rsaEncrypt(OnairosPublicKey, userPin)
+      .then(encryptedData => {
+          // Prepare the data to be sent
+          window.postMessage({
+            source: 'webpage',
+            type: 'GET_API_URL',
+            webpageName: webpageName,
+            domain:domain,
+            requestData: requestData,
+            proofMode:proofMode,
+            HashedOthentSub:hashedOthentSub,
+            EncryptedUserPin:encryptedData
+          });
+      })
+      .catch(error => {
+          console.error("Encryption failed:", error);
+      });
 
     }catch(e){
-      console.error("Error Connecting to Othent : ", e);
+      console.error({fix:"Please ensure you have stored your model"});
+      console.error("Error Sending Data to Terminal: ", e);
     }
-    
-    rsaEncrypt(OnairosPublicKey, userPin)
-    .then(encryptedData => {
-        // Prepare the data to be sent
-        window.postMessage({
-          source: 'webpage',
-          type: 'GET_API_URL',
-          webpageName: webpageName,
-          domain:domain,
-          requestData: requestData,
-          proofMode:proofMode,
-          hashedOthentSub:hashedOthentSub,
-          encryptedUserPin:encryptedData
-        });
-    })
-    .catch(error => {
-        console.error("Encryption failed:", error);
-    });
 
   };
-    
-    
 
   return (
     <div>

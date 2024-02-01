@@ -1,4 +1,7 @@
 const path = require('path');
+const webpack = require('webpack');
+const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
   entry: path.resolve(__dirname, 'src', 'onairos.jsx'),
@@ -9,6 +12,31 @@ module.exports = {
     libraryTarget: 'umd', // This makes your library compatible with different module systems
     globalObject: 'this' // Ensures compatibility with both browser and Node environments
   },
+  plugins: [
+    // ... (any other plugins)
+    new BundleAnalyzerPlugin(), // Add this line to include the plugin
+  ],
+  optimization: {
+    minimize: true,
+    minimizer: [
+      new TerserPlugin({
+        terserOptions: {
+          compress: {
+            drop_console: true, // Removes console.* statements
+            drop_debugger: true, // Removes debugger statements
+            dead_code: true, // Removes unreachable code
+          },
+          mangle: true, // Renames variables and functions to shorter names
+          output: {
+            comments: false, // Removes comments
+          },
+        },
+        extractComments: false, // Does not extract comments to a separate file
+      }),
+    ],
+  },
+  // Make sure devtool is set to 'none' or false in production to disable source maps
+  devtool: process.env.NODE_ENV === 'production' ? false : 'source-map',
   module: {
     rules: [
       {
@@ -25,6 +53,11 @@ module.exports = {
     ]
   },
   resolve: {
-      extensions: ['.js', '.jsx', '.mjs'] // Add '.mjs' for ES Module files
-    } 
+      extensions: ['.js', '.jsx', '.mjs'], // Add '.mjs' for ES Module files,
+      fallback: {
+        // "buffer": require.resolve("buffer/"),
+        // Add any other polyfills here
+      }
+    },
+    
 };

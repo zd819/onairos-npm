@@ -71,6 +71,8 @@ Once the user has clicked to Connect their Onairos account and authroized their 
 event.data.source === 'content-script'
 &&
 event.data.type === 'API_URL_RESPONSE'
+&&
+event.data.unique ==='Onairos-Response'
 ```
 
 You will also be given an ACCESS TOKEN which you must use in any API requests from that specific client.
@@ -177,6 +179,16 @@ Example of the output format:
 ```
 
 Each score is deeply nested within two arrays to maintain compatibility with batch processing systems that may require this format.
+
+### Errors and Debugging
+
+All Errors and Debugging from the Inference API will be of the form
+```jsx
+    res.status(statusCode).send({ error: message }); 
+```
+Statuses of 200 are valid, and all others indicate potential issues
+
+
 
 ### Interpretation of Output
 
