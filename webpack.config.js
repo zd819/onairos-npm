@@ -1,34 +1,33 @@
 const path = require('path');
 const webpack = require('webpack');
-const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+// const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
   entry: path.resolve(__dirname, 'src', 'onairos.jsx'),
 //   './src/onairos.jsx', // Replace with your entry file
   output: {
+    publicPath: 'auto', // or ''
     path: path.resolve(__dirname, 'dist'),
     filename: 'onairos.bundle.js',
     libraryTarget: 'umd', // This makes your library compatible with different module systems
-    globalObject: 'this' // Ensures compatibility with both browser and Node environments
+    globalObject: 'this', // Ensures compatibility with both browser and Node environments
+    chunkFilename: '[name].[contenthash].chunk.js',
   },
-  plugins: [
-    // ... (any other plugins)
-    new BundleAnalyzerPlugin(), // Add this line to include the plugin
-  ],
+  // webpack.config.js
   optimization: {
     minimize: true,
     minimizer: [
       new TerserPlugin({
         terserOptions: {
           compress: {
-            drop_console: true, // Removes console.* statements
-            drop_debugger: true, // Removes debugger statements
+            // drop_console: true, // Removes console.* statements
+            // drop_debugger: true, // Removes debugger statements
             dead_code: true, // Removes unreachable code
           },
           mangle: true, // Renames variables and functions to shorter names
           output: {
-            comments: false, // Removes comments
+            // comments: false, // Removes comments
           },
         },
         extractComments: false, // Does not extract comments to a separate file

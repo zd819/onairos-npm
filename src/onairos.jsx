@@ -1,3 +1,6 @@
+
+
+
 import React from 'react';
 // import {connect, decrypt} from '@othent/kms';
 // import sha256 from 'crypto-js/sha256';
@@ -5,14 +8,34 @@ import { rsaEncrypt } from './RSA';
 import getPin from './getPin';
 // import { Buffer } from 'buffer';
 
-// Dynamic import example:
-const loadSha256 = async () => {
-  const module = await import('crypto-js/sha256');
-  return module.default;
+
+// Dynamic import for crypto-js's sha256
+const loadSha256 = async () =>{
+  try{
+
+    console.log("loadSha256 loading ")
+    const module = await import(/* webpackChunkName: "sha256" */ 'crypto-js/sha256');
+    console.log("loadSha256 loading successful")
+
+    return module;
+  } catch (e) {
+      console.error("Error loading Othent:", e, e.request, e.response);
+      throw e; // Rethrow the error to be caught by the caller
+  }
 };
 
-const loadOthentKms = () => import('@othent/kms');
-
+// Dynamic import for @othent/kms
+async function loadOthentKms(){
+  try {
+    console.log("Othent loading ")
+    const module = await import(/* webpackChunkName: "othent-kms" */ '@othent/kms');
+    console.log("Othent loading successful")
+    return module;
+  } catch (e) {
+    console.error("Error loading Othent:", e, e.request, e.response);
+    throw e; // Rethrow the error to be caught by the caller
+  }
+};
 
 // import Buffer
 export function Onairos( {requestData, webpageName, proofMode=false}) {
@@ -45,8 +68,11 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
   
   const OnairosAnime = async () => {
     try {
+      console.log('Validating request data...');
       validateRequestData();
+      console.log('Connecting to Onairos...');
       await ConnectOnairos();
+      console.log('Connected to Onairos.');
     } catch (error) {
       // Handle any errors here
       console.error("Error connecting to Onairos", error);
@@ -68,9 +94,15 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
   const domain = window.location.href;
 
   const ConnectOnairos = async () => {
+
     try{
+      console.log("Trying SHa")
+      const sha2562 = (await loadSha256()).default;
+      console.log("Othent LOADED MOVING ON")
+
       // Get User Othent Secure Details
       const { connect} = await loadOthentKms();
+      console.log("Othent LOADED MOVING ON")
 
       const userDetails = await connect();
       // console.log("userDetails : ", hashedOthentSub);
@@ -94,7 +126,7 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
       
       const bufferPIN = convertToBuffer(encryptedPin.result);
 
-      console.log("bufferPIN : ", bufferPIN);
+      // console.log("bufferPIN : ", bufferPIN);
 
       const {decrypt }= await loadOthentKms();
       const userPin = await decrypt(bufferPIN);
@@ -129,7 +161,10 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
     <div>
       <button
         className="OnairosConnect w-20 h-20 flex flex-col items-center justify-center text-white font-bold py-2 px-4 rounded cursor-pointer"
-        onClick={OnairosAnime}
+        onClick={() => {
+          console.log('Button clicked');
+          OnairosAnime();
+        }}
       >
         <img src={"https://onairos.sirv.com/Images/OnairosBlack.png"} 
         alt="Onairos Logo" className="w-16 h-16 object-contain mb-2" /> {/* Adjust size as needed */}
