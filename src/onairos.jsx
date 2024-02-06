@@ -1,37 +1,37 @@
 /* global __webpack_public_path__ */
 __webpack_public_path__ = '/static/js/';
 
- 
 import React from 'react';
 // import {connect, decrypt} from '@othent/kms';
-import sha256 from 'crypto-js/sha256';
+// import sha256 from 'crypto-js/sha256';
 import { rsaEncrypt } from './RSA';
 import getPin from './getPin';
 // import { Buffer } from 'buffer';
 
 
 // Dynamic import for crypto-js's sha256
-// const loadSha256 = async () =>{
-//   try{
+const loadSha256 = async () =>{
+  try{
 
-//     console.log("loadSha256 loading ")
-//     const module = await import(/* webpackChunkName: "sha256" */ 'crypto-js/sha256');
-//     console.log("loadSha256 loading successful")
+    console.log("loadSha256 loading ")
+    const module = await import(/* webpackChunkName: "sha256" */ 'crypto-js/sha256');
+    console.log("loadSha256 loading successful")
 
-//     return module;
-//   } catch (e) {
-//       console.error("Error loading Othent:", e, e.request, e.response);
-//       throw e; // Rethrow the error to be caught by the caller
-//   }
-// };
+    return module;
+  } catch (e) {
+      console.error("Error loading Othent:", e, e.request, e.response);
+      throw e; // Rethrow the error to be caught by the caller
+  }
+};
 
 // Dynamic import for @othent/kms
-const loadOthentKms = async () =>{
+// const loadOthentKms = async () =>{
+async function loadOthentKms(){
   try {
     console.log("Othent dynamic loading ")
     const module = await import(/* webpackChunkName: "othent-kms" */ '@othent/kms');
     console.log("Othent loading successful")
-    return module;
+    return module.default;
   } catch (e) {
     console.error("Error loading Othent:", e, e.request, e.response);
     throw e; // Rethrow the error to be caught by the caller
@@ -98,10 +98,10 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
 
     try{
       // console.log("Trying SHa")
-      // const sha2562 = await loadSha256().then(()=>{
-      //   console.log("Othent LOADED In PROMISE")
+      const sha2562 = await loadSha256().then(()=>{
+        console.log("Othent LOADED In PROMISE")
 
-      // });
+      });
 
 
       // Get User Othent Secure Details
@@ -111,7 +111,7 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
 
       const userDetails = await connect();
       // console.log("userDetails : ", hashedOthentSub);
-      // const sha256 = (await loadSha256()).default;
+      const sha256 = (await loadSha256()).default;
       const hashedOthentSub = sha256(userDetails.sub).toString();
       const encryptedPin = await getPin(hashedOthentSub);
 
@@ -166,10 +166,7 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
     <div>
       <button
         className="OnairosConnect w-20 h-20 flex flex-col items-center justify-center text-white font-bold py-2 px-4 rounded cursor-pointer"
-        onClick={async () => {
-          console.log('Button clicked');
-          await OnairosAnime();
-        }}
+        onClick={OnairosAnime}
       >
         <img src={"https://onairos.sirv.com/Images/OnairosBlack.png"} 
         alt="Onairos Logo" className="w-16 h-16 object-contain mb-2" /> {/* Adjust size as needed */}

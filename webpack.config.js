@@ -7,17 +7,21 @@ module.exports = {
   entry: path.resolve(__dirname, 'src', 'onairos.jsx'),
 //   './src/onairos.jsx', // Replace with your entry file
   output: {
-    publicPath: '/', // or ''
+    // The base path for all assets. This is the path from where chunks will be loaded at runtime.
+    // If your app is served from a sub-path on your domain, adjust this value.
+    publicPath: 'auto', // or ''
+    // The output directory for all build files
     path: path.resolve(__dirname, 'dist'),
     // The filename of the entry chunk
-    filename: '[name].[contenthash].bundle.js',
+    filename: 'onairos.bundle.js',
     libraryTarget: 'umd', // This makes your library compatible with different module systems
     globalObject: 'this', // Ensures compatibility with both browser and Node environments
-    chunkFilename: '[name].[contenthash].chunk.js',
+    chunkFilename: 'static/js/[name].[contenthash].chunk.js',
   },
   // webpack.config.js
   optimization: {
     minimize: true,
+    
     minimizer: [
       new TerserPlugin({
         terserOptions: {
@@ -28,7 +32,7 @@ module.exports = {
           },
           mangle: true, // Renames variables and functions to shorter names
           output: {
-            // comments: false, // Removes comments
+            comments: false, // Removes comments
           },
         },
         extractComments: false, // Does not extract comments to a separate file
