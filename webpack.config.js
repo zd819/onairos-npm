@@ -7,9 +7,10 @@ module.exports = {
   entry: path.resolve(__dirname, 'src', 'onairos.jsx'),
 //   './src/onairos.jsx', // Replace with your entry file
   output: {
-    publicPath: 'auto', // or ''
+    publicPath: '/', // or ''
     path: path.resolve(__dirname, 'dist'),
-    filename: 'onairos.bundle.js',
+    // The filename of the entry chunk
+    filename: '[name].[contenthash].bundle.js',
     libraryTarget: 'umd', // This makes your library compatible with different module systems
     globalObject: 'this', // Ensures compatibility with both browser and Node environments
     chunkFilename: '[name].[contenthash].chunk.js',
