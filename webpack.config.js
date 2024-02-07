@@ -16,7 +16,7 @@ module.exports = {
     filename: 'onairos.bundle.js',
     libraryTarget: 'umd', // This makes your library compatible with different module systems
     globalObject: 'this', // Ensures compatibility with both browser and Node environments
-    chunkFilename: 'static/js/[name].[contenthash].chunk.js',
+    chunkFilename: 'static/js/[name].chunk.js',
   },
   // webpack.config.js
   optimization: {

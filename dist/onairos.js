@@ -6,45 +6,40 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.Onairos = Onairos;
 var _react = _interopRequireDefault(require("react"));
-var _sha = _interopRequireDefault(require("crypto-js/sha256"));
 var _RSA = require("./RSA");
 var _getPin = _interopRequireDefault(require("./getPin"));
 function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
-function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; }
-/* global __webpack_public_path__ */
-__webpack_public_path__ = '/static/js/';
-
-// import {connect, decrypt} from '@othent/kms';
-
+function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; } // import {connect, decrypt} from '@othent/kms';
+// import sha256 from 'crypto-js/sha256';
 // import { Buffer } from 'buffer';
 
 // Dynamic import for crypto-js's sha256
-// const loadSha256 = async () =>{
-//   try{
-
-//     console.log("loadSha256 loading ")
-//     const module = await import(/* webpackChunkName: "sha256" */ 'crypto-js/sha256');
-//     console.log("loadSha256 loading successful")
-
-//     return module;
-//   } catch (e) {
-//       console.error("Error loading Othent:", e, e.request, e.response);
-//       throw e; // Rethrow the error to be caught by the caller
-//   }
-// };
-
-// Dynamic import for @othent/kms
-const loadOthentKms = async () => {
+const loadSha256 = async () => {
   try {
-    console.log("Othent dynamic loading ");
-    const module = await Promise.resolve().then(() => _interopRequireWildcard(require( /* webpackChunkName: "othent-kms" */'@othent/kms')));
-    console.log("Othent loading successful");
+    console.log("loadSha256 loading ");
+    const module = await Promise.resolve().then(() => _interopRequireWildcard(require( /* webpackChunkName: "sha256" */'crypto-js/sha256')));
+    console.log("loadSha256 loading successful");
     return module;
   } catch (e) {
     console.error("Error loading Othent:", e, e.request, e.response);
     throw e; // Rethrow the error to be caught by the caller
   }
 };
+
+// Dynamic import for @othent/kms
+// const loadOthentKms = async () =>{
+async function loadOthentKms() {
+  try {
+    console.log("Othent dynamic loading ");
+    const module = await Promise.resolve().then(() => _interopRequireWildcard(require( /* webpackChunkName: "othent-kms" */'@othent/kms')));
+    console.log("Othent loading successful");
+    return module.default;
+  } catch (e) {
+    console.error("Error loading Othent:", e, e.request, e.response);
+    throw e; // Rethrow the error to be caught by the caller
+  }
+}
+;
 
 // import Buffer
 function Onairos(_ref) {
@@ -104,11 +99,6 @@ function Onairos(_ref) {
   async function ConnectOnairos() {
     try {
       // console.log("Trying SHa")
-      // const sha2562 = await loadSha256().then(()=>{
-      //   console.log("Othent LOADED In PROMISE")
-
-      // });
-
       // Get User Othent Secure Details
       const othentKms = await loadOthentKms();
       const {
@@ -117,8 +107,8 @@ function Onairos(_ref) {
       console.log("Othent LOADED MOVING ON");
       const userDetails = await connect();
       // console.log("userDetails : ", hashedOthentSub);
-      // const sha256 = (await loadSha256()).default;
-      const hashedOthentSub = (0, _sha.default)(userDetails.sub).toString();
+      const sha256 = (await loadSha256()).default;
+      const hashedOthentSub = sha256(userDetails.sub).toString();
       const encryptedPin = await (0, _getPin.default)(hashedOthentSub);
       function convertToBuffer(string) {
         try {
@@ -168,10 +158,7 @@ function Onairos(_ref) {
   ;
   return /*#__PURE__*/_react.default.createElement("div", null, /*#__PURE__*/_react.default.createElement("button", {
     className: "OnairosConnect w-20 h-20 flex flex-col items-center justify-center text-white font-bold py-2 px-4 rounded cursor-pointer",
-    onClick: async () => {
-      console.log('Button clicked');
-      await OnairosAnime();
-    }
+    onClick: OnairosAnime
   }, /*#__PURE__*/_react.default.createElement("img", {
     src: "https://onairos.sirv.com/Images/OnairosBlack.png",
     alt: "Onairos Logo",
@@ -184,3 +171,4 @@ function Onairos(_ref) {
 // // export default Onairos;
 
 // module.exports = Onairos;
+//# sourceMappingURL=onairos.js.map

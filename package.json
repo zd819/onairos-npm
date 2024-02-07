@@ -1,6 +1,6 @@
 {
   "name": "onairos",
-  "version": "0.1.110",
+  "version": "0.1.114",
   "dependencies": {
     "@othent/kms": "^1.0.5",
     "@testing-library/jest-dom": "^5.17.0",
@@ -15,7 +15,8 @@
   "sideEffects": false,
   "scripts": {
     "start": "react-scripts start",
-    "build": "webpack --mode production",
+    "build2": "webpack --mode production",
+    "build":"babel src --out-dir dist --copy-files",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

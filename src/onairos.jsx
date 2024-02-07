@@ -1,5 +1,4 @@
-/* global __webpack_public_path__ */
-__webpack_public_path__ = '/static/js/';
+
 
 import React from 'react';
 // import {connect, decrypt} from '@othent/kms';
@@ -98,12 +97,6 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
 
     try{
       // console.log("Trying SHa")
-      const sha2562 = await loadSha256().then(()=>{
-        console.log("Othent LOADED In PROMISE")
-
-      });
-
-
       // Get User Othent Secure Details
       const othentKms = await loadOthentKms();
       const { connect } = othentKms;
