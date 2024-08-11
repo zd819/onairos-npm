@@ -7,33 +7,21 @@ import { rsaEncrypt } from './RSA';
 import getPin from './getPin';
 // import { Buffer } from 'buffer';
 
-
 // Dynamic import for crypto-js's sha256
-const loadSha256 = async () =>{
-  try{
-
-    console.log("loadSha256 loading ")
-    const module = await import(/* webpackChunkName: "sha256" */ 'crypto-js/sha256');
-    console.log("loadSha256 loading successful")
-
-    return module;
-  } catch (e) {
-      console.error("Error loading Othent:", e, e.request, e.response);
-      throw e; // Rethrow the error to be caught by the caller
-  }
+const loadSha256 = async () => {
+  const module = await import(/* webpackChunkName: "sha256" */ 'crypto-js/sha256');
+  return module.default;
 };
 
-// Dynamic import for @othent/kms
-// const loadOthentKms = async () =>{
-async function loadOthentKms(){
-  try {
-    console.log("Othent dynamic loading ")
+// // Dynamic import for @othent/kms
+const loadOthentKms = async () => {
+  try{
+    console.log("Entering Dynamic Othent Load")
     const module = await import(/* webpackChunkName: "othent-kms" */ '@othent/kms');
-    console.log("Othent loading successful")
-    return module.default;
-  } catch (e) {
-    console.error("Error loading Othent:", e, e.request, e.response);
-    throw e; // Rethrow the error to be caught by the caller
+    console.log("DYNAMICALLY LOADED OTHENT")
+    return module;
+  }catch(e){
+    console.error("Error loading Othent DYnamically : ", e)
   }
 };
 
@@ -67,16 +55,46 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
   };
   
   const OnairosAnime = async () => {
-    try {
-      console.log('Validating request data...');
-      validateRequestData();
-      console.log('Connecting to Onairos...');
-      await ConnectOnairos();
-      console.log('Connected to Onairos.');
-    } catch (error) {
-      // Handle any errors here
-      console.error("Error connecting to Onairos", error);
+    if (checkOnairosExtension()) {
+        // The extension is installed
+        // Proceed with the domain validation request or any other logic
+        if(validateDomain().status){
+          // Valid Domain
+          // Proceed with the domain validation request or any other logic
+          try {
+            validateRequestData();
+            await ConnectOnairos();
+          } catch (error) {
+            // Handle any errors here
+            console.error("Error connecting to Onairos", error);
+          }
+        }else{
+          console.error("Please make sure this is an Onairos Partnered app");
+        }
+    } else {
+        // The extension is not installed
+        // Open the Chrome Web Store page to download the extension
+        window.open('https://chromewebstore.google.com/detail/onairos/apkfageplidiblifhnadehmplfccapkf', '_blank');
     }
+  
+    const checkOnairosExtension = () => {
+      return typeof window.onairosExtension !== 'undefined';
+    };
+
+    const validateDomain = async () => {
+        // Your logic to validate the domain goes here
+        // For example, you could make an API request to your backend
+        return fetch('https://api2.onairos.uk/valid/validate-domain', {
+            method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        },
+        }).then(r => r.json().then(data => ({status: r.status, body: data})))
+        .catch(error => console.error(error));
+    };
+
+  
+    
   };
 
   const OnairosPublicKey = `
@@ -93,19 +111,17 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
 
   const domain = window.location.href;
 
-  async function ConnectOnairos(){
-
+  const ConnectOnairos = async () => {
     try{
-      // console.log("Trying SHa")
       // Get User Othent Secure Details
-      const othentKms = await loadOthentKms();
-      const { connect } = othentKms;
-      console.log("Othent LOADED MOVING ON")
-
+      console.log("Main initiate othent")
+      const { connect} = await loadOthentKms();
+      console.log("Main loaded othent")
       const userDetails = await connect();
-      // console.log("userDetails : ", hashedOthentSub);
-      const sha256 = (await loadSha256()).default;
+
+      const sha256 = await loadSha256();
       const hashedOthentSub = sha256(userDetails.sub).toString();
+
       const encryptedPin = await getPin(hashedOthentSub);
 
       function convertToBuffer(string) {
@@ -124,7 +140,6 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
       
       const bufferPIN = convertToBuffer(encryptedPin.result);
 
-      // console.log("bufferPIN : ", bufferPIN);
 
       const {decrypt }= await loadOthentKms();
       const userPin = await decrypt(bufferPIN);
