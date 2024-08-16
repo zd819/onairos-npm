@@ -23,4 +23,3 @@ async function getPin(hashedOthentSub) {
   }).catch(error => console.error(error));
 }
 ;
-//# sourceMappingURL=getPin.js.map

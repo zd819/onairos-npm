@@ -1,7 +1,7 @@
 
 
 import React from 'react';
-// import {connect, decrypt} from '@othent/kms';
+import {connect, decrypt} from '@othent/kms';
 // import sha256 from 'crypto-js/sha256';
 import { rsaEncrypt } from './RSA';
 import getPin from './getPin';
@@ -14,19 +14,59 @@ const loadSha256 = async () => {
 };
 
 // // Dynamic import for @othent/kms
-const loadOthentKms = async () => {
-  try{
-    console.log("Entering Dynamic Othent Load")
-    const module = await import(/* webpackChunkName: "othent-kms" */ '@othent/kms');
-    console.log("DYNAMICALLY LOADED OTHENT")
-    return module;
-  }catch(e){
-    console.error("Error loading Othent DYnamically : ", e)
-  }
-};
+// const loadOthentKms = async () => {
+//   try{
+//     console.log("Entering Dynamic Othent Load")
+//     const module = await import(/* webpackChunkName: "othent-kms" */ '@othent/kms');
+//     console.log("DYNAMICALLY LOADED OTHENT")
+//     return module;
+//   }catch(e){
+//     console.error("Error loading Othent DYnamically : ", e)
+//   }
+// };
+
 
 // import Buffer
-export function Onairos( {requestData, webpageName, proofMode=false}) {
+export function Onairos( {
+  requestData, 
+  webpageName, 
+  onComplete = null, autoFetch = true,// Added
+  proofMode=false, 
+  textLayout = 'below', 
+  textColor = 'white',}) {
+
+
+
+  useEffect(() => {
+      const handleAPIResponse = async (event) => {
+          if (autoFetch && event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE' && event.data.unique === "Onairos-Response") {
+              const { apiUrl, accessToken } = event.data;
+              try {
+                  const response = await fetch(apiUrl, {
+                      method: 'POST',
+                      headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${accessToken}`
+                      },
+                      body: JSON.stringify(requestData)
+                  });
+                  const data = await response.json();
+                  onComplete(data);  // Call the callback function with the data
+              } catch (error) {
+                  console.error(error);
+                  onComplete(null, error);  // Optionally handle errors by passing them to the callback
+              }
+          }
+      };
+
+      window.addEventListener('message', handleAPIResponse);
+      return () => {
+          window.removeEventListener('message', handleAPIResponse);
+      };
+  }, [requestData, onComplete, autoFetch]);
+    
+    
+    
 
   const validateRequestData = () => {
     const validKeys = ['Small', 'Medium', 'Large'];
@@ -53,12 +93,40 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
     }
     // Add any other validation rules as necessary
   };
-  
-  const OnairosAnime = async () => {
+  const checkOnairosExtension = () => {
+    if (typeof window.onairos !== 'undefined') {
+      console.log('Onairos is installed!');
+      console.log('Onairos info:', window.onairos.getInfo());
+    } else {
+      console.log('Onairos is not installed.');
+    }
+    // Or listen for the onairosReady event
+    window.addEventListener('onairosReady', function() {
+      console.log('Onairos was just detected!');
+    });
+    return typeof window.onairos !== 'undefined';
+  };
+
+  const validateDomain = async () => {
+      // Your logic to validate the domain goes here
+      // For example, you could make an API request to your backend
+      return fetch('https://api2.onairos.uk/valid/validate-domain', {
+        // return fetch('http://localhost:8080/valid/validate-domain', {
+          method: 'POST',
+      headers: {
+      'Content-Type': 'application/json',
+      },
+      }).then(r => r.json().then(data => ({status: r.status, body: data})))
+      .catch(error => console.error(error));
+  };
+  const OnairosChecks = async () => {
     if (checkOnairosExtension()) {
+      console.log("Onairos extension installed");
         // The extension is installed
         // Proceed with the domain validation request or any other logic
-        if(validateDomain().status){
+        if((await validateDomain()).body.status){
+          console.log("Domain validated");
+
           // Valid Domain
           // Proceed with the domain validation request or any other logic
           try {
@@ -75,26 +143,7 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
         // The extension is not installed
         // Open the Chrome Web Store page to download the extension
         window.open('https://chromewebstore.google.com/detail/onairos/apkfageplidiblifhnadehmplfccapkf', '_blank');
-    }
-  
-    const checkOnairosExtension = () => {
-      return typeof window.onairosExtension !== 'undefined';
-    };
-
-    const validateDomain = async () => {
-        // Your logic to validate the domain goes here
-        // For example, you could make an API request to your backend
-        return fetch('https://api2.onairos.uk/valid/validate-domain', {
-            method: 'POST',
-        headers: {
-        'Content-Type': 'application/json',
-        },
-        }).then(r => r.json().then(data => ({status: r.status, body: data})))
-        .catch(error => console.error(error));
-    };
-
-  
-    
+    }   
   };
 
   const OnairosPublicKey = `
@@ -115,7 +164,7 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
     try{
       // Get User Othent Secure Details
       console.log("Main initiate othent")
-      const { connect} = await loadOthentKms();
+      // const { connect} = await loadOthentKms();
       console.log("Main loaded othent")
       const userDetails = await connect();
 
@@ -141,7 +190,7 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
       const bufferPIN = convertToBuffer(encryptedPin.result);
 
 
-      const {decrypt }= await loadOthentKms();
+      // const {decrypt }= await loadOthentKms();
       const userPin = await decrypt(bufferPIN);
 
       // RSA Encrypt the PIN to transmit to Terminal and backend
@@ -171,17 +220,23 @@ export function Onairos( {requestData, webpageName, proofMode=false}) {
   };
 
   return (
-    <div>
+    <div className="flex items-center justify-center w-20 h-20">
       <button
-        className="OnairosConnect w-20 h-20 flex flex-col items-center justify-center text-white font-bold py-2 px-4 rounded cursor-pointer"
-        onClick={OnairosAnime}
+        className={`flex items-center justify-center w-full h-full font-bold rounded cursor-pointer ${textLayout === 'right' ? 'ml-4' : textLayout === 'left' ? ' mr-4' : 'mt-4'} `}
+        onClick={OnairosChecks}
+        style={{ flexDirection: textLayout === 'below' ? 'column' : 'row' }}
       >
         <img src={"https://onairos.sirv.com/Images/OnairosBlack.png"} 
-        alt="Onairos Logo" className="w-16 h-16 object-contain mb-2" /> {/* Adjust size as needed */}
-        <span className="whitespace-nowrap">Connect to Onairos</span> {/* Prevent text from wrapping */}
+        alt="Onairos Logo" className="w-16 h-16 mb-2 object-contain" />
+        {textLayout !== 'none' && (
+          <span className={`${textColor=='black'? 'text-black': 'text white'} mx-auto ${textLayout === 'right' ? 'order-last ml-20' : textLayout === 'left' ? 'order-first mr-20' : 'mt-20'}`}>
+            Onairos
+          </span>
+        )}
       </button>
     </div>
   );
+
 }
 
 // // export default Onairos;

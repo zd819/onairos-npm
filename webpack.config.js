@@ -1,27 +1,26 @@
 const path = require('path');
 const webpack = require('webpack');
-// const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
   entry: path.resolve(__dirname, 'src', 'onairos.jsx'),
 //   './src/onairos.jsx', // Replace with your entry file
   output: {
-    // The base path for all assets. This is the path from where chunks will be loaded at runtime.
-    // If your app is served from a sub-path on your domain, adjust this value.
-    publicPath: 'auto', // or ''
-    // The output directory for all build files
+    publicPath: '/', // or ''
     path: path.resolve(__dirname, 'dist'),
-    // The filename of the entry chunk
     filename: 'onairos.bundle.js',
     libraryTarget: 'umd', // This makes your library compatible with different module systems
     globalObject: 'this', // Ensures compatibility with both browser and Node environments
-    chunkFilename: 'static/js/[name].chunk.js',
+    chunkFilename: '[name].js',
   },
+  // plugins: [new BundleAnalyzerPlugin()],
   // webpack.config.js
   optimization: {
+    // splitChunks: {
+    //   chunks: 'all',
+    // },
     minimize: true,
-    
     minimizer: [
       new TerserPlugin({
         terserOptions: {
@@ -62,6 +61,5 @@ module.exports = {
         // "buffer": require.resolve("buffer/"),
         // Add any other polyfills here
       }
-    },
-    
+  },
 };

@@ -50,4 +50,3 @@ function bufferToBase64(buffer) {
     console.error("Eror in buffertoBase64 : ", e);
   }
 }
-//# sourceMappingURL=RSA.js.map
