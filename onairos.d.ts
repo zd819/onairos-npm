@@ -8,6 +8,7 @@ declare module 'onairos' {
       textLayout?: 'right' | 'left' | 'below' | 'none';
       textColor?: 'black' | 'white';
     }
+    
   
     /**
      * Creates an Onairos component with various configuration options for fetching and displaying user data.

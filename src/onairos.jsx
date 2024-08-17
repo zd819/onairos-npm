@@ -1,6 +1,6 @@
 
 
-import React from 'react';
+import React, {useEffect} from 'react';
 import {connect, decrypt} from '@othent/kms';
 // import sha256 from 'crypto-js/sha256';
 import { rsaEncrypt } from './RSA';
@@ -26,44 +26,50 @@ const loadSha256 = async () => {
 // };
 
 
+
 // import Buffer
 export function Onairos( {
   requestData, 
   webpageName, 
-  onComplete = null, autoFetch = true,// Added
-  proofMode=false, 
-  textLayout = 'below', 
-  textColor = 'white',}) {
+  onComplete = null, 
+  autoFetch = true,// Added
+  proofMode=false, textLayout = 'below', 
+  textColor = 'white'}) {
 
+    // useEffect(()=>{
+    //   console.log("USeeffect working")
+    // },[])
 
-
-  useEffect(() => {
-      const handleAPIResponse = async (event) => {
-          if (autoFetch && event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE' && event.data.unique === "Onairos-Response") {
-              const { apiUrl, accessToken } = event.data;
-              try {
-                  const response = await fetch(apiUrl, {
-                      method: 'POST',
-                      headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': `Bearer ${accessToken}`
-                      },
-                      body: JSON.stringify(requestData)
-                  });
-                  const data = await response.json();
-                  onComplete(data);  // Call the callback function with the data
-              } catch (error) {
-                  console.error(error);
-                  onComplete(null, error);  // Optionally handle errors by passing them to the callback
-              }
+    useEffect(() => {
+      // Only proceed if autoFetch is false and onComplete is a function
+      if (!autoFetch && typeof onComplete === 'function') {
+        const handleAPIResponse = async (event) => {
+          if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE' && event.data.unique === "Onairos-Response") {
+            const { apiUrl, accessToken } = event.data;
+            try {
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify(requestData)
+              });
+              const data = await response.json();
+              onComplete(data);
+            } catch (error) {
+              console.error(error);
+              onComplete(null, error);
+            }
           }
-      };
-
-      window.addEventListener('message', handleAPIResponse);
-      return () => {
+        };
+    
+        window.addEventListener('message', handleAPIResponse);
+        return () => {
           window.removeEventListener('message', handleAPIResponse);
-      };
-  }, [requestData, onComplete, autoFetch]);
+        };
+      }
+    }, [requestData, onComplete, autoFetch]);
     
     
     
@@ -239,6 +245,6 @@ export function Onairos( {
 
 }
 
-// // export default Onairos;
+// export default Onairos;
 
 // module.exports = Onairos;

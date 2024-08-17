@@ -1,11 +1,13 @@
 {
   "presets": [
     ["@babel/preset-env", {
-      "targets": "> 0.25%, not dead", // Define browser targets here
+      "targets": "> 0.25%, not dead",
       "useBuiltIns": "usage",
-      "corejs": 3 // Specify the core-js version
+      "corejs": 3
     }],
-    "@babel/preset-react"
+    ["@babel/preset-react", {
+      "runtime": "automatic"
+    }]
   ],
   "plugins": [
     "@babel/plugin-syntax-dynamic-import",

@@ -5,14 +5,14 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.Onairos = Onairos;
-var _react = _interopRequireDefault(require("react"));
+var _react = _interopRequireWildcard(require("react"));
 var _kms = require("@othent/kms");
 var _RSA = require("./RSA");
 var _getPin = _interopRequireDefault(require("./getPin"));
+var _jsxRuntime = require("react/jsx-runtime");
 function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
 function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; } // import sha256 from 'crypto-js/sha256';
 // import { Buffer } from 'buffer';
-
 // Dynamic import for crypto-js's sha256
 const loadSha256 = async () => {
   const module = await Promise.resolve().then(() => _interopRequireWildcard(require( /* webpackChunkName: "sha256" */'crypto-js/sha256')));
@@ -43,34 +43,41 @@ function Onairos(_ref) {
     textLayout = 'below',
     textColor = 'white'
   } = _ref;
-  useEffect(() => {
-    const handleAPIResponse = async event => {
-      if (autoFetch && event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE' && event.data.unique === "Onairos-Response") {
-        const {
-          apiUrl,
-          accessToken
-        } = event.data;
-        try {
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}`
-            },
-            body: JSON.stringify(requestData)
-          });
-          const data = await response.json();
-          onComplete(data); // Call the callback function with the data
-        } catch (error) {
-          console.error(error);
-          onComplete(null, error); // Optionally handle errors by passing them to the callback
+  // useEffect(()=>{
+  //   console.log("USeeffect working")
+  // },[])
+
+  (0, _react.useEffect)(() => {
+    // Only proceed if autoFetch is false and onComplete is a function
+    if (!autoFetch && typeof onComplete === 'function') {
+      const handleAPIResponse = async event => {
+        if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE' && event.data.unique === "Onairos-Response") {
+          const {
+            apiUrl,
+            accessToken
+          } = event.data;
+          try {
+            const response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify(requestData)
+            });
+            const data = await response.json();
+            onComplete(data);
+          } catch (error) {
+            console.error(error);
+            onComplete(null, error);
+          }
         }
-      }
-    };
-    window.addEventListener('message', handleAPIResponse);
-    return () => {
-      window.removeEventListener('message', handleAPIResponse);
-    };
+      };
+      window.addEventListener('message', handleAPIResponse);
+      return () => {
+        window.removeEventListener('message', handleAPIResponse);
+      };
+    }
   }, [requestData, onComplete, autoFetch]);
   const validateRequestData = () => {
     const validKeys = ['Small', 'Medium', 'Large'];
@@ -212,23 +219,26 @@ function Onairos(_ref) {
       console.error("Error Sending Data to Terminal: ", e);
     }
   };
-  return /*#__PURE__*/_react.default.createElement("div", {
-    className: "flex items-center justify-center w-20 h-20"
-  }, /*#__PURE__*/_react.default.createElement("button", {
-    className: `flex items-center justify-center w-full h-full font-bold rounded cursor-pointer ${textLayout === 'right' ? 'ml-4' : textLayout === 'left' ? ' mr-4' : 'mt-4'} `,
-    onClick: OnairosChecks,
-    style: {
-      flexDirection: textLayout === 'below' ? 'column' : 'row'
-    }
-  }, /*#__PURE__*/_react.default.createElement("img", {
-    src: "https://onairos.sirv.com/Images/OnairosBlack.png",
-    alt: "Onairos Logo",
-    className: "w-16 h-16 mb-2 object-contain"
-  }), textLayout !== 'none' && /*#__PURE__*/_react.default.createElement("span", {
-    className: `${textColor == 'black' ? 'text-black' : 'text white'} mx-auto ${textLayout === 'right' ? 'order-last ml-20' : textLayout === 'left' ? 'order-first mr-20' : 'mt-20'}`
-  }, "Onairos")));
+  return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+    className: "flex items-center justify-center w-20 h-20",
+    children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+      className: `flex items-center justify-center w-full h-full font-bold rounded cursor-pointer ${textLayout === 'right' ? 'ml-4' : textLayout === 'left' ? ' mr-4' : 'mt-4'} `,
+      onClick: OnairosChecks,
+      style: {
+        flexDirection: textLayout === 'below' ? 'column' : 'row'
+      },
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+        src: "https://onairos.sirv.com/Images/OnairosBlack.png",
+        alt: "Onairos Logo",
+        className: "w-16 h-16 mb-2 object-contain"
+      }), textLayout !== 'none' && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+        className: `${textColor == 'black' ? 'text-black' : 'text white'} mx-auto ${textLayout === 'right' ? 'order-last ml-20' : textLayout === 'left' ? 'order-first mr-20' : 'mt-20'}`,
+        children: "Onairos"
+      })]
+    })
+  });
 }
 
-// // export default Onairos;
+// export default Onairos;
 
 // module.exports = Onairos;
