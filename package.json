@@ -1,6 +1,6 @@
 {
   "name": "onairos",
-  "version": "0.1.160",
+  "version": "0.1.161",
   "dependencies": {
     "@othent/kms": "^1.0.8",
     "@testing-library/jest-dom": "^5.17.0",
@@ -15,7 +15,7 @@
   "sideEffects": false,
   "scripts": {
     "start": "react-scripts start",
-    "build": "babel src --out-dir dist --copy-files && webpack --mode production",
+    "build": "babel src --out-dir dist --copy-files && webpack --mode production && babel src/index.js --out-file dist/onairos.esm.js",
     "buildDev": "babel src --out-dir dist --copy-files && webpack --mode development",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -60,6 +60,7 @@
   },
   "description": "The Onairos Library is a collection of functions that enable Applications to connect and communicate data with Onairos Identities via User Authorization. Integration for developers is designed to be seamless, simple and effective for all applications",
   "main": "dist/onairos.bundle.js",
+  "module": "dist/onairos.esm.js",
   "types": "onairos.d.ts",
   "repository": {
     "type": "git",
