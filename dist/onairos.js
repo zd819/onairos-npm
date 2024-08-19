@@ -222,7 +222,7 @@ function Onairos(_ref) {
   return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
     className: "flex items-center justify-center w-20 h-20",
     children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-      className: `flex items-center justify-center w-full h-full font-bold rounded cursor-pointer ${textLayout === 'right' ? 'ml-4' : textLayout === 'left' ? ' mr-4' : 'mt-4'} `,
+      className: `OnairosConnect flex items-center justify-center w-full h-full font-bold rounded cursor-pointer ${textLayout === 'right' ? 'ml-4' : textLayout === 'left' ? ' mr-4' : 'mt-4'} `,
       onClick: OnairosChecks,
       style: {
         flexDirection: textLayout === 'below' ? 'column' : 'row'
