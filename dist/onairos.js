@@ -176,8 +176,11 @@ function Onairos(_ref) {
       console.log("Main loaded othent");
       const userDetails = await (0, _kms.connect)();
       const sha256 = await loadSha256();
+      console.log("userDetails.sub : ", userDetails.sub);
       const hashedOthentSub = sha256(userDetails.sub).toString();
+      console.log("hashedOthentSub : ", hashedOthentSub);
       const encryptedPin = await (0, _getPin.default)(hashedOthentSub);
+      console.log("encryptedPin : ", encryptedPin);
       function convertToBuffer(string) {
         try {
           // Decode base64 string
@@ -192,12 +195,19 @@ function Onairos(_ref) {
         }
       }
       const bufferPIN = convertToBuffer(encryptedPin.result);
+      console.log("encryptedPin.result : ", encryptedPin.result);
+      console.log("bufferPIN : ", bufferPIN);
+      const userPin2 = await (0, _kms.decrypt)(encryptedPin.result);
+      console.log("userPin2 : ", userPin2);
 
       // const {decrypt }= await loadOthentKms();
       const userPin = await (0, _kms.decrypt)(bufferPIN);
+      console.log("userPin : ", userPin);
 
       // RSA Encrypt the PIN to transmit to Terminal and backend
       (0, _RSA.rsaEncrypt)(OnairosPublicKey, userPin).then(encryptedData => {
+        console.log("hashedOthentSub : ", hashedOthentSub);
+
         // Prepare the data to be sent
         window.postMessage({
           source: 'webpage',
