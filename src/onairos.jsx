@@ -1,7 +1,8 @@
 
 
 import React, {useEffect} from 'react';
-import {connect, decrypt} from '@othent/kms';
+// import {connect, decrypt} from '@othent/kms';
+import { Othent } from "@othent/kms";
 // import sha256 from 'crypto-js/sha256';
 import { rsaEncrypt } from './RSA';
 import getPin from './getPin';
@@ -31,6 +32,7 @@ const loadSha256 = async () => {
 export function Onairos( {
   requestData, 
   webpageName, 
+  inferenceData, 
   onComplete = null, 
   autoFetch = true,// Added
   proofMode=false, textLayout = 'below', 
@@ -40,20 +42,54 @@ export function Onairos( {
     //   console.log("USeeffect working")
     // },[])
 
+    const findLargestDataObject = (arrayOfObjects) => {
+      // Update the hierarchy
+      const hierarchy = {
+        'Small': 16,
+        'Medium': 32,
+        'Large': 64
+      };
+    
+      let largestObject = null;
+      let largestValue = 0;
+    
+      arrayOfObjects.forEach(obj => {
+        const currentValue = hierarchy[obj.data];
+        if (currentValue > largestValue) {
+          largestValue = currentValue;
+          largestObject = obj;
+        }
+      });
+    
+      return largestValue;
+    };
+
+
     useEffect(() => {
-      // Only proceed if autoFetch is false and onComplete is a function
-      if (!autoFetch && typeof onComplete === 'function') {
+      // Only proceed if autoFetch is true and onComplete is a function
+      if (autoFetch && inferenceData && typeof onComplete === 'function') {
         const handleAPIResponse = async (event) => {
           if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE' && event.data.unique === "Onairos-Response") {
-            const { apiUrl, accessToken } = event.data;
+            const { APIurl, approved, accessToken } = event.data;
+
+            const trimSize = findLargestDataObject(approved);      
+            // Trim the data array based on the allowed number of items
+            const trimmedData = inferenceData.slice(0, trimSize);
+            // Fetch the new anime data from the API URL
+            const jsonData = 
+            {
+              Input: trimmedData // Your request payload
+            };
+
+
             try {
-              const response = await fetch(apiUrl, {
+              const response = await fetch(APIurl, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${accessToken}`
                 },
-                body: JSON.stringify(requestData)
+                body: JSON.stringify(jsonData)
               });
               const data = await response.json();
               onComplete(data);
@@ -69,7 +105,7 @@ export function Onairos( {
           window.removeEventListener('message', handleAPIResponse);
         };
       }
-    }, [requestData, onComplete, autoFetch]);
+    }, []);
     
     
     
@@ -101,7 +137,6 @@ export function Onairos( {
   };
   const checkOnairosExtension = () => {
     if (typeof window.onairos !== 'undefined') {
-      console.log('Onairos is installed!');
       console.log('Onairos info:', window.onairos.getInfo());
     } else {
       console.log('Onairos is not installed.');
@@ -127,11 +162,9 @@ export function Onairos( {
   };
   const OnairosChecks = async () => {
     if (checkOnairosExtension()) {
-      console.log("Onairos extension installed");
         // The extension is installed
         // Proceed with the domain validation request or any other logic
         if((await validateDomain()).body.status){
-          console.log("Domain validated");
 
           // Valid Domain
           // Proceed with the domain validation request or any other logic
@@ -168,18 +201,14 @@ export function Onairos( {
 
   const ConnectOnairos = async () => {
     try{
+      const othent = new Othent();
       // Get User Othent Secure Details
-      console.log("Main initiate othent")
       // const { connect} = await loadOthentKms();
-      console.log("Main loaded othent")
-      const userDetails = await connect();
+      const userDetails = await othent.connect();
 
       const sha256 = await loadSha256();
-      console.log("userDetails.sub : ", userDetails.sub)
       const hashedOthentSub = sha256(userDetails.sub).toString();
-      console.log("hashedOthentSub : ", hashedOthentSub)
       const encryptedPin = await getPin(hashedOthentSub);
-      console.log("encryptedPin : ", encryptedPin)
 
       function convertToBuffer(string) {
         try {
@@ -197,20 +226,11 @@ export function Onairos( {
       
       const bufferPIN = convertToBuffer(encryptedPin.result);
       
-      console.log("encryptedPin.result : ", encryptedPin.result)
-      console.log("bufferPIN : ", bufferPIN)
-      const userPin2 = await decrypt(encryptedPin.result);
-      console.log("userPin2 : ", userPin2)
-
       // const {decrypt }= await loadOthentKms();
-      const userPin = await decrypt(bufferPIN);
-
-      console.log("userPin : ", userPin)
-
+      const userPin = await othent.decrypt(bufferPIN);
       // RSA Encrypt the PIN to transmit to Terminal and backend
       rsaEncrypt(OnairosPublicKey, userPin)
       .then(encryptedData => {
-      console.log("hashedOthentSub : ", hashedOthentSub)
 
           // Prepare the data to be sent
           window.postMessage({

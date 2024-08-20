@@ -11,7 +11,8 @@ var _RSA = require("./RSA");
 var _getPin = _interopRequireDefault(require("./getPin"));
 var _jsxRuntime = require("react/jsx-runtime");
 function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
-function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; } // import sha256 from 'crypto-js/sha256';
+function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; } // import {connect, decrypt} from '@othent/kms';
+// import sha256 from 'crypto-js/sha256';
 // import { Buffer } from 'buffer';
 // Dynamic import for crypto-js's sha256
 const loadSha256 = async () => {
@@ -36,6 +37,7 @@ function Onairos(_ref) {
   let {
     requestData,
     webpageName,
+    inferenceData,
     onComplete = null,
     autoFetch = true,
     // Added
@@ -47,23 +49,49 @@ function Onairos(_ref) {
   //   console.log("USeeffect working")
   // },[])
 
+  const findLargestDataObject = arrayOfObjects => {
+    // Update the hierarchy
+    const hierarchy = {
+      'Small': 16,
+      'Medium': 32,
+      'Large': 64
+    };
+    let largestObject = null;
+    let largestValue = 0;
+    arrayOfObjects.forEach(obj => {
+      const currentValue = hierarchy[obj.data];
+      if (currentValue > largestValue) {
+        largestValue = currentValue;
+        largestObject = obj;
+      }
+    });
+    return largestValue;
+  };
   (0, _react.useEffect)(() => {
-    // Only proceed if autoFetch is false and onComplete is a function
-    if (!autoFetch && typeof onComplete === 'function') {
+    // Only proceed if autoFetch is true and onComplete is a function
+    if (autoFetch && inferenceData && typeof onComplete === 'function') {
       const handleAPIResponse = async event => {
         if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE' && event.data.unique === "Onairos-Response") {
           const {
-            apiUrl,
+            APIurl,
+            approved,
             accessToken
           } = event.data;
+          const trimSize = findLargestDataObject(approved);
+          // Trim the data array based on the allowed number of items
+          const trimmedData = inferenceData.slice(0, trimSize);
+          // Fetch the new anime data from the API URL
+          const jsonData = {
+            Input: trimmedData // Your request payload
+          };
           try {
-            const response = await fetch(apiUrl, {
+            const response = await fetch(APIurl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`
               },
-              body: JSON.stringify(requestData)
+              body: JSON.stringify(jsonData)
             });
             const data = await response.json();
             onComplete(data);
@@ -78,7 +106,7 @@ function Onairos(_ref) {
         window.removeEventListener('message', handleAPIResponse);
       };
     }
-  }, [requestData, onComplete, autoFetch]);
+  }, []);
   const validateRequestData = () => {
     const validKeys = ['Small', 'Medium', 'Large'];
     const requiredProperties = ['type', 'descriptions', 'reward'];
@@ -105,7 +133,6 @@ function Onairos(_ref) {
   };
   const checkOnairosExtension = () => {
     if (typeof window.onairos !== 'undefined') {
-      console.log('Onairos is installed!');
       console.log('Onairos info:', window.onairos.getInfo());
     } else {
       console.log('Onairos is not installed.');
@@ -132,12 +159,9 @@ function Onairos(_ref) {
   };
   const OnairosChecks = async () => {
     if (checkOnairosExtension()) {
-      console.log("Onairos extension installed");
       // The extension is installed
       // Proceed with the domain validation request or any other logic
       if ((await validateDomain()).body.status) {
-        console.log("Domain validated");
-
         // Valid Domain
         // Proceed with the domain validation request or any other logic
         try {
@@ -170,17 +194,13 @@ function Onairos(_ref) {
   const domain = window.location.href;
   const ConnectOnairos = async () => {
     try {
+      const othent = new _kms.Othent();
       // Get User Othent Secure Details
-      console.log("Main initiate othent");
       // const { connect} = await loadOthentKms();
-      console.log("Main loaded othent");
-      const userDetails = await (0, _kms.connect)();
+      const userDetails = await othent.connect();
       const sha256 = await loadSha256();
-      console.log("userDetails.sub : ", userDetails.sub);
       const hashedOthentSub = sha256(userDetails.sub).toString();
-      console.log("hashedOthentSub : ", hashedOthentSub);
       const encryptedPin = await (0, _getPin.default)(hashedOthentSub);
-      console.log("encryptedPin : ", encryptedPin);
       function convertToBuffer(string) {
         try {
           // Decode base64 string
@@ -195,19 +215,11 @@ function Onairos(_ref) {
         }
       }
       const bufferPIN = convertToBuffer(encryptedPin.result);
-      console.log("encryptedPin.result : ", encryptedPin.result);
-      console.log("bufferPIN : ", bufferPIN);
-      const userPin2 = await (0, _kms.decrypt)(encryptedPin.result);
-      console.log("userPin2 : ", userPin2);
 
       // const {decrypt }= await loadOthentKms();
-      const userPin = await (0, _kms.decrypt)(bufferPIN);
-      console.log("userPin : ", userPin);
-
+      const userPin = await othent.decrypt(bufferPIN);
       // RSA Encrypt the PIN to transmit to Terminal and backend
       (0, _RSA.rsaEncrypt)(OnairosPublicKey, userPin).then(encryptedData => {
-        console.log("hashedOthentSub : ", hashedOthentSub);
-
         // Prepare the data to be sent
         window.postMessage({
           source: 'webpage',

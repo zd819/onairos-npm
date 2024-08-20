@@ -2,6 +2,7 @@ declare module 'onairos' {
     export interface OnairosProps {
       requestData: any; // Consider using a more specific type or interface for request data.
       webpageName: string;
+      inferenceData?: any;
       onComplete?: (data: any, error?: Error) => void; // Specify more precise types if possible.
       autoFetch?: boolean;
       proofMode?: boolean;
