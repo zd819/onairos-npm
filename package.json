@@ -1,6 +1,6 @@
 {
   "name": "onairos",
-  "version": "0.1.181",
+  "version": "0.1.187",
   "dependencies": {
     "@othent/kms": "^2.0.0-beta.10",
     "@testing-library/jest-dom": "^5.17.0",

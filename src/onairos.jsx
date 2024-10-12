@@ -1,6 +1,4 @@
-
-
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 // import {connect, decrypt} from '@othent/kms';
 import { Othent } from "@othent/kms";
 // import sha256 from 'crypto-js/sha256';
@@ -29,14 +27,21 @@ const loadSha256 = async () => {
 
 
 // import Buffer
-export function Onairos( {
+export function Onairos({
   requestData, 
   webpageName, 
-  inferenceData, 
+  inferenceData= null, 
   onComplete = null, 
   autoFetch = true,// Added
   proofMode=false, textLayout = 'below', 
-  textColor = 'white'}) {
+  textColor = 'white',
+  login = false,
+  buttonType = 'pill',
+  loginReturn = null,
+  loginType = 'signIn',  // New prop: signIn, signUp, signOut
+  visualType = 'full',  // New prop: full, icon, textOnly
+}) {
+  const [userData, setUserData] = useState(null);
 
     // useEffect(()=>{
     //   console.log("USeeffect working")
@@ -228,6 +233,7 @@ export function Onairos( {
       
       // const {decrypt }= await loadOthentKms();
       const userPin = await othent.decrypt(bufferPIN);
+      console.log("Retrieved PIN Working")
       // RSA Encrypt the PIN to transmit to Terminal and backend
       rsaEncrypt(OnairosPublicKey, userPin)
       .then(encryptedData => {
@@ -255,23 +261,104 @@ export function Onairos( {
 
   };
 
+  const handleLogin = async () => {
+    try {
+      const othent = new Othent();
+      const userDetails = await othent.connect();
+      const sha256 = await loadSha256();
+      const hashedOthentSub = sha256(userDetails.sub).toString();
+      const encryptedPin = await getPin(hashedOthentSub);
+
+      // ... existing PIN decryption logic ...
+
+      const loginData = {
+        username: userDetails.username,
+        email: userDetails.email,
+        // Add any other relevant user data
+      };
+
+      setUserData(loginData);
+
+      if (loginReturn) {
+        loginReturn(loginData);
+      }
+
+      // Prepare the data to be sent
+      window.postMessage({
+        source: 'webpage',
+        type: 'GET_API_URL',
+        webpageName: webpageName,
+        domain: domain,
+        requestData: requestData,
+        proofMode: proofMode,
+        HashedOthentSub: hashedOthentSub,
+        EncryptedUserPin: encryptedData,
+        login: true,
+        loginData: loginData
+      });
+    } catch (error) {
+      console.error("Error during login:", error);
+    }
+  };
+
+  // Styling and button class based on visual type and login mode
+  const buttonClass = 
+    `OnairosConnect flex items-center justify-center font-bold rounded cursor-pointer ${
+    buttonType === 'pill' ? 'px-4 py-2' : 'w-12 h-12'
+    } ${login ? 'bg-white border border-gray-300' : 'bg-transparent'}`
+  ;
+
+  const buttonStyle = {
+    flexDirection: textLayout === 'below' ? 'column' : 'row',
+    backgroundColor: login ? '#ffffff' : 'transparent',
+    color: login ? 'black' : textColor,
+    border: login ? '1px solid #ddd' : '1px solid transparent',
+  };
+
+  // Icon and text style based on the visualType
+  const logoStyle = {
+    width: '20px',
+    height: '20px',
+    marginRight: visualType === 'full' ? '12px' : '0',  // Space between icon and text only in full mode
+  };
+
+  const getText = () => {
+    switch (loginType) {
+      case 'signUp':
+        return 'Sign Up with Onairos';
+      case 'signOut':
+        return 'Sign Out of Onairos';
+      default:
+        return 'Sign In with Onairos';
+    }
+  };
+
   return (
-    <div className="flex items-center justify-center w-20 h-20">
+    <div className="OnairosConnect flex items-center justify-center">
       <button
-        className={`OnairosConnect flex items-center justify-center w-full h-full font-bold rounded cursor-pointer ${textLayout === 'right' ? 'ml-4' : textLayout === 'left' ? ' mr-4' : 'mt-4'} `}
-        onClick={OnairosChecks}
-        style={{ flexDirection: textLayout === 'below' ? 'column' : 'row' }}
+        className={buttonClass}
+        onClick={login ? handleLogin : OnairosChecks}
+        style={buttonStyle}
       >
-        <img src={"https://onairos.sirv.com/Images/OnairosBlack.png"} 
-        alt="Onairos Logo" className="w-16 h-16 mb-2 object-contain" />
-        {textLayout !== 'none' && (
-          <span className={`${textColor=='black'? 'text-black': 'text white'} mx-auto ${textLayout === 'right' ? 'order-last ml-20' : textLayout === 'left' ? 'order-first mr-20' : 'mt-20'}`}>
-            Onairos
+        {/* Render based on visualType prop */}
+        {(visualType === 'full' || visualType === 'icon') && (
+          <img
+            src={login ? "https://onairos.sirv.com/Images/OnairosWhite.png" : "https://onairos.sirv.com/Images/OnairosBlack.png"}
+            alt="Onairos Logo"
+            style={logoStyle}
+            className={`${buttonType === 'pill' ? 'w-6 h-6' : 'w-8 h-8'} object-contain`}
+          />
+        )}
+
+        {/* Only render text if visualType is 'full' or 'textOnly' */}
+        {(visualType === 'full' || visualType === 'textOnly') && (
+          <span className={`${login ? 'text-black' : textColor === 'black' ? 'text-black' : 'text-white'} ${visualType === 'icon' ? 'sr-only' : ''} ${textLayout === 'right' ? 'ml-2' : textLayout === 'left' ? 'mr-2' : ''}`}>
+            {getText()}
           </span>
         )}
       </button>
     </div>
-  );
+  )
 
 }
 

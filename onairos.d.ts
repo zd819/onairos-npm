@@ -8,6 +8,10 @@ declare module 'onairos' {
       proofMode?: boolean;
       textLayout?: 'right' | 'left' | 'below' | 'none';
       textColor?: 'black' | 'white';
+      login?: boolean,
+      loginReturn?:(data: any, error?: Error) => void;
+      loginType?: string;
+      visualType?: string;
     }
     
   
