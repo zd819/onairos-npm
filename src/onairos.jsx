@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 // import {connect, decrypt} from '@othent/kms';
-import { Othent } from "@othent/kms";
+import { Othent, AppInfo } from "@othent/kms";
 // import sha256 from 'crypto-js/sha256';
 import { rsaEncrypt } from './RSA';
 import getPin from './getPin';
@@ -42,7 +42,46 @@ export function Onairos({
   visualType = 'full',  // New prop: full, icon, textOnly
 }) {
   const [userData, setUserData] = useState(null);
+  const [biometricSupported, setBiometricSupported] = useState(false)
 
+
+  const handleBiometricAuth = () => {
+    if (window.Telegram && biometricSupported) {
+      window.Telegram.WebApp.showPopup({
+        title: 'Biometric Authentication',
+        message: 'Please authenticate using Face ID',
+        buttons: [
+          {id: 'authenticate', type: 'default', text: 'Authenticate'},
+          {id: 'cancel', type: 'cancel', text: 'Cancel'}
+        ]
+      }, (buttonId) => {
+        if (buttonId === 'authenticate') {
+          // Simulating biometric authentication
+          setTimeout(() => {
+            window.Telegram.WebApp.showAlert('Authentication successful!')
+          }, 1000)
+        }
+      })
+    } else {
+      window.Telegram.WebApp.showAlert('Biometric authentication is not supported on this device.')
+    }
+  }
+
+  const handleRedirect = () => {
+    // Universal link to redirect to another app
+    const universalLink = 'https://your-app-scheme://open'
+    
+    if (window.Telegram) {
+      window.Telegram.WebApp.openLink(universalLink, {
+        try_instant_view: true
+      })
+    }
+  }
+
+  if (window.Telegram) {
+    handleBiometricAuth();
+    handleRedirect();
+  }else{
     // useEffect(()=>{
     //   console.log("USeeffect working")
     // },[])
@@ -169,6 +208,19 @@ export function Onairos({
     if (checkOnairosExtension()) {
         // The extension is installed
         // Proceed with the domain validation request or any other logic
+        useEffect(() => {
+          if (window.Telegram) {
+            window.Telegram.WebApp.ready()
+            setUser(window.Telegram.WebApp.initDataUnsafe.user)
+      
+            // Check if biometric authentication is supported
+            window.Telegram.WebApp.requestAuthorizationWithBiometrics({
+              reason: "We need biometric authentication for secure access."
+            }).then((isSupported) => {
+              setBiometricSupported(isSupported)
+            })
+          }
+        }, [])
         if((await validateDomain()).body.status){
 
           // Valid Domain
@@ -206,7 +258,13 @@ export function Onairos({
 
   const ConnectOnairos = async () => {
     try{
-      const othent = new Othent();
+      console.log("Connecting to Onairos")
+      const appInfo = {
+        name: "Onairos",
+        version: "1.0.0",
+        env: "production",
+      };
+      const othent = new Othent({ appInfo, throwErrors: false});
       // Get User Othent Secure Details
       // const { connect} = await loadOthentKms();
       const userDetails = await othent.connect();
@@ -293,13 +351,14 @@ export function Onairos({
         proofMode: proofMode,
         HashedOthentSub: hashedOthentSub,
         EncryptedUserPin: encryptedData,
-        login: true,
+        login: login,
         loginData: loginData
       });
     } catch (error) {
       console.error("Error during login:", error);
     }
   };
+}
 
   // Styling and button class based on visual type and login mode
   const buttonClass = 
@@ -334,10 +393,10 @@ export function Onairos({
   };
 
   return (
-    <div className="OnairosConnect flex items-center justify-center">
+    <div className="flex items-center justify-center">
       <button
         className={buttonClass}
-        onClick={login ? handleLogin : OnairosChecks}
+        onClick={ConnectOnairos} 
         style={buttonStyle}
       >
         {/* Render based on visualType prop */}
