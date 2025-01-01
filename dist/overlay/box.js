@@ -4,14 +4,15 @@ var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefau
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = Box2;
-var _Sentiment = _interopRequireDefault(require("../icons/Sentiment.png"));
-var _Avatar = _interopRequireDefault(require("../icons/Avatar.png"));
-var _Avatar2 = _interopRequireDefault(require("../icons/Avatar2.png"));
-var _Trait = _interopRequireDefault(require("../icons/Trait.png"));
+exports.default = Box;
 var _propTypes = _interopRequireDefault(require("prop-types"));
 var _jsxRuntime = require("react/jsx-runtime");
-function Box2(props) {
+// import Sentiment from '../icons/Sentiment.png';
+// import Avatar from '../icons/Avatar.png';
+// import Avatar2 from '../icons/Avatar2.png';
+// import Trait from '../icons/Trait.png';
+
+function Box(props) {
   const selectShortlistedApplicant = e => {
     const checked = e.target.checked;
     if (checked) {
@@ -47,22 +48,25 @@ function Box2(props) {
           children: [props.title === "Traits" ?
           /*#__PURE__*/
           // Image to represent Traits
+          // <img src={Trait} alt="Traits Icon" className="w-6 h-6 mr-2" />
           (0, _jsxRuntime.jsx)("img", {
-            src: _Trait.default,
+            src: "https://onairos.sirv.com/Images/OnairosWhite.png",
             alt: "Traits Icon",
             className: "w-6 h-6 mr-2"
           }) : props.title === "Avatar" ?
           /*#__PURE__*/
           // Image to represent Traits
+          // <img src={Avatar2} alt="Avatar Icon" className="w-6 h-6 mr-2" />
           (0, _jsxRuntime.jsx)("img", {
-            src: _Avatar2.default,
+            src: "https://onairos.sirv.com/Images/OnairosWhite.png",
             alt: "Avatar Icon",
             className: "w-6 h-6 mr-2"
           }) :
           /*#__PURE__*/
           // Image to represent Interest
+          // <img src={Sentiment} alt="Interest Icon" className="w-6 h-6 mr-2" />
           (0, _jsxRuntime.jsx)("img", {
-            src: _Sentiment.default,
+            src: "https://onairos.sirv.com/Images/OnairosWhite.png",
             alt: "Interest Icon",
             className: "w-6 h-6 mr-2"
           }), "Access your ", Insight]

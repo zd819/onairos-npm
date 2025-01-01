@@ -50,11 +50,15 @@ export function Onairos({
   const [selectedRequests, setSelectedRequests] = useState({});
   const [avatar, setAvatar] = useState(false);
   const [traits, setTraits] = useState(false);
+  const [othent, setOthent] = useState(false);
+  const [othentConnected, setOthentConnected] = useState(false);
   const NoAccount = useRef(false);
   const NoModel = useRef(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authToken, setAuthToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hashedOthentSub, setHashedOthentSub] = useState(null);
+  const [encryptedPin, setEncryptedPin] = useState(null);
 
     // useEffect(()=>{
     //   console.log("USeeffect working")
@@ -167,7 +171,9 @@ export function Onairos({
   const handleAPIRequestForMobile = async () => {
     if (isMobileDevice()) {
       setShowOverlay(true);
-    } else {
+    } 
+    return ;
+    
       if (autoFetch) {
         const randomData = generateRandomData(inferenceData);
         onComplete(randomData);
@@ -182,39 +188,79 @@ export function Onairos({
           username:"CapX-Telegram"
         }, '*');
       }
-    }
   };
 
   const rejectDataRequest = () => {
     setShowOverlay(false);
     if (onComplete) {
-      onComplete(null, 'rejected');
+      onComplete('rejected');
     }
   };
 
   const sendDataRequest = async () => {
     if (granted > 0) {
-      // Process selected requests
-      const approvedRequests = Object.values(selectedRequests)
-        .filter(req => req.isSelected)
-        .map(req => ({ type: req.type, reward: req.reward }));
+      try {
+        if(othent && !othentConnected){
+          const appInfo = {
+            name: "Onairos",
+            version: "1.0.0",
+            env: "production",
+          };
+          const othent = new Othent({ appInfo, throwErrors: false});
+          // Get User Othent Secure Details
+          const userDetails = await othent.connect();
 
+          const sha256 = await loadSha256();
+          console.log("User details: ", userDetails.sub)
+          const hashedOthentSub = sha256(userDetails.sub).toString();
+          
+          setHashedOthentSub(hashedOthentSub);
+          console.log("User details: ", userDetails.email)
+          console.log("hashedOthentSub ", hashedOthentSub)
+          
+          const encryptedPin = await getPin(hashedOthentSub);
+          console.log("encryptedPin: ", encryptedPin)
+
+          setEncryptedPin(encryptedPin);
+        }
+        
+        const approvedRequests = Object.values(selectedRequests)
+          .filter(req => req.isSelected)
+          .map(req => ({ type: req.type, reward: req.reward }));
+
+        
+    const jsonData = {
+      Info:{ 
+        'EncryptedUserPin': encryptedPin,
+        'confirmations': approvedRequests,
+        'web3Type': 'othent',
+        'Domain': window.location.href,
+        'proofMode': 'false',
+        'OthentSub': hashedOthentSub
+      }
+    }
       // Similar to existing autoFetch logic but for mobile
       try {
-        const response = await fetch('https://onairos.uk/capx', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('onairosToken')}`
-          },
-          body: JSON.stringify({
-            Input: inferenceData ? inferenceData.slice(0, granted) : null,
-            approvedRequests
-          })
-        });
+        const response = await fetch('https://api2.onairos.uk/getAPIurl', {
+          // return await fetch('http://localhost:8080/getAPIurl', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(jsonData),
+          });
+
         const data = await response.json();
-        if (onComplete) {
+        if (autoFetch && onComplete) {
           onComplete(data);
+        }else{
+          chrome.runtime.sendMessage({
+            source: 'dataRequestPage',
+            type: 'returnedAPIurl',
+            APIurl:response.body.apiUrl,
+            accessToken:response.body.token,
+            approved:selectedConnections.current,
+          })
         }
       } catch (error) {
         console.error(error);
@@ -222,9 +268,14 @@ export function Onairos({
           onComplete(null, error);
         }
       }
-    }
+    
+    }catch (error) {
+    console.error(error);
+  }
+    
     setShowOverlay(false);
-  };
+    };
+  }
 
   const validateRequestData = () => {
     const validKeys = ['Small', 'Medium', 'Large'];
@@ -321,11 +372,6 @@ export function Onairos({
       if (isMobileDevice()) {
         // Testing
         console.log("Connecting to Onairos")
-        const appInfo = {
-          name: "Onairos",
-          version: "1.0.0",
-          env: "production",
-        };
         await handleAPIRequestForMobile();
         return;
       }
@@ -391,46 +437,6 @@ export function Onairos({
 
   };
 
-  const handleLogin = async () => {
-    try {
-      const othent = new Othent();
-      const userDetails = await othent.connect();
-      const sha256 = await loadSha256();
-      const hashedOthentSub = sha256(userDetails.sub).toString();
-      const encryptedPin = await getPin(hashedOthentSub);
-
-      // ... existing PIN decryption logic ...
-
-      const loginData = {
-        username: userDetails.username,
-        email: userDetails.email,
-        // Add any other relevant user data
-      };
-
-      setUserData(loginData);
-
-      if (loginReturn) {
-        loginReturn(loginData);
-      }
-
-      // Prepare the data to be sent
-      window.postMessage({
-        source: 'webpage',
-        type: 'GET_API_URL',
-        webpageName: webpageName,
-        domain: domain,
-        requestData: requestData,
-        proofMode: proofMode,
-        HashedOthentSub: hashedOthentSub,
-        EncryptedUserPin: encryptedData,
-        login: login,
-        loginData: loginData
-      });
-    } catch (error) {
-      console.error("Error during login:", error);
-    }
-  };
-
   // Styling and button class based on visual type and login mode
   const buttonClass = 
     `flex items-center justify-center font-bold rounded cursor-pointer ${
@@ -438,7 +444,6 @@ export function Onairos({
     } ${login ? 'bg-white border border-gray-300' : 'bg-transparent'}
     ${ isMobileDevice()? '':'OnairosConnect'}
     `
-    
   ;
 
   const buttonStyle = {
@@ -469,34 +474,47 @@ export function Onairos({
   // Make sure you have this environment variable set
   const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
-  const fetchAccountInfo = async (email) => {
+  const fetchAccountInfo = async (identifier, isEmail = false) => {
     try {
-      const token = localStorage.getItem('onairosToken') || localStorage.getItem('token');
+      const endpoint = isEmail ? '/getAccountInfo/email' : '/getAccountInfo';
+      const jsonData = isEmail?
+      {
+        identifier: identifier
+      }:
+      {
+        userName:identifier
+      };
       
-      const response = await fetch('https://api2.onairos.uk/getAccountInfo', {
-        method: 'POST',
+      const response = await fetch(`https://api2.onairos.uk${endpoint}`, {
+        // const response = await fetch(`http://localhost:8080${endpoint}`, {
+          method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          Info: {
-            email: email
-          }
-        })
+        body: JSON.stringify(jsonData)
       });
 
       if (!response.ok) {
         throw new Error('Failed to fetch account info');
       }
 
-      const accountInfo = await response.json();
-      setAvatar(!!accountInfo.avatar);
-      setTraits(!!accountInfo.traits);
-      setActiveModels(accountInfo.activeModels || []);
+      const data = await response.json();
+      console.log("Account Info retrieved:", data);
+
+      const accountInfo = data.AccountInfo; // Access the nested AccountInfo object
+      console.log("Account Info retrieved:", accountInfo);
+
+      // Update state with account info from the nested AccountInfo object
+      setAvatar(!!accountInfo.AvatarURL);
+      setTraits(!!accountInfo.UserTraits);
+      setOthent(!!accountInfo.othent);
+      setActiveModels(accountInfo.models || []); // Access models from AccountInfo
+      console.log("Active Models in Onairos.jsx: ", accountInfo.models);
       
+      return accountInfo;
     } catch (error) {
       console.error('Failed to fetch account info:', error);
+      return null;
     }
   };
 
@@ -507,8 +525,9 @@ export function Onairos({
       const token = onairosToken || legacyToken;
 
       if (token) {
-        const response = await fetch('https://api2.onairos.uk/verify', {
-          headers: {
+        const response = await fetch('https://api2.onairos.uk/verifyToken', {
+          // const response = await fetch('http://localhost:8080/verifyToken', {
+            headers: {
             'Authorization': `Bearer ${token}`
           }
         });
@@ -518,7 +537,8 @@ export function Onairos({
           if (data.valid) {
             setAuthToken(token);
             setIsAuthenticated(true);
-            await fetchAccountInfo(data.email);
+            const username = localStorage.getItem('username');
+            await fetchAccountInfo(username);
           } else {
             localStorage.removeItem('onairosToken');
             localStorage.removeItem('token');
@@ -538,11 +558,17 @@ export function Onairos({
     }
   }, []);
 
+  const handleCloseOverlay = () => {
+    setShowOverlay(false);
+    setGranted(0);
+  };
+
   // Return overlay for mobile devices when needed
   if (showOverlay && isMobileDevice()) {
     return (
       <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
         <Overlay
+          setOthentConnected={setOthentConnected}
           dataRequester={webpageName}
           NoAccount={NoAccount}
           NoModel={NoModel}
@@ -559,9 +585,15 @@ export function Onairos({
           isAuthenticated={isAuthenticated}
           authToken={authToken}
           loading={loading}
-          onLoginSuccess={async (email) => {
-            await fetchAccountInfo(email);
+          onLoginSuccess={async (username, email=false) => {
+            const accountInfo = await fetchAccountInfo(username, email);
+            setIsAuthenticated(true);
+            // Update other state based on accountInfo
           }}
+          onClose={handleCloseOverlay}
+          setOthent={setOthent}
+          setHashedOthentSub={setHashedOthentSub}
+          setEncryptedPin={setEncryptedPin}
         />
       </GoogleOAuthProvider>
     );
@@ -593,7 +625,6 @@ export function Onairos({
       </button>
     </div>
   )
-
 }
 
 // export default Onairos;

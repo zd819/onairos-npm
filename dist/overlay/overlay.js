@@ -1,5 +1,6 @@
 "use strict";
 
+var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
@@ -7,14 +8,22 @@ exports.default = Overlay;
 var _react = require("react");
 var _google = require("@react-oauth/google");
 var _jwtDecode = require("jwt-decode");
+var _AuthButtons = _interopRequireDefault(require("../components/AuthButtons"));
+var _IndividualConnection = _interopRequireDefault(require("./IndividualConnection"));
 var _jsxRuntime = require("react/jsx-runtime");
 const API_URL = process.env.REACT_APP_API_URL || 'https://api2.onairos.uk';
 function Overlay(_ref) {
   let {
+    setOthentConnected,
     dataRequester,
     NoAccount,
     NoModel,
     activeModels,
+    setActiveModels,
+    avatar,
+    setAvatar,
+    traits,
+    setTraits,
     requestData,
     handleConnectionSelection,
     changeGranted,
@@ -22,15 +31,50 @@ function Overlay(_ref) {
     allowSubmit,
     rejectDataRequest,
     sendDataRequest,
-    avatar,
-    traits,
     isAuthenticated,
-    loading,
-    onLoginSuccess
+    // setIsAuthenticated,
+    onClose,
+    onLoginSuccess,
+    setOthent,
+    setHashedOthentSub,
+    setEncryptedPin
   } = _ref;
   const [loginError, setLoginError] = (0, _react.useState)(null);
+  const [loading, setLoading] = (0, _react.useState)(false);
+  const overlayRef = (0, _react.useRef)(null);
+
+  // Set dynamic viewport height
+  (0, _react.useEffect)(() => {
+    const setVH = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    setVH(); // Set initial value
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+    return () => {
+      window.removeEventListener('resize', setVH);
+      window.removeEventListener('orientationchange', setVH);
+    };
+  }, []);
+
+  // Handle click outside
+  (0, _react.useEffect)(() => {
+    const handleClickOutside = event => {
+      if (overlayRef.current && !overlayRef.current.contains(event.target)) {
+        // Call a prop to close the overlay
+        onClose?.(); // Make sure to add onClose to props
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [onClose]);
   const [formData, setFormData] = (0, _react.useState)({
-    email: '',
+    username: '',
     password: ''
   });
   const handleGoogleSuccess = async credentialResponse => {
@@ -86,55 +130,79 @@ function Overlay(_ref) {
         },
         body: JSON.stringify(loginAttempt)
       });
-      console.log("Login resonse :", response);
       const data = await response.json();
+      console.log("Login resonse data :", data);
       if (data.authentication === 'Accepted') {
         localStorage.setItem('onairosToken', data.token);
         localStorage.setItem('username', formData.username);
+        // setLocalIsAuthenticated(true); // Update local state
+        // setIsAuthenticated(true);
+        console.log("Username of user: ", formData.username);
         await onLoginSuccess(formData.username);
       } else {
         throw new Error('Invalid credentials');
       }
     } catch (error) {
       console.error('Login failed:', error);
-      setLoginError('Invalid email or password');
+      setLoginError('Invalid username or password');
+    }
+  };
+  const handleLoginSuccess = async username => {
+    setLoading(true);
+    try {
+      // Call the parent's onLoginSuccess handler
+      await onLoginSuccess(username);
+    } catch (error) {
+      console.error('Login process failed:', error);
+      setLoginError('Failed to complete login process');
+    } finally {
+      setLoading(false);
     }
   };
   if (loading) {
-    return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-sm rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out min-h-[200px] flex items-center justify-center",
-      children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"
-      })
+    return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "fixed inset-0 bg-black bg-opacity-50"
+      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        ref: overlayRef,
+        className: "fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out flex items-center justify-center",
+        style: {
+          height: 'calc(var(--vh, 1vh) * 50)'
+        },
+        children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"
+        })
+      })]
     });
   }
   if (!isAuthenticated) {
     return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "fixed inset-0 bg-black/30 backdrop-blur-sm"
+        className: "fixed inset-0 bg-black bg-opacity-50",
+        onClick: onClose
       }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-sm rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out",
+        ref: overlayRef,
+        className: "fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out",
+        style: {
+          height: 'calc(var(--vh, 1vh) * 50)'
+        },
         children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
           className: "w-full flex justify-center pt-3 pb-2",
           children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
             className: "w-12 h-1.5 bg-gray-300 rounded-full"
           })
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "px-6 pb-8",
+          className: "px-6 pb-8 h-[calc(100%-24px)] overflow-y-auto",
           children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex flex-col items-center justify-start max-w-sm mx-auto space-y-6",
+            className: "flex flex-col items-center justify-start max-w-sm mx-auto space-y-6 pt-4",
             children: [loginError && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "w-full bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4",
+              className: "w-full bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg",
               children: loginError
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_google.GoogleLogin, {
-              onSuccess: handleGoogleSuccess,
-              onError: handleGoogleError,
-              useOneTap: true,
-              theme: "outline",
-              size: "large",
-              text: "continue_with",
-              shape: "rectangular",
-              width: "320"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_AuthButtons.default, {
+              onLoginSuccess: handleLoginSuccess,
+              setOthent: setOthent,
+              setHashedOthentSub: setHashedOthentSub,
+              setEncryptedPin: setEncryptedPin
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "w-full flex items-center justify-center space-x-4",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("hr", {
@@ -149,11 +217,11 @@ function Overlay(_ref) {
               onSubmit: handleOnairosLogin,
               className: "w-full space-y-4",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
-                type: "email",
-                name: "email",
-                value: formData.email,
+                type: "text",
+                name: "username",
+                value: formData.username,
                 onChange: handleInputChange,
-                placeholder: "Email",
+                placeholder: "Username",
                 className: "w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500",
                 required: true
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
@@ -179,16 +247,21 @@ function Overlay(_ref) {
   // Data requests section
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "fixed inset-0 bg-black/30 backdrop-blur-sm"
+      className: "fixed inset-0 bg-black bg-opacity-50",
+      onClick: onClose
     }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-      className: "fixed bottom-0 left-0 right-0 w-full h-[50vh] bg-white/95 backdrop-blur-sm rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out",
+      ref: overlayRef,
+      className: "fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out",
+      style: {
+        height: 'calc(var(--vh, 1vh) * 50)'
+      },
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "w-full flex justify-center pt-3 pb-2",
         children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
           className: "w-12 h-1.5 bg-gray-300 rounded-full"
         })
       }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "w-full h-[calc(50vh-24px)] overflow-y-auto",
+        className: "h-[calc(100%-24px)] overflow-y-auto",
         children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "px-6 py-2",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("h1", {
@@ -201,8 +274,8 @@ function Overlay(_ref) {
               onClick: rejectDataRequest,
               children: "Reject All"
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-              disabled: !allowSubmit,
-              className: `bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-8 rounded-full ${!allowSubmit ? 'opacity-50 cursor-not-allowed' : ''}`,
+              disabled: !allowSubmit || granted == 0,
+              className: `bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-8 rounded-full ${!allowSubmit || granted === 0 ? 'opacity-50 cursor-not-allowed' : ''}`,
               onClick: sendDataRequest,
               children: ["Confirm (", granted, ")"]
             })]
@@ -234,9 +307,10 @@ function Overlay(_ref) {
               return 0;
             }).map((key, index) => {
               const product = requestData[key];
+              console.log("Active Models: ", activeModels);
               const active = product.type === 'Personality' ? activeModels.includes(product.type) : product.type === 'Avatar' ? avatar : product.type === 'Traits' ? traits : false;
               return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                children: /*#__PURE__*/(0, _jsxRuntime.jsx)(IndividualConnection, {
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_IndividualConnection.default, {
                   active: active,
                   title: product.type,
                   id: product,

@@ -60,11 +60,15 @@ function Onairos(_ref) {
   const [selectedRequests, setSelectedRequests] = (0, _react.useState)({});
   const [avatar, setAvatar] = (0, _react.useState)(false);
   const [traits, setTraits] = (0, _react.useState)(false);
+  const [othent, setOthent] = (0, _react.useState)(false);
+  const [othentConnected, setOthentConnected] = (0, _react.useState)(false);
   const NoAccount = (0, _react.useRef)(false);
   const NoModel = (0, _react.useRef)(false);
   const [isAuthenticated, setIsAuthenticated] = (0, _react.useState)(false);
   const [authToken, setAuthToken] = (0, _react.useState)(null);
   const [loading, setLoading] = (0, _react.useState)(true);
+  const [hashedOthentSub, setHashedOthentSub] = (0, _react.useState)(null);
+  const [encryptedPin, setEncryptedPin] = (0, _react.useState)(null);
 
   // useEffect(()=>{
   //   console.log("USeeffect working")
@@ -167,62 +171,102 @@ function Onairos(_ref) {
   const handleAPIRequestForMobile = async () => {
     if (isMobileDevice()) {
       setShowOverlay(true);
+    }
+    return;
+    if (autoFetch) {
+      const randomData = generateRandomData(inferenceData);
+      onComplete(randomData);
     } else {
-      if (autoFetch) {
-        const randomData = generateRandomData(inferenceData);
-        onComplete(randomData);
-      } else {
-        window.postMessage({
-          type: 'API_URL_RESPONSE',
-          APIurl: 'https://onairos.uk/capx',
-          source: 'content-script',
-          approved: "message.approved",
-          accessToken: "message.accessToken",
-          unique: "Onairos-Response",
-          username: "CapX-Telegram"
-        }, '*');
-      }
+      window.postMessage({
+        type: 'API_URL_RESPONSE',
+        APIurl: 'https://onairos.uk/capx',
+        source: 'content-script',
+        approved: "message.approved",
+        accessToken: "message.accessToken",
+        unique: "Onairos-Response",
+        username: "CapX-Telegram"
+      }, '*');
     }
   };
   const rejectDataRequest = () => {
     setShowOverlay(false);
     if (onComplete) {
-      onComplete(null, 'rejected');
+      onComplete('rejected');
     }
   };
   const sendDataRequest = async () => {
     if (granted > 0) {
-      // Process selected requests
-      const approvedRequests = Object.values(selectedRequests).filter(req => req.isSelected).map(req => ({
-        type: req.type,
-        reward: req.reward
-      }));
-
-      // Similar to existing autoFetch logic but for mobile
       try {
-        const response = await fetch('https://onairos.uk/capx', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('onairosToken')}`
-          },
-          body: JSON.stringify({
-            Input: inferenceData ? inferenceData.slice(0, granted) : null,
-            approvedRequests
-          })
-        });
-        const data = await response.json();
-        if (onComplete) {
-          onComplete(data);
+        if (othent && !othentConnected) {
+          const appInfo = {
+            name: "Onairos",
+            version: "1.0.0",
+            env: "production"
+          };
+          const othent = new _kms.Othent({
+            appInfo,
+            throwErrors: false
+          });
+          // Get User Othent Secure Details
+          const userDetails = await othent.connect();
+          const sha256 = await loadSha256();
+          console.log("User details: ", userDetails.sub);
+          const hashedOthentSub = sha256(userDetails.sub).toString();
+          setHashedOthentSub(hashedOthentSub);
+          console.log("User details: ", userDetails.email);
+          console.log("hashedOthentSub ", hashedOthentSub);
+          const encryptedPin = await (0, _getPin.default)(hashedOthentSub);
+          console.log("encryptedPin: ", encryptedPin);
+          setEncryptedPin(encryptedPin);
+        }
+        const approvedRequests = Object.values(selectedRequests).filter(req => req.isSelected).map(req => ({
+          type: req.type,
+          reward: req.reward
+        }));
+        const jsonData = {
+          Info: {
+            'EncryptedUserPin': encryptedPin,
+            'confirmations': approvedRequests,
+            'web3Type': 'othent',
+            'Domain': window.location.href,
+            'proofMode': 'false',
+            'OthentSub': hashedOthentSub
+          }
+        };
+        // Similar to existing autoFetch logic but for mobile
+        try {
+          const response = await fetch('https://api2.onairos.uk/getAPIurl', {
+            // return await fetch('http://localhost:8080/getAPIurl', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(jsonData)
+          });
+          const data = await response.json();
+          if (autoFetch && onComplete) {
+            onComplete(data);
+          } else {
+            chrome.runtime.sendMessage({
+              source: 'dataRequestPage',
+              type: 'returnedAPIurl',
+              APIurl: response.body.apiUrl,
+              accessToken: response.body.token,
+              approved: selectedConnections.current
+            });
+          }
+        } catch (error) {
+          console.error(error);
+          if (onComplete) {
+            onComplete(null, error);
+          }
         }
       } catch (error) {
         console.error(error);
-        if (onComplete) {
-          onComplete(null, error);
-        }
       }
+      setShowOverlay(false);
     }
-    setShowOverlay(false);
+    ;
   };
   const validateRequestData = () => {
     const validKeys = ['Small', 'Medium', 'Large'];
@@ -314,11 +358,6 @@ function Onairos(_ref) {
       if (isMobileDevice()) {
         // Testing
         console.log("Connecting to Onairos");
-        const appInfo = {
-          name: "Onairos",
-          version: "1.0.0",
-          env: "production"
-        };
         await handleAPIRequestForMobile();
         return;
       }
@@ -379,43 +418,6 @@ function Onairos(_ref) {
       console.error("Error Sending Data to Terminal: ", e);
     }
   };
-  const handleLogin = async () => {
-    try {
-      const othent = new _kms.Othent();
-      const userDetails = await othent.connect();
-      const sha256 = await loadSha256();
-      const hashedOthentSub = sha256(userDetails.sub).toString();
-      const encryptedPin = await (0, _getPin.default)(hashedOthentSub);
-
-      // ... existing PIN decryption logic ...
-
-      const loginData = {
-        username: userDetails.username,
-        email: userDetails.email
-        // Add any other relevant user data
-      };
-      setUserData(loginData);
-      if (loginReturn) {
-        loginReturn(loginData);
-      }
-
-      // Prepare the data to be sent
-      window.postMessage({
-        source: 'webpage',
-        type: 'GET_API_URL',
-        webpageName: webpageName,
-        domain: domain,
-        requestData: requestData,
-        proofMode: proofMode,
-        HashedOthentSub: hashedOthentSub,
-        EncryptedUserPin: encryptedData,
-        login: login,
-        loginData: loginData
-      });
-    } catch (error) {
-      console.error("Error during login:", error);
-    }
-  };
 
   // Styling and button class based on visual type and login mode
   const buttonClass = `flex items-center justify-center font-bold rounded cursor-pointer ${buttonType === 'pill' ? 'px-4 py-2' : 'w-12 h-12'} ${login ? 'bg-white border border-gray-300' : 'bg-transparent'}
@@ -447,30 +449,41 @@ function Onairos(_ref) {
 
   // Make sure you have this environment variable set
   const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-  const fetchAccountInfo = async email => {
+  const fetchAccountInfo = async function (identifier) {
+    let isEmail = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
     try {
-      const token = localStorage.getItem('onairosToken') || localStorage.getItem('token');
-      const response = await fetch('https://api2.onairos.uk/getAccountInfo', {
+      const endpoint = isEmail ? '/getAccountInfo/email' : '/getAccountInfo';
+      const jsonData = isEmail ? {
+        identifier: identifier
+      } : {
+        userName: identifier
+      };
+      const response = await fetch(`https://api2.onairos.uk${endpoint}`, {
+        // const response = await fetch(`http://localhost:8080${endpoint}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          Info: {
-            email: email
-          }
-        })
+        body: JSON.stringify(jsonData)
       });
       if (!response.ok) {
         throw new Error('Failed to fetch account info');
       }
-      const accountInfo = await response.json();
-      setAvatar(!!accountInfo.avatar);
-      setTraits(!!accountInfo.traits);
-      setActiveModels(accountInfo.activeModels || []);
+      const data = await response.json();
+      console.log("Account Info retrieved:", data);
+      const accountInfo = data.AccountInfo; // Access the nested AccountInfo object
+      console.log("Account Info retrieved:", accountInfo);
+
+      // Update state with account info from the nested AccountInfo object
+      setAvatar(!!accountInfo.AvatarURL);
+      setTraits(!!accountInfo.UserTraits);
+      setOthent(!!accountInfo.othent);
+      setActiveModels(accountInfo.models || []); // Access models from AccountInfo
+      console.log("Active Models in Onairos.jsx: ", accountInfo.models);
+      return accountInfo;
     } catch (error) {
       console.error('Failed to fetch account info:', error);
+      return null;
     }
   };
   const checkExistingToken = async () => {
@@ -479,7 +492,8 @@ function Onairos(_ref) {
       const legacyToken = localStorage.getItem('token');
       const token = onairosToken || legacyToken;
       if (token) {
-        const response = await fetch('https://api2.onairos.uk/verify', {
+        const response = await fetch('https://api2.onairos.uk/verifyToken', {
+          // const response = await fetch('http://localhost:8080/verifyToken', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -489,7 +503,8 @@ function Onairos(_ref) {
           if (data.valid) {
             setAuthToken(token);
             setIsAuthenticated(true);
-            await fetchAccountInfo(data.email);
+            const username = localStorage.getItem('username');
+            await fetchAccountInfo(username);
           } else {
             localStorage.removeItem('onairosToken');
             localStorage.removeItem('token');
@@ -507,12 +522,17 @@ function Onairos(_ref) {
       checkExistingToken();
     }
   }, []);
+  const handleCloseOverlay = () => {
+    setShowOverlay(false);
+    setGranted(0);
+  };
 
   // Return overlay for mobile devices when needed
   if (showOverlay && isMobileDevice()) {
     return /*#__PURE__*/(0, _jsxRuntime.jsx)(_google.GoogleOAuthProvider, {
       clientId: GOOGLE_CLIENT_ID,
       children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_overlay.default, {
+        setOthentConnected: setOthentConnected,
         dataRequester: webpageName,
         NoAccount: NoAccount,
         NoModel: NoModel,
@@ -529,9 +549,16 @@ function Onairos(_ref) {
         isAuthenticated: isAuthenticated,
         authToken: authToken,
         loading: loading,
-        onLoginSuccess: async email => {
-          await fetchAccountInfo(email);
-        }
+        onLoginSuccess: async function (username) {
+          let email = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+          const accountInfo = await fetchAccountInfo(username, email);
+          setIsAuthenticated(true);
+          // Update other state based on accountInfo
+        },
+        onClose: handleCloseOverlay,
+        setOthent: setOthent,
+        setHashedOthentSub: setHashedOthentSub,
+        setEncryptedPin: setEncryptedPin
       })
     });
   }

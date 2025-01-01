@@ -1,10 +1,10 @@
-import Sentiment from '../icons/Sentiment.png';
-import Avatar from '../icons/Avatar.png';
-import Avatar2 from '../icons/Avatar2.png';
-import Trait from '../icons/Trait.png';
+// import Sentiment from '../icons/Sentiment.png';
+// import Avatar from '../icons/Avatar.png';
+// import Avatar2 from '../icons/Avatar2.png';
+// import Trait from '../icons/Trait.png';
 import PropTypes from 'prop-types';
 
-export default function Box2(props) {
+export default function Box(props) {
     const selectShortlistedApplicant = (e) => {
       const checked = e.target.checked;
       if (checked) {
@@ -44,15 +44,18 @@ export default function Box2(props) {
             {/* Request {props.number} */}
               {props.title === "Traits" ? (
               // Image to represent Traits
-              <img src={Trait} alt="Traits Icon" className="w-6 h-6 mr-2" />
+              // <img src={Trait} alt="Traits Icon" className="w-6 h-6 mr-2" />
+              <img src={"https://onairos.sirv.com/Images/OnairosWhite.png"} alt="Traits Icon" className="w-6 h-6 mr-2" />
             ) :
             props.title === "Avatar" ? (
               // Image to represent Traits
-              <img src={Avatar2} alt="Avatar Icon" className="w-6 h-6 mr-2" />
+              // <img src={Avatar2} alt="Avatar Icon" className="w-6 h-6 mr-2" />
+              <img src={"https://onairos.sirv.com/Images/OnairosWhite.png"} alt="Avatar Icon" className="w-6 h-6 mr-2" />
             ) :
             (
               // Image to represent Interest
-              <img src={Sentiment} alt="Interest Icon" className="w-6 h-6 mr-2" />
+              // <img src={Sentiment} alt="Interest Icon" className="w-6 h-6 mr-2" />
+              <img src={"https://onairos.sirv.com/Images/OnairosWhite.png"} alt="Interest Icon" className="w-6 h-6 mr-2" />
             )}
             
             Access your {Insight}

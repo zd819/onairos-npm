@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import Box from './box';
 // import traitsIcon;
 // import interestIcon;
-import Sentiment from '../icons/Sentiment.png';
-import Avatar from '../icons/Avatar.png';
-import Avatar2 from '../icons/Avatar2.png';
-import Trait from '../icons/Trait.png';
+// import Sentiment from '../icons/Sentiment.png';
+// import Avatar from '../icons/Avatar.png';
+// import Avatar2 from '../icons/Avatar2.png';
+// import Trait from '../icons/Trait.png';
 import PropTypes from 'prop-types';
 
 function IndividualConnection(props) {
