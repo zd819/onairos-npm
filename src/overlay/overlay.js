@@ -7,7 +7,43 @@ import SecuritySetup from '../components/SecuritySetup';
 import UniversalOnboarding from '../components/UniversalOnboarding';
 import SignUp from '../components/SignUp';
 
-const API_URL = 'https://api2.onairos.uk';
+
+export default function Overlay({ 
+  setOthentConnected,
+  dataRequester, 
+  NoAccount, 
+  NoModel, 
+  activeModels, 
+  setActiveModels,
+  avatar,
+  setAvatar,
+  traits,
+  setTraits,
+  requestData, 
+  handleConnectionSelection, 
+  changeGranted, 
+  granted, 
+  allowSubmit, 
+  rejectDataRequest, 
+  sendDataRequest,
+  isAuthenticated,
+  onClose,
+  onLoginSuccess,
+  setOthent,
+  setHashedOthentSub,
+  setEncryptedPin,
+  accountInfo
+}) {
+  const [loginError, setLoginError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const overlayRef = useRef(null);
+  const [currentView, setCurrentView] = useState('login');
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  });
+
+  const API_URL = 'https://api2.onairos.uk';
 
 const fetchAccountInfo = async (identifier, isEmail = false) => {
   try {
@@ -66,39 +102,6 @@ const fetchAccountInfo = async (identifier, isEmail = false) => {
   }
 };
 
-export default function Overlay({ 
-  setOthentConnected,
-  dataRequester, 
-  NoAccount, 
-  NoModel, 
-  activeModels, 
-  setActiveModels,
-  avatar,
-  setAvatar,
-  traits,
-  setTraits,
-  requestData, 
-  handleConnectionSelection, 
-  changeGranted, 
-  granted, 
-  allowSubmit, 
-  rejectDataRequest, 
-  sendDataRequest,
-  isAuthenticated,
-  onClose,
-  onLoginSuccess,
-  setOthent,
-  setHashedOthentSub,
-  setEncryptedPin
-}) {
-  const [loginError, setLoginError] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const overlayRef = useRef(null);
-  const [currentView, setCurrentView] = useState('login');
-  const [formData, setFormData] = useState({
-    username: '',
-    password: ''
-  });
 
   // Set dynamic viewport height
   useEffect(() => {
@@ -208,8 +211,7 @@ export default function Overlay({
     setLoading(true);
     try {
       await onLoginSuccess(identifier, isEmail);
-      const accountInfo = await fetchAccountInfo(identifier, isEmail);
-      if (accountInfo && accountInfo.models && accountInfo.models.length > 0) {
+      if (accountInfo && accountInfo.models?.length > 0) {
         setCurrentView('datarequests');
       } else {
         setCurrentView('onboarding');

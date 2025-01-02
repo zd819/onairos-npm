@@ -14,57 +14,6 @@ var _SecuritySetup = _interopRequireDefault(require("../components/SecuritySetup
 var _UniversalOnboarding = _interopRequireDefault(require("../components/UniversalOnboarding"));
 var _SignUp = _interopRequireDefault(require("../components/SignUp"));
 var _jsxRuntime = require("react/jsx-runtime");
-const API_URL = 'https://api2.onairos.uk';
-const fetchAccountInfo = async function (identifier) {
-  let isEmail = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
-  try {
-    const jsonData = isEmail ? {
-      Info: {
-        identifier: identifier
-      }
-    } : {
-      Info: {
-        userName: identifier
-      }
-    };
-    const endpoint = isEmail ? '/getAccountInfo/email' : '/getAccountInfo';
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('onairosToken')}`
-      },
-      body: JSON.stringify(jsonData)
-    });
-    if (!response.ok) {
-      throw new Error('Failed to fetch account info');
-    }
-    const data = await response.json();
-    if (data.AccountInfo === "No Account Found") {
-      NoAccount.current = true;
-      return null;
-    }
-
-    // Update active models state
-    if (data.AccountInfo.models) {
-      setActiveModels(data.AccountInfo.models);
-    } else {
-      NoModel.current = true;
-    }
-
-    // Update avatar and traits state if they exist
-    if (data.AccountInfo.avatar) {
-      setAvatar(true);
-    }
-    if (data.AccountInfo.traits) {
-      setTraits(true);
-    }
-    return data.AccountInfo;
-  } catch (error) {
-    console.error('Error fetching account info:', error);
-    throw error;
-  }
-};
 function Overlay(_ref) {
   let {
     setOthentConnected,
@@ -89,7 +38,8 @@ function Overlay(_ref) {
     onLoginSuccess,
     setOthent,
     setHashedOthentSub,
-    setEncryptedPin
+    setEncryptedPin,
+    accountInfo
   } = _ref;
   const [loginError, setLoginError] = (0, _react.useState)(null);
   const [loading, setLoading] = (0, _react.useState)(false);
@@ -99,6 +49,57 @@ function Overlay(_ref) {
     username: '',
     password: ''
   });
+  const API_URL = 'https://api2.onairos.uk';
+  const fetchAccountInfo = async function (identifier) {
+    let isEmail = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+    try {
+      const jsonData = isEmail ? {
+        Info: {
+          identifier: identifier
+        }
+      } : {
+        Info: {
+          userName: identifier
+        }
+      };
+      const endpoint = isEmail ? '/getAccountInfo/email' : '/getAccountInfo';
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('onairosToken')}`
+        },
+        body: JSON.stringify(jsonData)
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch account info');
+      }
+      const data = await response.json();
+      if (data.AccountInfo === "No Account Found") {
+        NoAccount.current = true;
+        return null;
+      }
+
+      // Update active models state
+      if (data.AccountInfo.models) {
+        setActiveModels(data.AccountInfo.models);
+      } else {
+        NoModel.current = true;
+      }
+
+      // Update avatar and traits state if they exist
+      if (data.AccountInfo.avatar) {
+        setAvatar(true);
+      }
+      if (data.AccountInfo.traits) {
+        setTraits(true);
+      }
+      return data.AccountInfo;
+    } catch (error) {
+      console.error('Error fetching account info:', error);
+      throw error;
+    }
+  };
 
   // Set dynamic viewport height
   (0, _react.useEffect)(() => {
@@ -201,8 +202,7 @@ function Overlay(_ref) {
     setLoading(true);
     try {
       await onLoginSuccess(identifier, isEmail);
-      const accountInfo = await fetchAccountInfo(identifier, isEmail);
-      if (accountInfo && accountInfo.models && accountInfo.models.length > 0) {
+      if (accountInfo && accountInfo.models?.length > 0) {
         setCurrentView('datarequests');
       } else {
         setCurrentView('onboarding');

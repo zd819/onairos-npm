@@ -74,6 +74,7 @@ function Onairos(_ref) {
     type: null,
     data: null
   });
+  const [accountInfo, setAccountInfo] = (0, _react.useState)(null);
 
   // Othent redirect logic
   (0, _react.useEffect)(() => {
@@ -519,7 +520,6 @@ function Onairos(_ref) {
   const fetchAccountInfo = async function (identifier) {
     let isEmail = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
     try {
-      const endpoint = isEmail ? '/getAccountInfo/email' : '/getAccountInfo';
       const jsonData = isEmail ? {
         Info: {
           identifier: identifier
@@ -529,11 +529,12 @@ function Onairos(_ref) {
           userName: identifier
         }
       };
-      const response = await fetch(`https://api2.onairos.uk${endpoint}`, {
-        // const response = await fetch(`http://localhost:8080${endpoint}`, {
+      const endpoint = isEmail ? '/getAccountInfo/email' : '/getAccountInfo';
+      const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('onairosToken')}`
         },
         body: JSON.stringify(jsonData)
       });
@@ -541,20 +542,32 @@ function Onairos(_ref) {
         throw new Error('Failed to fetch account info');
       }
       const data = await response.json();
-      console.log("Account Info retrieved:", data);
-      const accountInfo = data.AccountInfo; // Access the nested AccountInfo object
-      console.log("Account Info retrieved:", accountInfo);
+      if (data.AccountInfo === "No Account Found") {
+        NoAccount.current = true;
+        setAccountInfo(null);
+        return null;
+      }
+      setAccountInfo(data.AccountInfo);
+      if (data.AccountInfo.models) {
+        setActiveModels(data.AccountInfo.models);
+      } else {
+        NoModel.current = true;
+      }
+      if (data.AccountInfo.avatar) {
+        setAvatar(true);
+      }
+      if (data.AccountInfo.traits) {
+        setTraits(true);
+      }
 
-      // Update state with account info from the nested AccountInfo object
-      setAvatar(!!accountInfo.AvatarURL);
-      setTraits(!!accountInfo.UserTraits);
-      setOthent(!!accountInfo.othent);
-      setActiveModels(accountInfo.models || []); // Access models from AccountInfo
-      console.log("Active Models in Onairos.jsx: ", accountInfo.models);
-      return accountInfo;
+      // If we have account info and models, show the overlay with data requests
+      if (data.AccountInfo && data.AccountInfo.models?.length > 0) {
+        setShowOverlay(true);
+      }
+      return data.AccountInfo;
     } catch (error) {
-      console.error('Failed to fetch account info:', error);
-      return null;
+      console.error('Error fetching account info:', error);
+      throw error;
     }
   };
   const checkExistingToken = async () => {
@@ -598,6 +611,15 @@ function Onairos(_ref) {
     setShowOverlay(false);
   };
 
+  // Check for existing token and fetch account info on mount
+  (0, _react.useEffect)(() => {
+    const token = localStorage.getItem('onairosToken');
+    const username = localStorage.getItem('username');
+    if (token && username) {
+      fetchAccountInfo(username, false);
+    }
+  }, []);
+
   // Return overlay for mobile devices when needed
   if (showOverlay && isMobileDevice()) {
     return /*#__PURE__*/(0, _jsxRuntime.jsx)(_google.GoogleOAuthProvider, {
@@ -607,7 +629,10 @@ function Onairos(_ref) {
         dataRequester: webpageName,
         NoAccount: NoAccount,
         NoModel: NoModel,
+        accountInfo: accountInfo,
         activeModels: activeModels,
+        avatar: avatar,
+        traits: traits,
         requestData: requestData,
         handleConnectionSelection: handleConnectionSelection,
         changeGranted: changeGranted,
@@ -615,17 +640,8 @@ function Onairos(_ref) {
         allowSubmit: granted > 0,
         rejectDataRequest: rejectDataRequest,
         sendDataRequest: sendDataRequest,
-        avatar: avatar,
-        traits: traits,
         isAuthenticated: isAuthenticated,
-        authToken: authToken,
-        loading: loading,
-        onLoginSuccess: async function (username) {
-          let email = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
-          const accountInfo = await fetchAccountInfo(username, email);
-          setIsAuthenticated(true);
-          // Update other state based on accountInfo
-        },
+        onLoginSuccess: (identifier, isEmail) => fetchAccountInfo(identifier, isEmail),
         onClose: handleCloseOverlay,
         setOthent: setOthent,
         setHashedOthentSub: setHashedOthentSub,
