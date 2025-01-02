@@ -52,12 +52,17 @@ export default function Overlay({
     };
   }, []);
 
+  const close = async () =>{
+    changeGranted(0);
+    onClose();
+  }
+
   // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (overlayRef.current && !overlayRef.current.contains(event.target)) {
         // Call a prop to close the overlay
-        onClose?.(); // Make sure to add onClose to props
+        close?.(); // Make sure to add close to props
       }
     };
 
@@ -68,7 +73,7 @@ export default function Overlay({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [onClose]);
+  }, [close]);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -185,17 +190,23 @@ export default function Overlay({
   if (!isAuthenticated) {
     return (
       <>
-        <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
+        <div className="fixed inset-0 bg-black bg-opacity-50" onClick={close} />
         <div 
           ref={overlayRef} 
           className="fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out"
-          style={{ height: 'calc(var(--vh, 1vh) * 50)' }}
+          style={{ 
+            maxHeight: '80vh',
+            minHeight: '50vh',
+            height: 'auto'
+          }}
         >
-          <div className="w-full flex justify-center pt-3 pb-2">
-            <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+          <div className="sticky top-0 bg-white z-10">
+            <div className="w-full flex justify-center pt-3 pb-2">
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+            </div>
           </div>
 
-          <div className="px-6 pb-8 h-[calc(100%-24px)] overflow-y-auto">
+          <div className="overflow-y-auto px-6 pb-8">
             <div className="flex flex-col items-center justify-start max-w-sm mx-auto space-y-6 pt-4">
               {loginError && (
                 <div className="w-full bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
@@ -252,84 +263,88 @@ export default function Overlay({
   // Data requests section
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={close} />
       <div 
         ref={overlayRef} 
         className="fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out"
-        style={{ height: 'calc(var(--vh, 1vh) * 50)' }}
+        style={{ 
+          maxHeight: '80vh',
+          minHeight: '50vh',
+          height: 'auto'
+        }}
       >
-        <div className="w-full flex justify-center pt-3 pb-2">
-          <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+        <div className="sticky top-0 bg-white z-10">
+          <div className="w-full flex justify-center pt-3 pb-2">
+            <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+          </div>
         </div>
 
-        <div className="h-[calc(100%-24px)] overflow-y-auto">
-          <div className="px-6 py-2">
-            <h1 className="text-lg font-semibold text-gray-900 mb-6">
-              Data Requests from {dataRequester}
-            </h1>
-            
-            <div className="flex items-center justify-between mb-6">
-              <button 
-                className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-8 rounded-full" 
-                onClick={rejectDataRequest}
-              >
-                Reject All
-              </button>
-              <button 
-                disabled={!allowSubmit || granted ==0 }
-                className={`bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-8 rounded-full ${(!allowSubmit|| granted === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={sendDataRequest}
-              >
-                Confirm ({granted})
-              </button>
-            </div>
-
-            {activeModels.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <img src="https://onairos.sirv.com/Images/OnairosWhite.png" alt="Onairos Logo" className="w-24 h-24 mb-4" />
-                <p className="text-center text-gray-800 font-medium">
-                  Please connect <a href="https://onairos.uk/connections" className="text-blue-500 hover:underline">Onairos</a> Personality 
-                  to send {dataRequester} your data
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {Object.keys(requestData).sort((a, b) => {
-                  const aIsActive = activeModels.includes(requestData[a].type);
-                  const bIsActive = activeModels.includes(requestData[b].type);
-                  
-                  if(requestData[a].type === "Avatar") return 1;
-                  if(requestData[b].type === "Avatar") return -1;
-                  if(requestData[b].type === "Traits") return 1;
-                  if(requestData[a].type === "Traits") return -1;
-                  if (aIsActive && !bIsActive) return -1;
-                  if (bIsActive && !aIsActive) return 1;
-                  return 0;
-                }).map((key, index) => {
-                  const product = requestData[key];
-                  console.log("Active Models: ", activeModels)
-                  const active = product.type === 'Personality' ? activeModels.includes(product.type) 
-                             : product.type === 'Avatar' ? avatar
-                             : product.type === 'Traits' ? traits : false;
-                  return (
-                    <div key={key}>
-                      <IndividualConnection
-                        active={active}
-                        title={product.type}
-                        id={product}
-                        number={index}
-                        descriptions={product.descriptions}
-                        rewards={product.reward}
-                        size={key}
-                        changeGranted={changeGranted}
-                        onSelectionChange={(isSelected) => handleConnectionSelection(dataRequester, key, index, product.type, product.reward, isSelected)}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+        <div className="overflow-y-auto px-6 pb-8">
+          <h1 className="text-lg font-semibold text-gray-900 mb-6">
+            Data Requests from {dataRequester}
+          </h1>
+          
+          <div className="flex items-center justify-between mb-6">
+            <button 
+              className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-8 rounded-full" 
+              onClick={rejectDataRequest}
+            >
+              Reject All
+            </button>
+            <button 
+              disabled={!allowSubmit || granted ==0 }
+              className={`bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-8 rounded-full ${(!allowSubmit|| granted === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={sendDataRequest}
+            >
+              Confirm ({granted})
+            </button>
           </div>
+
+          {activeModels.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <img src="https://onairos.sirv.com/Images/OnairosWhite.png" alt="Onairos Logo" className="w-24 h-24 mb-4" />
+              <p className="text-center text-gray-800 font-medium">
+                Please connect <a href="https://onairos.uk/connections" className="text-blue-500 hover:underline">Onairos</a> Personality 
+                to send {dataRequester} your data
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {Object.keys(requestData).sort((a, b) => {
+                const aIsActive = activeModels.includes(requestData[a].type);
+                const bIsActive = activeModels.includes(requestData[b].type);
+                
+                if(requestData[a].type === "Avatar") return 1;
+                if(requestData[b].type === "Avatar") return -1;
+                if(requestData[b].type === "Traits") return 1;
+                if(requestData[a].type === "Traits") return -1;
+                if (aIsActive && !bIsActive) return -1;
+                if (bIsActive && !aIsActive) return 1;
+                return 0;
+              }).map((key, index) => {
+                const product = requestData[key];
+                console.log("Active Models: ", activeModels)
+                const active = product.type === 'Personality' ? activeModels.includes(product.type) 
+                           : product.type === 'Avatar' ? avatar
+                           : product.type === 'Traits' ? traits : false;
+                return (
+                  <div key={key}>
+                    <IndividualConnection
+                      active={active}
+                      title={product.type}
+                      id={product}
+                      number={index}
+                      descriptions={product.descriptions}
+                      rewards={product.reward}
+                      size={key}
+                      changeGranted={changeGranted}
+                      onSelectionChange={(isSelected) => handleConnectionSelection(dataRequester, key, index, product.type, product.reward, isSelected)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </>

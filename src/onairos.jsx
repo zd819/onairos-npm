@@ -60,9 +60,53 @@ export function Onairos({
   const [hashedOthentSub, setHashedOthentSub] = useState(null);
   const [encryptedPin, setEncryptedPin] = useState(null);
 
-    // useEffect(()=>{
-    //   console.log("USeeffect working")
-    // },[])
+    
+  
+  // Othent redirect logic
+  useEffect(() => {
+    // Ensure we detect the callback params (code and state) after a redirect
+    const callbackURL = new URL(window.location.href);
+    if (callbackURL.searchParams.get("code") && callbackURL.searchParams.get("state")) {
+      // Complete the authentication flow when redirected back with code and state
+      completeAuth(callbackURL.toString());
+    }
+  }, []); // Runs once when the component is mounted
+
+  // Handle Othent redirect:
+  const completeAuth = async (callbackURL) => {
+    try {
+      // Initialize Othent instance with the callback URL
+      const appInfo = {
+        name: "Onairos",
+        version: "1.0.0",
+        env: "production",
+      };
+
+      const othent = new Othent({
+        appInfo,
+        throwErrors: false,
+        auth0LogInMethod: "redirect",
+        auth0RedirectURI: window.location.href, // Use the current page URL as the redirect URI
+        auth0ReturnToURI: window.location.href, // Same for logout URI
+      });
+
+      // Complete authentication using the callback URL with code and state params
+      const userDetails = await othent.completeConnectionAfterRedirect(callbackURL);
+      // onAuthSuccess(details); // Notify parent app about successful login
+      setIsAuthenticated(true);
+      const sha256 = await loadSha256();
+      console.log("User details: ", userDetails)
+      const hashedOthentSub = sha256(userDetails.sub).toString();
+      
+      setHashedOthentSub(hashedOthentSub);
+      const encryptedPin = await getPin(hashedOthentSub);
+      setEncryptedPin(encryptedPin);
+    } catch (error) {
+      console.error("Authentication failed:", error);
+      onAuthError(error); // Notify parent app about failed authentication
+    }
+  };
+  
 
     const isMobileDevice = () => {
       const userAgent = navigator.userAgent || navigator.vendor || window.opera;
@@ -479,10 +523,15 @@ export function Onairos({
       const endpoint = isEmail ? '/getAccountInfo/email' : '/getAccountInfo';
       const jsonData = isEmail?
       {
-        identifier: identifier
-      }:
-      {
-        userName:identifier
+        Info:{
+          identifier: identifier
+        }
+      }
+      :
+      { 
+        Info:{
+          userName:identifier
+        }
       };
       
       const response = await fetch(`https://api2.onairos.uk${endpoint}`, {
@@ -559,8 +608,8 @@ export function Onairos({
   }, []);
 
   const handleCloseOverlay = () => {
-    setShowOverlay(false);
     setGranted(0);
+    setShowOverlay(false);
   };
 
   // Return overlay for mobile devices when needed

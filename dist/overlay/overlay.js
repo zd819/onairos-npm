@@ -57,13 +57,17 @@ function Overlay(_ref) {
       window.removeEventListener('orientationchange', setVH);
     };
   }, []);
+  const close = async () => {
+    changeGranted(0);
+    onClose();
+  };
 
   // Handle click outside
   (0, _react.useEffect)(() => {
     const handleClickOutside = event => {
       if (overlayRef.current && !overlayRef.current.contains(event.target)) {
         // Call a prop to close the overlay
-        onClose?.(); // Make sure to add onClose to props
+        close?.(); // Make sure to add close to props
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -72,7 +76,7 @@ function Overlay(_ref) {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [onClose]);
+  }, [close]);
   const [formData, setFormData] = (0, _react.useState)({
     username: '',
     password: ''
@@ -179,20 +183,25 @@ function Overlay(_ref) {
     return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "fixed inset-0 bg-black bg-opacity-50",
-        onClick: onClose
+        onClick: close
       }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         ref: overlayRef,
         className: "fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out",
         style: {
-          height: 'calc(var(--vh, 1vh) * 50)'
+          maxHeight: '80vh',
+          minHeight: '50vh',
+          height: 'auto'
         },
         children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "w-full flex justify-center pt-3 pb-2",
+          className: "sticky top-0 bg-white z-10",
           children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "w-12 h-1.5 bg-gray-300 rounded-full"
+            className: "w-full flex justify-center pt-3 pb-2",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+              className: "w-12 h-1.5 bg-gray-300 rounded-full"
+            })
           })
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "px-6 pb-8 h-[calc(100%-24px)] overflow-y-auto",
+          className: "overflow-y-auto px-6 pb-8",
           children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex flex-col items-center justify-start max-w-sm mx-auto space-y-6 pt-4",
             children: [loginError && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
@@ -248,83 +257,85 @@ function Overlay(_ref) {
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "fixed inset-0 bg-black bg-opacity-50",
-      onClick: onClose
+      onClick: close
     }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       ref: overlayRef,
       className: "fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out",
       style: {
-        height: 'calc(var(--vh, 1vh) * 50)'
+        maxHeight: '80vh',
+        minHeight: '50vh',
+        height: 'auto'
       },
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "w-full flex justify-center pt-3 pb-2",
+        className: "sticky top-0 bg-white z-10",
         children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "w-12 h-1.5 bg-gray-300 rounded-full"
+          className: "w-full flex justify-center pt-3 pb-2",
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-12 h-1.5 bg-gray-300 rounded-full"
+          })
         })
-      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "h-[calc(100%-24px)] overflow-y-auto",
-        children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "px-6 py-2",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("h1", {
-            className: "text-lg font-semibold text-gray-900 mb-6",
-            children: ["Data Requests from ", dataRequester]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex items-center justify-between mb-6",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-              className: "bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-8 rounded-full",
-              onClick: rejectDataRequest,
-              children: "Reject All"
-            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-              disabled: !allowSubmit || granted == 0,
-              className: `bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-8 rounded-full ${!allowSubmit || granted === 0 ? 'opacity-50 cursor-not-allowed' : ''}`,
-              onClick: sendDataRequest,
-              children: ["Confirm (", granted, ")"]
-            })]
-          }), activeModels.length === 0 ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex flex-col items-center justify-center py-8",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
-              src: "https://onairos.sirv.com/Images/OnairosWhite.png",
-              alt: "Onairos Logo",
-              className: "w-24 h-24 mb-4"
-            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("p", {
-              className: "text-center text-gray-800 font-medium",
-              children: ["Please connect ", /*#__PURE__*/(0, _jsxRuntime.jsx)("a", {
-                href: "https://onairos.uk/connections",
-                className: "text-blue-500 hover:underline",
-                children: "Onairos"
-              }), " Personality to send ", dataRequester, " your data"]
-            })]
-          }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "space-y-4",
-            children: Object.keys(requestData).sort((a, b) => {
-              const aIsActive = activeModels.includes(requestData[a].type);
-              const bIsActive = activeModels.includes(requestData[b].type);
-              if (requestData[a].type === "Avatar") return 1;
-              if (requestData[b].type === "Avatar") return -1;
-              if (requestData[b].type === "Traits") return 1;
-              if (requestData[a].type === "Traits") return -1;
-              if (aIsActive && !bIsActive) return -1;
-              if (bIsActive && !aIsActive) return 1;
-              return 0;
-            }).map((key, index) => {
-              const product = requestData[key];
-              console.log("Active Models: ", activeModels);
-              const active = product.type === 'Personality' ? activeModels.includes(product.type) : product.type === 'Avatar' ? avatar : product.type === 'Traits' ? traits : false;
-              return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_IndividualConnection.default, {
-                  active: active,
-                  title: product.type,
-                  id: product,
-                  number: index,
-                  descriptions: product.descriptions,
-                  rewards: product.reward,
-                  size: key,
-                  changeGranted: changeGranted,
-                  onSelectionChange: isSelected => handleConnectionSelection(dataRequester, key, index, product.type, product.reward, isSelected)
-                })
-              }, key);
-            })
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "overflow-y-auto px-6 pb-8",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("h1", {
+          className: "text-lg font-semibold text-gray-900 mb-6",
+          children: ["Data Requests from ", dataRequester]
+        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex items-center justify-between mb-6",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+            className: "bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-8 rounded-full",
+            onClick: rejectDataRequest,
+            children: "Reject All"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+            disabled: !allowSubmit || granted == 0,
+            className: `bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-8 rounded-full ${!allowSubmit || granted === 0 ? 'opacity-50 cursor-not-allowed' : ''}`,
+            onClick: sendDataRequest,
+            children: ["Confirm (", granted, ")"]
           })]
-        })
+        }), activeModels.length === 0 ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex flex-col items-center justify-center py-8",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+            src: "https://onairos.sirv.com/Images/OnairosWhite.png",
+            alt: "Onairos Logo",
+            className: "w-24 h-24 mb-4"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("p", {
+            className: "text-center text-gray-800 font-medium",
+            children: ["Please connect ", /*#__PURE__*/(0, _jsxRuntime.jsx)("a", {
+              href: "https://onairos.uk/connections",
+              className: "text-blue-500 hover:underline",
+              children: "Onairos"
+            }), " Personality to send ", dataRequester, " your data"]
+          })]
+        }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "space-y-4",
+          children: Object.keys(requestData).sort((a, b) => {
+            const aIsActive = activeModels.includes(requestData[a].type);
+            const bIsActive = activeModels.includes(requestData[b].type);
+            if (requestData[a].type === "Avatar") return 1;
+            if (requestData[b].type === "Avatar") return -1;
+            if (requestData[b].type === "Traits") return 1;
+            if (requestData[a].type === "Traits") return -1;
+            if (aIsActive && !bIsActive) return -1;
+            if (bIsActive && !aIsActive) return 1;
+            return 0;
+          }).map((key, index) => {
+            const product = requestData[key];
+            console.log("Active Models: ", activeModels);
+            const active = product.type === 'Personality' ? activeModels.includes(product.type) : product.type === 'Avatar' ? avatar : product.type === 'Traits' ? traits : false;
+            return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+              children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_IndividualConnection.default, {
+                active: active,
+                title: product.type,
+                id: product,
+                number: index,
+                descriptions: product.descriptions,
+                rewards: product.reward,
+                size: key,
+                changeGranted: changeGranted,
+                onSelectionChange: isSelected => handleConnectionSelection(dataRequester, key, index, product.type, product.reward, isSelected)
+              })
+            }, key);
+          })
+        })]
       })]
     })]
   });

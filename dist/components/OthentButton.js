@@ -29,11 +29,21 @@ function OthentButton(_ref) {
         version: "1.0.0",
         env: "production"
       };
+      const getCallbackURL = () => {
+        // Dynamically determine the base URL
+        const baseUrl = window.location.origin; // e.g., https://internship.onairos.uk
+        return `${baseUrl}/onairos-callback`;
+      };
       const othent = new _kms.Othent({
         appInfo,
-        throwErrors: false
+        throwErrors: false,
+        auth0LogInMethod: "redirect",
+        auth0RedirectURI: window.location.href,
+        // The current page URL for redirection after login
+        auth0ReturnToURI: window.location.href // Same for logout
       });
       const userDetails = await othent.connect();
+      console.log("Valid user details??");
       if (!userDetails) {
         throw new Error('Othent connection failed');
       }
