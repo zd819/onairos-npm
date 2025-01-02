@@ -35,7 +35,6 @@ export default function OthentButton({ onSuccess, onLoginSuccess}) {
           });
     
         const userDetails = await othent.connect();
-        console.log("Valid user details??")
         if (!userDetails) {
         throw new Error('Othent connection failed');
         }

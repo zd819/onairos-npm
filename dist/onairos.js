@@ -75,6 +75,8 @@ function Onairos(_ref) {
     data: null
   });
   const [accountInfo, setAccountInfo] = (0, _react.useState)(null);
+  const API_URL = 'https://api2.onairos.uk';
+  // const API_URL = 'http://localhost:8080';
 
   // Othent redirect logic
   (0, _react.useEffect)(() => {
@@ -278,13 +280,9 @@ function Onairos(_ref) {
           // Get User Othent Secure Details
           const userDetails = await othent.connect();
           const sha256 = await loadSha256();
-          console.log("User details: ", userDetails.sub);
           const hashedOthentSub = sha256(userDetails.sub).toString();
           setHashedOthentSub(hashedOthentSub);
-          console.log("User details: ", userDetails.email);
-          console.log("hashedOthentSub ", hashedOthentSub);
           const encryptedPin = await (0, _getPin.default)(hashedOthentSub);
-          console.log("encryptedPin: ", encryptedPin);
           setEncryptedPin(encryptedPin);
         }
         const approvedRequests = Object.values(selectedRequests).filter(req => req.isSelected).map(req => ({
@@ -425,11 +423,9 @@ function Onairos(_ref) {
     try {
       if (isMobileDevice()) {
         // Testing
-        console.log("Connecting to Onairos");
         await handleAPIRequestForMobile();
         return;
       }
-      console.log("Connecting to Onairos");
       const appInfo = {
         name: "Onairos",
         version: "1.0.0",
@@ -462,7 +458,6 @@ function Onairos(_ref) {
 
       // const {decrypt }= await loadOthentKms();
       const userPin = await othent.decrypt(bufferPIN);
-      console.log("Retrieved PIN Working");
       // RSA Encrypt the PIN to transmit to Terminal and backend
       (0, _RSA.rsaEncrypt)(OnairosPublicKey, userPin).then(encryptedData => {
         // Prepare the data to be sent
@@ -560,10 +555,11 @@ function Onairos(_ref) {
         setTraits(true);
       }
 
-      // If we have account info and models, show the overlay with data requests
-      if (data.AccountInfo && data.AccountInfo.models?.length > 0) {
-        setShowOverlay(true);
-      }
+      // // If we have account info and models, show the overlay with data requests
+      // if (data.AccountInfo && data.AccountInfo.models?.length > 0) {
+      //   setShowOverlay(true);
+      // }
+
       return data.AccountInfo;
     } catch (error) {
       console.error('Error fetching account info:', error);
@@ -576,8 +572,8 @@ function Onairos(_ref) {
       const legacyToken = localStorage.getItem('token');
       const token = onairosToken || legacyToken;
       if (token) {
-        // const response = await fetch('https://api2.onairos.uk/verifyToken', {
-        const response = await fetch('http://localhost:8080/verifyToken', {
+        const response = await fetch('https://api2.onairos.uk/verifyToken', {
+          // const response = await fetch('http://localhost:8080/verifyToken', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -619,6 +615,20 @@ function Onairos(_ref) {
       fetchAccountInfo(username, false);
     }
   }, []);
+  const handleLoginSuccess = async function (identifier) {
+    let isEmail = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+    try {
+      const accountData = await fetchAccountInfo(identifier, isEmail);
+      // Update authentication first
+      setIsAuthenticated(true);
+      // Then update account info
+      setAccountInfo(accountData);
+      return accountData;
+    } catch (error) {
+      console.error('Login process failed:', error);
+      throw error;
+    }
+  };
 
   // Return overlay for mobile devices when needed
   if (showOverlay && isMobileDevice()) {
@@ -641,7 +651,7 @@ function Onairos(_ref) {
         rejectDataRequest: rejectDataRequest,
         sendDataRequest: sendDataRequest,
         isAuthenticated: isAuthenticated,
-        onLoginSuccess: (identifier, isEmail) => fetchAccountInfo(identifier, isEmail),
+        onLoginSuccess: handleLoginSuccess,
         onClose: handleCloseOverlay,
         setOthent: setOthent,
         setHashedOthentSub: setHashedOthentSub,

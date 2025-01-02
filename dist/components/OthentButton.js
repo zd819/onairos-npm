@@ -43,7 +43,6 @@ function OthentButton(_ref) {
         auth0ReturnToURI: window.location.href // Same for logout
       });
       const userDetails = await othent.connect();
-      console.log("Valid user details??");
       if (!userDetails) {
         throw new Error('Othent connection failed');
       }

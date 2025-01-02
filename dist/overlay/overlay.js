@@ -44,62 +44,21 @@ function Overlay(_ref) {
   const [loginError, setLoginError] = (0, _react.useState)(null);
   const [loading, setLoading] = (0, _react.useState)(false);
   const overlayRef = (0, _react.useRef)(null);
-  const [currentView, setCurrentView] = (0, _react.useState)('login');
+  const [currentView, setCurrentView] = (0, _react.useState)(() => {
+    if (isAuthenticated) {
+      if (accountInfo && accountInfo.models?.length > 0) {
+        return 'datarequests';
+      }
+      return 'onboarding';
+    }
+    return 'login';
+  });
   const [formData, setFormData] = (0, _react.useState)({
     username: '',
     password: ''
   });
+  const [loginCompleted, setLoginCompleted] = (0, _react.useState)(false);
   const API_URL = 'https://api2.onairos.uk';
-  const fetchAccountInfo = async function (identifier) {
-    let isEmail = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
-    try {
-      const jsonData = isEmail ? {
-        Info: {
-          identifier: identifier
-        }
-      } : {
-        Info: {
-          userName: identifier
-        }
-      };
-      const endpoint = isEmail ? '/getAccountInfo/email' : '/getAccountInfo';
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('onairosToken')}`
-        },
-        body: JSON.stringify(jsonData)
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch account info');
-      }
-      const data = await response.json();
-      if (data.AccountInfo === "No Account Found") {
-        NoAccount.current = true;
-        return null;
-      }
-
-      // Update active models state
-      if (data.AccountInfo.models) {
-        setActiveModels(data.AccountInfo.models);
-      } else {
-        NoModel.current = true;
-      }
-
-      // Update avatar and traits state if they exist
-      if (data.AccountInfo.avatar) {
-        setAvatar(true);
-      }
-      if (data.AccountInfo.traits) {
-        setTraits(true);
-      }
-      return data.AccountInfo;
-    } catch (error) {
-      console.error('Error fetching account info:', error);
-      throw error;
-    }
-  };
 
   // Set dynamic viewport height
   (0, _react.useEffect)(() => {
@@ -201,12 +160,8 @@ function Overlay(_ref) {
     let isEmail = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
     setLoading(true);
     try {
-      await onLoginSuccess(identifier, isEmail);
-      if (accountInfo && accountInfo.models?.length > 0) {
-        setCurrentView('datarequests');
-      } else {
-        setCurrentView('onboarding');
-      }
+      const result = await onLoginSuccess(identifier, isEmail);
+      setLoginError(null);
     } catch (error) {
       console.error('Login process failed:', error);
       setLoginError('Failed to complete login process');
@@ -391,6 +346,21 @@ function Overlay(_ref) {
         });
     }
   };
+  (0, _react.useEffect)(() => {
+    if (isAuthenticated && accountInfo) {
+      if (accountInfo.models?.length > 0) {
+        setCurrentView('datarequests');
+      } else {
+        setCurrentView('onboarding');
+      }
+    }
+  }, [isAuthenticated, accountInfo]);
+  (0, _react.useEffect)(() => {
+    return () => {
+      setLoginCompleted(false);
+    };
+  }, []);
+  (0, _react.useEffect)(() => {}, [isAuthenticated, accountInfo]);
   if (loading) {
     return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {

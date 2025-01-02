@@ -66,7 +66,8 @@ export function Onairos({
   });
   const [accountInfo, setAccountInfo] = useState(null);
 
-    
+  const API_URL = 'https://api2.onairos.uk';
+  // const API_URL = 'http://localhost:8080';
   
   // Othent redirect logic
   useEffect(() => {
@@ -283,16 +284,9 @@ export function Onairos({
           const userDetails = await othent.connect();
 
           const sha256 = await loadSha256();
-          console.log("User details: ", userDetails.sub)
           const hashedOthentSub = sha256(userDetails.sub).toString();
-          
           setHashedOthentSub(hashedOthentSub);
-          console.log("User details: ", userDetails.email)
-          console.log("hashedOthentSub ", hashedOthentSub)
-          
           const encryptedPin = await getPin(hashedOthentSub);
-          console.log("encryptedPin: ", encryptedPin)
-
           setEncryptedPin(encryptedPin);
         }
         
@@ -443,12 +437,10 @@ export function Onairos({
 
       if (isMobileDevice()) {
         // Testing
-        console.log("Connecting to Onairos")
         await handleAPIRequestForMobile();
         return;
       }
 
-      console.log("Connecting to Onairos")
       const appInfo = {
         name: "Onairos",
         version: "1.0.0",
@@ -481,7 +473,6 @@ export function Onairos({
       
       // const {decrypt }= await loadOthentKms();
       const userPin = await othent.decrypt(bufferPIN);
-      console.log("Retrieved PIN Working")
       // RSA Encrypt the PIN to transmit to Terminal and backend
       rsaEncrypt(OnairosPublicKey, userPin)
       .then(encryptedData => {
@@ -581,7 +572,6 @@ export function Onairos({
         setAccountInfo(null);
         return null;
       }
-
       setAccountInfo(data.AccountInfo);
       
       if (data.AccountInfo.models) {
@@ -597,10 +587,10 @@ export function Onairos({
         setTraits(true);
       }
 
-      // If we have account info and models, show the overlay with data requests
-      if (data.AccountInfo && data.AccountInfo.models?.length > 0) {
-        setShowOverlay(true);
-      }
+      // // If we have account info and models, show the overlay with data requests
+      // if (data.AccountInfo && data.AccountInfo.models?.length > 0) {
+      //   setShowOverlay(true);
+      // }
 
       return data.AccountInfo;
     } catch (error) {
@@ -616,8 +606,8 @@ export function Onairos({
       const token = onairosToken || legacyToken;
 
       if (token) {
-        // const response = await fetch('https://api2.onairos.uk/verifyToken', {
-          const response = await fetch('http://localhost:8080/verifyToken', {
+        const response = await fetch('https://api2.onairos.uk/verifyToken', {
+          // const response = await fetch('http://localhost:8080/verifyToken', {
             headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -663,6 +653,20 @@ export function Onairos({
     }
   }, []);
 
+  const handleLoginSuccess = async (identifier, isEmail = false) => {
+    try {
+      const accountData = await fetchAccountInfo(identifier, isEmail);
+      // Update authentication first
+      setIsAuthenticated(true);
+      // Then update account info
+      setAccountInfo(accountData);
+      return accountData;
+    } catch (error) {
+      console.error('Login process failed:', error);
+      throw error;
+    }
+  };
+
   // Return overlay for mobile devices when needed
   if (showOverlay && isMobileDevice()) {
     return (
@@ -684,7 +688,7 @@ export function Onairos({
           rejectDataRequest={rejectDataRequest}
           sendDataRequest={sendDataRequest}
           isAuthenticated={isAuthenticated}
-          onLoginSuccess={(identifier, isEmail) => fetchAccountInfo(identifier, isEmail)}
+          onLoginSuccess={handleLoginSuccess}
           onClose={handleCloseOverlay}
           setOthent={setOthent}
           setHashedOthentSub={setHashedOthentSub}
