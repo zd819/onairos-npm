@@ -69,13 +69,25 @@ function Onairos(_ref) {
   const [loading, setLoading] = (0, _react.useState)(true);
   const [hashedOthentSub, setHashedOthentSub] = (0, _react.useState)(null);
   const [encryptedPin, setEncryptedPin] = (0, _react.useState)(null);
+  const [authDialog, setAuthDialog] = (0, _react.useState)({
+    show: false,
+    type: null,
+    data: null
+  });
 
   // Othent redirect logic
   (0, _react.useEffect)(() => {
     // Ensure we detect the callback params (code and state) after a redirect
     const callbackURL = new URL(window.location.href);
     if (callbackURL.searchParams.get("code") && callbackURL.searchParams.get("state")) {
-      // Complete the authentication flow when redirected back with code and state
+      setAuthDialog({
+        show: true,
+        type: 'callback',
+        data: {
+          code: callbackURL.searchParams.get("code"),
+          state: callbackURL.searchParams.get("state")
+        }
+      });
       completeAuth(callbackURL.toString());
     }
   }, []); // Runs once when the component is mounted
@@ -100,15 +112,29 @@ function Onairos(_ref) {
 
       // Complete authentication using the callback URL with code and state params
       const userDetails = await othent.completeConnectionAfterRedirect(callbackURL);
-      // onAuthSuccess(details); // Notify parent app about successful login
+      setAuthDialog({
+        show: true,
+        type: 'auth',
+        data: {
+          success: true,
+          userDetails
+        }
+      });
       setIsAuthenticated(true);
       const sha256 = await loadSha256();
-      console.log("User details: ", userDetails);
       const hashedOthentSub = sha256(userDetails.sub).toString();
       setHashedOthentSub(hashedOthentSub);
       const encryptedPin = await (0, _getPin.default)(hashedOthentSub);
       setEncryptedPin(encryptedPin);
     } catch (error) {
+      setAuthDialog({
+        show: true,
+        type: 'auth',
+        data: {
+          success: false,
+          error: error.message
+        }
+      });
       console.error("Authentication failed:", error);
       onAuthError(error); // Notify parent app about failed authentication
     }
@@ -605,22 +631,71 @@ function Onairos(_ref) {
       })
     });
   }
-  return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-    className: "flex items-center justify-center",
-    children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-      className: buttonClass,
-      onClick: ConnectOnairos,
-      style: buttonStyle,
-      children: [(visualType === 'full' || visualType === 'icon') && /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
-        src: login ? "https://onairos.sirv.com/Images/OnairosWhite.png" : "https://onairos.sirv.com/Images/OnairosBlack.png",
-        alt: "Onairos Logo",
-        style: logoStyle,
-        className: `${buttonType === 'pill' ? 'w-6 h-6' : 'w-8 h-8'} object-contain`
-      }), (visualType === 'full' || visualType === 'textOnly') && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-        className: `${login ? 'text-black' : textColor === 'black' ? 'text-black' : 'text-white'} ${visualType === 'icon' ? 'sr-only' : ''} ${textLayout === 'right' ? 'ml-2' : textLayout === 'left' ? 'mr-2' : ''}`,
-        children: getText()
+  return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      className: "flex items-center justify-center",
+      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+        className: buttonClass,
+        onClick: ConnectOnairos,
+        style: buttonStyle,
+        children: [(visualType === 'full' || visualType === 'icon') && /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+          src: login ? "https://onairos.sirv.com/Images/OnairosWhite.png" : "https://onairos.sirv.com/Images/OnairosBlack.png",
+          alt: "Onairos Logo",
+          style: logoStyle,
+          className: `${buttonType === 'pill' ? 'w-6 h-6' : 'w-8 h-8'} object-contain`
+        }), (visualType === 'full' || visualType === 'textOnly') && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+          className: `${login ? 'text-black' : textColor === 'black' ? 'text-black' : 'text-white'} ${visualType === 'icon' ? 'sr-only' : ''} ${textLayout === 'right' ? 'ml-2' : textLayout === 'left' ? 'mr-2' : ''}`,
+          children: getText()
+        })]
+      })
+    }), authDialog.show && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+      className: "fixed inset-0 z-50 flex items-center justify-center",
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "fixed inset-0 bg-black bg-opacity-50",
+        onClick: () => setAuthDialog({
+          show: false,
+          type: null,
+          data: null
+        })
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "relative bg-white rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+          onClick: () => setAuthDialog({
+            show: false,
+            type: null,
+            data: null
+          }),
+          className: "absolute top-4 right-4 text-gray-400 hover:text-gray-600",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "sr-only",
+            children: "Close"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+            className: "h-6 w-6",
+            fill: "none",
+            viewBox: "0 0 24 24",
+            stroke: "currentColor",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+              strokeLinecap: "round",
+              strokeLinejoin: "round",
+              strokeWidth: 2,
+              d: "M6 18L18 6M6 6l12 12"
+            })
+          })]
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("h3", {
+          className: "text-lg font-semibold mb-4",
+          children: authDialog.type === 'callback' ? 'Callback Details' : 'Authentication Result'
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "bg-gray-50 rounded p-4 overflow-x-auto",
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("pre", {
+            className: "text-sm",
+            children: JSON.stringify(authDialog.data, null, 2)
+          })
+        }), authDialog.type === 'auth' && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: `mt-4 p-3 rounded ${authDialog.data?.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`,
+          children: authDialog.data?.success ? 'Authentication successful!' : 'Authentication failed'
+        })]
       })]
-    })
+    })]
   });
 }
 
