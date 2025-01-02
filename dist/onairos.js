@@ -535,8 +535,8 @@ function Onairos(_ref) {
       const legacyToken = localStorage.getItem('token');
       const token = onairosToken || legacyToken;
       if (token) {
-        const response = await fetch('https://api2.onairos.uk/verifyToken', {
-          // const response = await fetch('http://localhost:8080/verifyToken', {
+        // const response = await fetch('https://api2.onairos.uk/verifyToken', {
+        const response = await fetch('http://localhost:8080/verifyToken', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
