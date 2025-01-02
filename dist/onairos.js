@@ -80,14 +80,14 @@ function Onairos(_ref) {
     // Ensure we detect the callback params (code and state) after a redirect
     const callbackURL = new URL(window.location.href);
     if (callbackURL.searchParams.get("code") && callbackURL.searchParams.get("state")) {
-      setAuthDialog({
-        show: true,
-        type: 'callback',
-        data: {
-          code: callbackURL.searchParams.get("code"),
-          state: callbackURL.searchParams.get("state")
-        }
-      });
+      // setAuthDialog({
+      //   show: true,
+      //   type: 'callback',
+      //   data: {
+      //     code: callbackURL.searchParams.get("code"),
+      //     state: callbackURL.searchParams.get("state")
+      //   }
+      // });
       completeAuth(callbackURL.toString());
     }
   }, []); // Runs once when the component is mounted
@@ -112,14 +112,16 @@ function Onairos(_ref) {
 
       // Complete authentication using the callback URL with code and state params
       const userDetails = await othent.completeConnectionAfterRedirect(callbackURL);
-      setAuthDialog({
-        show: true,
-        type: 'auth',
-        data: {
-          success: true,
-          userDetails
-        }
-      });
+
+      // setAuthDialog({
+      //   show: true,
+      //   type: 'auth',
+      //   data: {
+      //     success: true,
+      //     userDetails
+      //   }
+      // });
+
       setIsAuthenticated(true);
       const sha256 = await loadSha256();
       const hashedOthentSub = sha256(userDetails.sub).toString();
@@ -127,14 +129,14 @@ function Onairos(_ref) {
       const encryptedPin = await (0, _getPin.default)(hashedOthentSub);
       setEncryptedPin(encryptedPin);
     } catch (error) {
-      setAuthDialog({
-        show: true,
-        type: 'auth',
-        data: {
-          success: false,
-          error: error.message
-        }
-      });
+      // setAuthDialog({
+      //   show: true,
+      //   type: 'auth',
+      //   data: {
+      //     success: false,
+      //     error: error.message
+      //   }
+      // });
       console.error("Authentication failed:", error);
       onAuthError(error); // Notify parent app about failed authentication
     }
@@ -648,7 +650,7 @@ function Onairos(_ref) {
           children: getText()
         })]
       })
-    }), authDialog.show && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+    }), false && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       className: "fixed inset-0 z-50 flex items-center justify-center",
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "fixed inset-0 bg-black bg-opacity-50",

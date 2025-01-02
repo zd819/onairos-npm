@@ -7,10 +7,22 @@ import SecuritySetup from '../components/SecuritySetup';
 import UniversalOnboarding from '../components/UniversalOnboarding';
 import SignUp from '../components/SignUp';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://api2.onairos.uk';
+const API_URL = 'https://api2.onairos.uk';
 
 const fetchAccountInfo = async (identifier, isEmail = false) => {
   try {
+    const jsonData = isEmail?
+      {
+        Info:{
+          identifier: identifier
+        }
+      }
+      :
+      { 
+        Info:{
+          userName:identifier
+        }
+      };
     const endpoint = isEmail ? '/getAccountInfo/email' : '/getAccountInfo';
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
@@ -18,9 +30,7 @@ const fetchAccountInfo = async (identifier, isEmail = false) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('onairosToken')}`
       },
-      body: JSON.stringify({
-        identifier: identifier
-      })
+      body: JSON.stringify(jsonData)
     });
 
     if (!response.ok) {

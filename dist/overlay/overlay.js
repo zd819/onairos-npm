@@ -14,10 +14,19 @@ var _SecuritySetup = _interopRequireDefault(require("../components/SecuritySetup
 var _UniversalOnboarding = _interopRequireDefault(require("../components/UniversalOnboarding"));
 var _SignUp = _interopRequireDefault(require("../components/SignUp"));
 var _jsxRuntime = require("react/jsx-runtime");
-const API_URL = process.env.REACT_APP_API_URL || 'https://api2.onairos.uk';
+const API_URL = 'https://api2.onairos.uk';
 const fetchAccountInfo = async function (identifier) {
   let isEmail = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
   try {
+    const jsonData = isEmail ? {
+      Info: {
+        identifier: identifier
+      }
+    } : {
+      Info: {
+        userName: identifier
+      }
+    };
     const endpoint = isEmail ? '/getAccountInfo/email' : '/getAccountInfo';
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
@@ -25,9 +34,7 @@ const fetchAccountInfo = async function (identifier) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('onairosToken')}`
       },
-      body: JSON.stringify({
-        identifier: identifier
-      })
+      body: JSON.stringify(jsonData)
     });
     if (!response.ok) {
       throw new Error('Failed to fetch account info');
