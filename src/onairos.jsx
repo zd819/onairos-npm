@@ -59,6 +59,11 @@ export function Onairos({
   const [loading, setLoading] = useState(true);
   const [hashedOthentSub, setHashedOthentSub] = useState(null);
   const [encryptedPin, setEncryptedPin] = useState(null);
+  const [authDialog, setAuthDialog] = useState({
+    show: false,
+    type: null,
+    data: null
+  });
 
     
   
@@ -67,7 +72,14 @@ export function Onairos({
     // Ensure we detect the callback params (code and state) after a redirect
     const callbackURL = new URL(window.location.href);
     if (callbackURL.searchParams.get("code") && callbackURL.searchParams.get("state")) {
-      // Complete the authentication flow when redirected back with code and state
+      setAuthDialog({
+        show: true,
+        type: 'callback',
+        data: {
+          code: callbackURL.searchParams.get("code"),
+          state: callbackURL.searchParams.get("state")
+        }
+      });
       completeAuth(callbackURL.toString());
     }
   }, []); // Runs once when the component is mounted
@@ -92,16 +104,31 @@ export function Onairos({
 
       // Complete authentication using the callback URL with code and state params
       const userDetails = await othent.completeConnectionAfterRedirect(callbackURL);
-      // onAuthSuccess(details); // Notify parent app about successful login
+      
+      setAuthDialog({
+        show: true,
+        type: 'auth',
+        data: {
+          success: true,
+          userDetails
+        }
+      });
+
       setIsAuthenticated(true);
       const sha256 = await loadSha256();
-      console.log("User details: ", userDetails)
       const hashedOthentSub = sha256(userDetails.sub).toString();
-      
       setHashedOthentSub(hashedOthentSub);
       const encryptedPin = await getPin(hashedOthentSub);
       setEncryptedPin(encryptedPin);
     } catch (error) {
+      setAuthDialog({
+        show: true,
+        type: 'auth',
+        data: {
+          success: false,
+          error: error.message
+        }
+      });
       console.error("Authentication failed:", error);
       onAuthError(error); // Notify parent app about failed authentication
     }
@@ -649,30 +676,65 @@ export function Onairos({
   }
 
   return (
-    <div className="flex items-center justify-center">
-      <button
-        className={buttonClass}
-        onClick={ConnectOnairos} 
-        style={buttonStyle}
-      >
-        {/* Render based on visualType prop */}
-        {(visualType === 'full' || visualType === 'icon') && (
-          <img
-            src={login ? "https://onairos.sirv.com/Images/OnairosWhite.png" : "https://onairos.sirv.com/Images/OnairosBlack.png"}
-            alt="Onairos Logo"
-            style={logoStyle}
-            className={`${buttonType === 'pill' ? 'w-6 h-6' : 'w-8 h-8'} object-contain`}
-          />
-        )}
+    <>
+      <div className="flex items-center justify-center">
+        <button
+          className={buttonClass}
+          onClick={ConnectOnairos} 
+          style={buttonStyle}
+        >
+          {/* Render based on visualType prop */}
+          {(visualType === 'full' || visualType === 'icon') && (
+            <img
+              src={login ? "https://onairos.sirv.com/Images/OnairosWhite.png" : "https://onairos.sirv.com/Images/OnairosBlack.png"}
+              alt="Onairos Logo"
+              style={logoStyle}
+              className={`${buttonType === 'pill' ? 'w-6 h-6' : 'w-8 h-8'} object-contain`}
+            />
+          )}
 
-        {/* Only render text if visualType is 'full' or 'textOnly' */}
-        {(visualType === 'full' || visualType === 'textOnly') && (
-          <span className={`${login ? 'text-black' : textColor === 'black' ? 'text-black' : 'text-white'} ${visualType === 'icon' ? 'sr-only' : ''} ${textLayout === 'right' ? 'ml-2' : textLayout === 'left' ? 'mr-2' : ''}`}>
-            {getText()}
-          </span>
-        )}
-      </button>
-    </div>
+          {/* Only render text if visualType is 'full' or 'textOnly' */}
+          {(visualType === 'full' || visualType === 'textOnly') && (
+            <span className={`${login ? 'text-black' : textColor === 'black' ? 'text-black' : 'text-white'} ${visualType === 'icon' ? 'sr-only' : ''} ${textLayout === 'right' ? 'ml-2' : textLayout === 'left' ? 'mr-2' : ''}`}>
+              {getText()}
+            </span>
+          )}
+        </button>
+      </div>
+      
+      {authDialog.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setAuthDialog({ show: false, type: null, data: null })} />
+          <div className="relative bg-white rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <button 
+              onClick={() => setAuthDialog({ show: false, type: null, data: null })}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <span className="sr-only">Close</span>
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <h3 className="text-lg font-semibold mb-4">
+              {authDialog.type === 'callback' ? 'Callback Details' : 'Authentication Result'}
+            </h3>
+            
+            <div className="bg-gray-50 rounded p-4 overflow-x-auto">
+              <pre className="text-sm">
+                {JSON.stringify(authDialog.data, null, 2)}
+              </pre>
+            </div>
+            
+            {authDialog.type === 'auth' && (
+              <div className={`mt-4 p-3 rounded ${authDialog.data?.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {authDialog.data?.success ? 'Authentication successful!' : 'Authentication failed'}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
