@@ -1,6 +1,6 @@
 {
   "name": "onairos",
-  "version": "0.1.259",
+  "version": "0.1.275",
   "dependencies": {
     "@othent/kms": "^2.0.0-beta.10",
     "@react-oauth/google": "^0.12.1",

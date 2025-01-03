@@ -47,19 +47,19 @@ function OthentButton(_ref) {
         throw new Error('Othent connection failed');
       }
 
-      // Get hashed sub and pin
-      const sha256 = await loadSha256();
-      const hashedOthentSub = sha256(userDetails.sub).toString();
-      const encryptedPin = (await (0, _getPin.default)(hashedOthentSub)).pin;
-      onLoginSuccess(await (0, _getPin.default)(hashedOthentSub)).username;
+      //   // Get hashed sub and pin
+      //   const sha256 = await loadSha256();
+      //   const hashedOthentSub = sha256(userDetails.sub).toString();
+      //   const encryptedPin = (await getPin(hashedOthentSub)).pin;
+      //   onLoginSuccess(await getPin(hashedOthentSub)).username;
 
-      // Call onSuccess with Othent details
-      await onSuccess({
-        type: 'othent',
-        encryptedPin: encryptedPin,
-        hashedOthentSub: hashedOthentSub,
-        userDetails
-      });
+      //   // Call onSuccess with Othent details
+      //   await onSuccess({
+      //     type: 'othent',
+      //     encryptedPin: encryptedPin,
+      //     hashedOthentSub:hashedOthentSub,
+      //     userDetails
+      //   });
     } catch (error) {
       console.error('Othent login failed:', error);
     } finally {

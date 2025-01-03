@@ -3,82 +3,54 @@
 // import Avatar2 from '../icons/Avatar2.png';
 // import Trait from '../icons/Trait.png';
 import PropTypes from 'prop-types';
+import React, { useState, useEffect } from 'react';
+function Box({ active, onSelectionChange, changeGranted, setSelected, number }) {
+  const [isChecked, setIsChecked] = useState(false);
 
-export default function Box(props) {
-    const selectShortlistedApplicant = (e) => {
-      const checked = e.target.checked;
-      if (checked) {
-        props.setSelected(true);
-        props.changeGranted(1);
-        // console.log("Checked");
-      } else {
-        props.setSelected(false);
-        props.changeGranted(-1);
-        // console.log("UnChecked");
-      }
-    };
-    const Insight = (props.title === "Avatar")? 'Avatar' : (props.title === "Traits")? 'Personality Traits': 'Persona'
-  
-    return (
-      <div>
-        <div className="flex items-center mb-4">
-          <input
-            onClick={(e) => {
-              selectShortlistedApplicant(e);
-              props.onSelectionChange(props.type);
-              // console.log("New selection in Box : ", props.type, " and event: ", e);
-            }}
-            id="default-checkbox"
-            type="checkbox"
-            value=""
-            disabled={!props.active}
-            className={`w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 ${
-              !props.active ? "cursor-not-allowed" : ""
-            }`}
-          />
-          <label
-            for="default-checkbox"
-            className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+  const handleChange = (e) => {
+    const newCheckedState = e.target.checked;
+    setIsChecked(newCheckedState);
+    setSelected(newCheckedState);
+    onSelectionChange(newCheckedState);
+    changeGranted(prev => newCheckedState ? prev + 1 : prev - 1);
+  };
+
+  return (
+    <div className="relative inline-block">
+      <input
+        type="checkbox"
+        checked={isChecked}
+        onChange={handleChange}
+        className="hidden"
+        id={`box-${number}`}
+      />
+      <label
+        htmlFor={`box-${number}`}
+        className={`w-5 h-5 border-2 rounded flex items-center justify-center cursor-pointer transition-all duration-200 ${
+          isChecked 
+            ? 'border-blue-500 bg-blue-500' 
+            : 'border-gray-300 bg-white'
+        }`}
+      >
+        {isChecked && (
+          <svg 
+            className="w-3 h-3 text-white" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
           >
-            <div className='flex flex-column'>
-            {/* Request {props.number} */}
-              {props.title === "Traits" ? (
-              // Image to represent Traits
-              // <img src={Trait} alt="Traits Icon" className="w-6 h-6 mr-2" />
-              <img src={"https://onairos.sirv.com/Images/OnairosWhite.png"} alt="Traits Icon" className="w-6 h-6 mr-2" />
-            ) :
-            props.title === "Avatar" ? (
-              // Image to represent Traits
-              // <img src={Avatar2} alt="Avatar Icon" className="w-6 h-6 mr-2" />
-              <img src={"https://onairos.sirv.com/Images/OnairosWhite.png"} alt="Avatar Icon" className="w-6 h-6 mr-2" />
-            ) :
-            (
-              // Image to represent Interest
-              // <img src={Sentiment} alt="Interest Icon" className="w-6 h-6 mr-2" />
-              <img src={"https://onairos.sirv.com/Images/OnairosWhite.png"} alt="Interest Icon" className="w-6 h-6 mr-2" />
-            )}
-            
-            Access your {Insight}
-            </div>
-            
-          </label>
-        </div>
-        {!props.active && (
-          <div className="ml-6 text-md text-red-600">
-            Please create your Personality model to access this Grant Request
-          </div>
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth="3" 
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
         )}
-      </div>
-    );
-  }
-  
-Box.propTypes = {
-  active: PropTypes.bool.isRequired,
-  onSelectionChange: PropTypes.func.isRequired,
-  changeGranted: PropTypes.func.isRequired,
-  setSelected: PropTypes.func.isRequired,
-  number: PropTypes.number.isRequired,
-  type: PropTypes.string.isRequired,
-  title: PropTypes.string.isRequired
-};
+      </label>
+    </div>
+  );
+}
+
+export default Box;
   

@@ -65,64 +65,123 @@ export function Onairos({
     data: null
   });
   const [accountInfo, setAccountInfo] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isProcessingAuth, setIsProcessingAuth] = useState(false);
+  const hasProcessedCallback = useRef(false);
+  const [authError, setAuthError] = useState(null);
+  const [notif, setNotif] = useState({
+    show:false,
+    color:null,
+    message:null
+  });
 
   const API_URL = 'https://api2.onairos.uk';
   // const API_URL = 'http://localhost:8080';
   
-  // Othent redirect logic
+  // Modified useEffect for callback handling
   useEffect(() => {
-    // Ensure we detect the callback params (code and state) after a redirect
-    const callbackURL = new URL(window.location.href);
-    if (callbackURL.searchParams.get("code") && callbackURL.searchParams.get("state")) {
-      // setAuthDialog({
-      //   show: true,
-      //   type: 'callback',
-      //   data: {
-      //     code: callbackURL.searchParams.get("code"),
-      //     state: callbackURL.searchParams.get("state")
-      //   }
-      // });
-      completeAuth(callbackURL.toString());
-    }
-  }, []); // Runs once when the component is mounted
+    const handleCallback = async () => {
+      const callbackURL = new URL(window.location.href);
+      const code = callbackURL.searchParams.get("code");
+      const state = callbackURL.searchParams.get("state");
 
-  // Handle Othent redirect:
+      // Only show dialog and process if we have both code and state
+      if (code && state) {
+        // Set dialog first
+        // setAuthDialog({
+        //   show: true,
+        //   type: 'callback',
+        //   data: {
+        //     code,
+        //     state
+        //   }
+        // });
+
+        // Then process if not already processing
+        if (!hasProcessedCallback.current && !isProcessingAuth) {
+          hasProcessedCallback.current = true;
+          setIsProcessingAuth(true);
+          
+          try {
+            await completeAuth(callbackURL.toString());
+            setOthentConnected(true)
+            // Clear URL parameters only after successful processing
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } catch (error) {
+            console.error("Auth callback processing failed:", error);
+            setAuthError(error.message);
+          } finally {
+            setIsProcessingAuth(false);
+          }
+        }
+      }
+    };
+
+    handleCallback();
+  }, []); // Remove isProcessingAuth dependency as we handle it inside
+
   const completeAuth = async (callbackURL) => {
     try {
-      // Initialize Othent instance with the callback URL
       const appInfo = {
         name: "Onairos",
         version: "1.0.0",
         env: "production",
       };
-
-      const othent = new Othent({
-        appInfo,
-        throwErrors: false,
-        auth0LogInMethod: "redirect",
-        auth0RedirectURI: window.location.href, // Use the current page URL as the redirect URI
-        auth0ReturnToURI: window.location.href, // Same for logout URI
-      });
-
-      // Complete authentication using the callback URL with code and state params
-      const userDetails = await othent.completeConnectionAfterRedirect(callbackURL);
-      
       // setAuthDialog({
       //   show: true,
-      //   type: 'auth',
+      //   type: 'callback',
       //   data: {
-      //     success: true,
-      //     userDetails
+      //     code: callbackURL,
+      //     state: 'Completing Callback'
       //   }
       // });
+      const othent = new Othent({
+        appInfo,
+        throwErrors: true, // Enable error throwing for better error handling
+        auth0LogInMethod: "redirect",
+        auth0RedirectURI: window.location.href,
+        auth0ReturnToURI: window.location.href,
+      });
+      // Complete authentication using the callback URL with code and state params
+      const userDetails = await othent.completeConnectionAfterRedirect(callbackURL);
+      // setAuthDialog({
+      //   show: true,
+      //   type: 'callback',
+      //   data: {
+      //     code: userDetails.email,
+      //     state: 'approved'
+      //   }
+      // });
+      // Add error handling for Othent initialization
+      if (!othent) {
+        throw new Error("Failed to initialize Othent");
+      }
+      
+      if (!userDetails || !userDetails.sub) {
+        throw new Error("Invalid user details received from Othent");
+      }
 
       setIsAuthenticated(true);
       const sha256 = await loadSha256();
       const hashedOthentSub = sha256(userDetails.sub).toString();
       setHashedOthentSub(hashedOthentSub);
-      const encryptedPin = await getPin(hashedOthentSub);
-      setEncryptedPin(encryptedPin);
+      
+      const userOnairosPin = await getPin(hashedOthentSub);
+      setEncryptedPin(userOnairosPin.result);
+      setAuthToken(userOnairosPin.token);
+      // Wait for account info before showing overlay
+      await fetchAccountInfo(userDetails.email, true);
+      setShowOverlay(true);
+
+      // Store Othent token
+      localStorage.setItem('othentToken', hashedOthentSub);
+      localStorage.setItem('onairosToken', userDetails.token); // If Othent provides a token
     } catch (error) {
+      setNotif({
+        show: true,
+        color: 'red',
+        message: 'An error has occured, please try again',
+      })
       // setAuthDialog({
       //   show: true,
       //   type: 'auth',
@@ -132,10 +191,17 @@ export function Onairos({
       //   }
       // });
       console.error("Authentication failed:", error);
-      onAuthError(error); // Notify parent app about failed authentication
+      throw error; // Rethrow for the useEffect to handle
     }
   };
-  
+
+  // Add error display
+  useEffect(() => {
+    if (authError) {
+      // Show error to user (implement your error UI here)
+      console.error("Authentication error:", authError);
+    }
+  }, [authError]);
 
     const isMobileDevice = () => {
       const userAgent = navigator.userAgent || navigator.vendor || window.opera;
@@ -238,7 +304,7 @@ export function Onairos({
   };
 
   const changeGranted = (value) => {
-    setGranted(prev => prev + value);
+    setGranted(value);
   };
 
   const handleAPIRequestForMobile = async () => {
@@ -246,21 +312,6 @@ export function Onairos({
       setShowOverlay(true);
     } 
     return ;
-    
-      if (autoFetch) {
-        const randomData = generateRandomData(inferenceData);
-        onComplete(randomData);
-      } else {
-        window.postMessage({
-          type: 'API_URL_RESPONSE',
-          APIurl: 'https://onairos.uk/capx',
-          source: 'content-script',
-          approved: "message.approved",
-          accessToken: "message.accessToken",
-          unique:"Onairos-Response",
-          username:"CapX-Telegram"
-        }, '*');
-      }
   };
 
   const rejectDataRequest = () => {
@@ -274,6 +325,14 @@ export function Onairos({
     if (granted > 0) {
       try {
         if(othent && !othentConnected){
+          setAuthDialog({
+            show: true,
+            type: 'callback',
+            data: {
+              code: "Connecting Othent Details",
+              state: ""
+            }
+          });
           const appInfo = {
             name: "Onairos",
             version: "1.0.0",
@@ -287,14 +346,23 @@ export function Onairos({
           const hashedOthentSub = sha256(userDetails.sub).toString();
           setHashedOthentSub(hashedOthentSub);
           const encryptedPin = await getPin(hashedOthentSub);
-          setEncryptedPin(encryptedPin);
+          setEncryptedPin(encryptedPin.result);
+          setAuthToken(encryptedPin.token);
+          setOthentConnected(true)
         }
         
         const approvedRequests = Object.values(selectedRequests)
           .filter(req => req.isSelected)
           .map(req => ({ type: req.type, reward: req.reward }));
 
-        
+          setAuthDialog({
+            show: true,
+            type: 'callback',
+            data: {
+              code: "Retrieving API URL",
+              state: approvedRequests
+            }
+          });
     const jsonData = {
       Info:{ 
         'EncryptedUserPin': encryptedPin,
@@ -320,6 +388,14 @@ export function Onairos({
         if (autoFetch && onComplete) {
           onComplete(data);
         }else{
+          setAuthDialog({
+              show: true,
+              type: 'apiURL',
+              data: {
+                code: response.body.apiUrl,
+                state: approved
+              }
+            });
           chrome.runtime.sendMessage({
             source: 'dataRequestPage',
             type: 'returnedAPIurl',
@@ -450,7 +526,6 @@ export function Onairos({
       // Get User Othent Secure Details
       // const { connect} = await loadOthentKms();
       const userDetails = await othent.connect();
-
       const sha256 = await loadSha256();
       const hashedOthentSub = sha256(userDetails.sub).toString();
       const encryptedPin = await getPin(hashedOthentSub);
@@ -606,13 +681,12 @@ export function Onairos({
       const token = onairosToken || legacyToken;
 
       if (token) {
-        const response = await fetch('https://api2.onairos.uk/verifyToken', {
-          // const response = await fetch('http://localhost:8080/verifyToken', {
+        // const response = await fetch('https://api2.onairos.uk/verifyToken', {
+          const response = await fetch('http://localhost:8080/verifyToken', {
             headers: {
             'Authorization': `Bearer ${token}`
           }
         });
-        
         if (response.ok) {
           const data = await response.json();
           if (data.valid) {
@@ -659,7 +733,8 @@ export function Onairos({
       // Update authentication first
       setIsAuthenticated(true);
       // Then update account info
-      setAccountInfo(accountData);
+      setShowOverlay(true);
+      // setAccountInfo(accountData);
       return accountData;
     } catch (error) {
       console.error('Login process failed:', error);
@@ -667,8 +742,50 @@ export function Onairos({
     }
   };
 
+  // Check for stored tokens on mount
+  useEffect(() => {
+    const checkStoredAuth = async () => {
+      const token = localStorage.getItem('onairosToken');
+      const username = localStorage.getItem('username');
+      const othentToken = localStorage.getItem('othentToken');
+
+      if (token) {
+        try {
+          // Verify token is still valid
+          const response = await fetch(`${API_URL}/verifyToken`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            setIsAuthenticated(true);
+            if (username) {
+              await fetchAccountInfo(username, false);
+            } else if (othentToken) {
+              // Handle Othent stored session
+              const userDetails = JSON.parse(othentToken);
+              await fetchAccountInfo(userDetails.email, true);
+            }
+          } else {
+            // Clear invalid tokens
+            localStorage.removeItem('onairosToken');
+            localStorage.removeItem('username');
+            localStorage.removeItem('othentToken');
+          }
+        } catch (error) {
+          console.error('Token verification failed:', error);
+        }
+      }
+    };
+
+    checkStoredAuth();
+  }, []);
+
   // Return overlay for mobile devices when needed
-  if (showOverlay && isMobileDevice()) {
+  if (false && showOverlay && isMobileDevice()) {
     return (
       <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
         <Overlay
@@ -725,8 +842,9 @@ export function Onairos({
         </button>
       </div>
       
-      {/* {authDialog.show &&  */}
-      {false && 
+      {notif.show && <Notification message={notif.message} color={notif.color} />}
+      {authDialog.show && 
+      // {false && 
         (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setAuthDialog({ show: false, type: null, data: null })} />
@@ -744,6 +862,10 @@ export function Onairos({
             <h3 className="text-lg font-semibold mb-4">
               {authDialog.type === 'callback' ? 'Callback Details' : 'Authentication Result'}
             </h3>
+
+            <h3 className="text-lg font-semibold mb-4">
+              {authDialog.type === 'apiURL' ? 'API Url Returned' : 'Authentication Result'}
+            </h3>
             
             <div className="bg-gray-50 rounded p-4 overflow-x-auto">
               <pre className="text-sm">
@@ -758,6 +880,39 @@ export function Onairos({
             )}
           </div>
         </div>
+      )}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading your account...</p>
+          </div>
+        </div>
+      )}
+      {showOverlay && !isLoading && (
+        <Overlay
+          setOthentConnected={setOthentConnected}
+          dataRequester={webpageName}
+          NoAccount={NoAccount}
+          NoModel={NoModel}
+          accountInfo={accountInfo}
+          activeModels={activeModels}
+          avatar={avatar}
+          traits={traits}
+          requestData={requestData}
+          handleConnectionSelection={handleConnectionSelection}
+          changeGranted={changeGranted}
+          granted={granted}
+          allowSubmit={granted > 0}
+          rejectDataRequest={rejectDataRequest}
+          sendDataRequest={sendDataRequest}
+          isAuthenticated={isAuthenticated}
+          onLoginSuccess={handleLoginSuccess}
+          onClose={handleCloseOverlay}
+          setOthent={setOthent}
+          setHashedOthentSub={setHashedOthentSub}
+          setEncryptedPin={setEncryptedPin}
+        />
       )}
     </>
   )

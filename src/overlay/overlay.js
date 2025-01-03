@@ -14,7 +14,6 @@ export default function Overlay({
   NoAccount, 
   NoModel, 
   activeModels, 
-  setActiveModels,
   avatar,
   setAvatar,
   traits,
@@ -51,10 +50,7 @@ export default function Overlay({
     password: ''
   });
   const [loginCompleted, setLoginCompleted] = useState(false);
-
   const API_URL = 'https://api2.onairos.uk';
-
-
 
   // Set dynamic viewport height
   useEffect(() => {
@@ -71,8 +67,7 @@ export default function Overlay({
     };
   }, []);
 
-  const close = async () => {
-    changeGranted(0);
+  const handleClose = () => {
     onClose();
   };
 
@@ -80,7 +75,7 @@ export default function Overlay({
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (overlayRef.current && !overlayRef.current.contains(event.target)) {
-        close?.();
+        handleClose?.();
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -89,7 +84,7 @@ export default function Overlay({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [close]);
+  }, [handleClose]);
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
@@ -217,7 +212,11 @@ export default function Overlay({
             </button>
             <button 
               disabled={!allowSubmit || granted === 0}
-              className={`bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-8 rounded-full ${(!allowSubmit || granted === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`${
+                allowSubmit && granted > 0
+                  ? 'bg-blue-500 hover:bg-blue-600'
+                  : 'bg-gray-300 cursor-not-allowed'
+              } text-white font-bold py-2 px-8 rounded-full`}
               onClick={sendDataRequest}
             >
               Confirm ({granted})
@@ -383,7 +382,7 @@ export default function Overlay({
   }, []);
 
   useEffect(() => {
-  }, [isAuthenticated, accountInfo]);
+  }, [isAuthenticated, accountInfo])
 
   if (loading) {
     return (
@@ -402,23 +401,26 @@ export default function Overlay({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={close} />
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50" 
+        onClick={handleClose}
+        style={{ touchAction: 'none' }}
+      />
       <div 
         ref={overlayRef} 
-        className="fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out"
+        className="fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out flex flex-col"
         style={{ 
-          maxHeight: '80vh',
-          minHeight: '50vh',
-          height: 'auto'
+          maxHeight: '60vh',
+          minHeight: '45vh',
+          height: 'auto',
+          touchAction: 'none'
         }}
       >
-        <div className="sticky top-0 bg-white z-10">
-          <div className="w-full flex justify-center pt-3 pb-2">
-            <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
-          </div>
+        <div className="sticky top-0 bg-white z-10 px-6 pt-3 pb-2">
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto"></div>
         </div>
 
-        <div className="overflow-y-auto px-6 pb-8">
+        <div className="flex-1 overflow-y-auto px-6 pb-8" style={{ touchAction: 'pan-y' }}>
           {renderContent()}
         </div>
       </div>

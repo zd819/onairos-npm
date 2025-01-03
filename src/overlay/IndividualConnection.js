@@ -8,17 +8,13 @@ import Box from './box';
 // import Trait from '../icons/Trait.png';
 import PropTypes from 'prop-types';
 
-function IndividualConnection(props) {
+export default function IndividualConnection(props) {
   const [selected, setSelected] = useState(false);
 
-  // const Insight = (props.title === "Avatar")? 'Avatar' : (props.title === "Traits")? 'Personality Traits':(props.size === 'Small Insight') ? 'Basic' : (props.size === 'Medium') ? 'Standard Insight' : 'Detailed Insight';
-  const Insight = (props.title === "Avatar")? 'Avatar' : (props.title === "Traits")? 'Personality Traits': 'Persona'
-  
   return (
-    <div className="relative bg-indigo-200 p-4 sm:p-6 rounded-sm overflow-hidden mb-8">
-
-      <div className="relative">
-        <div className="flex-center">
+    <div className="bg-white rounded-lg p-4 shadow border border-gray-200">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
           <Box
             active={props.active}
             onSelectionChange={props.onSelectionChange}
@@ -53,7 +49,6 @@ function IndividualConnection(props) {
           <p className="text-sm font-medium text-gray-900 dark:text-gray-300">Rewards: {props.rewards}</p>
         )}
       </div>
-
     </div>
   );
 }
@@ -69,5 +64,3 @@ IndividualConnection.propTypes = {
   changeGranted: PropTypes.func.isRequired,
   onSelectionChange: PropTypes.func.isRequired
 };
-
-export default IndividualConnection;

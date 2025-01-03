@@ -4,7 +4,7 @@ var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefau
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = void 0;
+exports.default = IndividualConnection;
 var _react = _interopRequireWildcard(require("react"));
 var _box = _interopRequireDefault(require("./box"));
 var _propTypes = _interopRequireDefault(require("prop-types"));
@@ -20,15 +20,12 @@ function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; 
 
 function IndividualConnection(props) {
   const [selected, setSelected] = (0, _react.useState)(false);
-
-  // const Insight = (props.title === "Avatar")? 'Avatar' : (props.title === "Traits")? 'Personality Traits':(props.size === 'Small Insight') ? 'Basic' : (props.size === 'Medium') ? 'Standard Insight' : 'Detailed Insight';
-  const Insight = props.title === "Avatar" ? 'Avatar' : props.title === "Traits" ? 'Personality Traits' : 'Persona';
   return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-    className: "relative bg-indigo-200 p-4 sm:p-6 rounded-sm overflow-hidden mb-8",
+    className: "bg-white rounded-lg p-4 shadow border border-gray-200",
     children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-      className: "relative",
+      className: "flex items-center justify-between",
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "flex-center",
+        className: "flex items-center space-x-4",
         children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_box.default, {
           active: props.active,
           onSelectionChange: props.onSelectionChange,
@@ -61,4 +58,3 @@ IndividualConnection.propTypes = {
   changeGranted: _propTypes.default.func.isRequired,
   onSelectionChange: _propTypes.default.func.isRequired
 };
-var _default = exports.default = IndividualConnection;

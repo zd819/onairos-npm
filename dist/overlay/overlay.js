@@ -21,7 +21,6 @@ function Overlay(_ref) {
     NoAccount,
     NoModel,
     activeModels,
-    setActiveModels,
     avatar,
     setAvatar,
     traits,
@@ -74,8 +73,7 @@ function Overlay(_ref) {
       window.removeEventListener('orientationchange', setVH);
     };
   }, []);
-  const close = async () => {
-    changeGranted(0);
+  const handleClose = () => {
     onClose();
   };
 
@@ -83,7 +81,7 @@ function Overlay(_ref) {
   (0, _react.useEffect)(() => {
     const handleClickOutside = event => {
       if (overlayRef.current && !overlayRef.current.contains(event.target)) {
-        close?.();
+        handleClose?.();
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -92,7 +90,7 @@ function Overlay(_ref) {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [close]);
+  }, [handleClose]);
   const handleGoogleSuccess = async credentialResponse => {
     try {
       setLoginError(null);
@@ -210,7 +208,7 @@ function Overlay(_ref) {
             children: "Reject All"
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
             disabled: !allowSubmit || granted === 0,
-            className: `bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-8 rounded-full ${!allowSubmit || granted === 0 ? 'opacity-50 cursor-not-allowed' : ''}`,
+            className: `${allowSubmit && granted > 0 ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 cursor-not-allowed'} text-white font-bold py-2 px-8 rounded-full`,
             onClick: sendDataRequest,
             children: ["Confirm (", granted, ")"]
           })]
@@ -380,25 +378,29 @@ function Overlay(_ref) {
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "fixed inset-0 bg-black bg-opacity-50",
-      onClick: close
+      onClick: handleClose,
+      style: {
+        touchAction: 'none'
+      }
     }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       ref: overlayRef,
-      className: "fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out",
+      className: "fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out flex flex-col",
       style: {
-        maxHeight: '80vh',
-        minHeight: '50vh',
-        height: 'auto'
+        maxHeight: '60vh',
+        minHeight: '45vh',
+        height: 'auto',
+        touchAction: 'none'
       },
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "sticky top-0 bg-white z-10",
+        className: "sticky top-0 bg-white z-10 px-6 pt-3 pb-2",
         children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "w-full flex justify-center pt-3 pb-2",
-          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "w-12 h-1.5 bg-gray-300 rounded-full"
-          })
+          className: "w-12 h-1.5 bg-gray-300 rounded-full mx-auto"
         })
       }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "overflow-y-auto px-6 pb-8",
+        className: "flex-1 overflow-y-auto px-6 pb-8",
+        style: {
+          touchAction: 'pan-y'
+        },
         children: renderContent()
       })]
     })]
