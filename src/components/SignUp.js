@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
-import AuthButtons from './AuthButtons';
+ import AuthButtons from './AuthButtons.jsx';
 
 export default function SignUp({ onSignUpSuccess, setOthent, setHashedOthentSub, setEncryptedPin }) {
   const [formData, setFormData] = useState({
