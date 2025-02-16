@@ -4,9 +4,10 @@ import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import typescript from '@rollup/plugin-typescript';
 import json from '@rollup/plugin-json';
+import inject from '@rollup/plugin-inject';
 
 export default {
-  input: 'src/index.js', // Adjust if your entry file is different
+  input: 'src/index.js', // Your cleaned entry file
   output: {
     file: 'dist/onairos.umd.js',
     format: 'umd',
@@ -16,13 +17,14 @@ export default {
       "react-dom": "ReactDOM",
     },
     inlineDynamicImports: true,
-    sourcemap: true,  // Enable for debugging
+    sourcemap: true,
   },
   plugins: [
     json(),
     resolve({
-      browser: true,  // Ensure it resolves browser-compatible modules
-      preferBuiltins: false, // Prevents using Node.js built-in modules
+      browser: true,             // Use browser-specific modules
+      preferBuiltins: false,     // Bundle dependencies instead of using Node built-ins
+      mainFields: ["browser", "module", "main"],
     }),
     typescript(),
     babel({
@@ -31,8 +33,13 @@ export default {
       extensions: ['.js', '.jsx', '.ts', '.tsx'],
     }),
     commonjs({
-      include: /node_modules/, // Ensures CommonJS dependencies work
-      requireReturnsDefault: "auto", // Helps with default exports
+      include: /node_modules/,
+      requireReturnsDefault: "auto",
+    }),
+    // Inject polyfills for Node globals:
+    inject({
+      Buffer: ['buffer', 'Buffer'],
+      process: 'process',
     }),
   ],
 };

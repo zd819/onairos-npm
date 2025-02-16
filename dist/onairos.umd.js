@@ -29,6 +29,194 @@
 		return n && Object.prototype.hasOwnProperty.call(n, 'default') && Object.keys(n).length === 1 ? n['default'] : n;
 	}
 
+	var browser = {exports: {}};
+
+	var hasRequiredBrowser;
+
+	function requireBrowser () {
+		if (hasRequiredBrowser) return browser.exports;
+		hasRequiredBrowser = 1;
+		// shim for using process in browser
+		var process = browser.exports = {};
+
+		// cached from whatever global is present so that test runners that stub it
+		// don't break things.  But we need to wrap it in a try catch in case it is
+		// wrapped in strict mode code which doesn't define any globals.  It's inside a
+		// function because try/catches deoptimize in certain engines.
+
+		var cachedSetTimeout;
+		var cachedClearTimeout;
+		function defaultSetTimout() {
+		  throw new Error('setTimeout has not been defined');
+		}
+		function defaultClearTimeout() {
+		  throw new Error('clearTimeout has not been defined');
+		}
+		(function () {
+		  try {
+		    if (typeof setTimeout === 'function') {
+		      cachedSetTimeout = setTimeout;
+		    } else {
+		      cachedSetTimeout = defaultSetTimout;
+		    }
+		  } catch (e) {
+		    cachedSetTimeout = defaultSetTimout;
+		  }
+		  try {
+		    if (typeof clearTimeout === 'function') {
+		      cachedClearTimeout = clearTimeout;
+		    } else {
+		      cachedClearTimeout = defaultClearTimeout;
+		    }
+		  } catch (e) {
+		    cachedClearTimeout = defaultClearTimeout;
+		  }
+		})();
+		function runTimeout(fun) {
+		  if (cachedSetTimeout === setTimeout) {
+		    //normal enviroments in sane situations
+		    return setTimeout(fun, 0);
+		  }
+		  // if setTimeout wasn't available but was latter defined
+		  if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+		    cachedSetTimeout = setTimeout;
+		    return setTimeout(fun, 0);
+		  }
+		  try {
+		    // when when somebody has screwed with setTimeout but no I.E. maddness
+		    return cachedSetTimeout(fun, 0);
+		  } catch (e) {
+		    try {
+		      // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+		      return cachedSetTimeout.call(null, fun, 0);
+		    } catch (e) {
+		      // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+		      return cachedSetTimeout.call(this, fun, 0);
+		    }
+		  }
+		}
+		function runClearTimeout(marker) {
+		  if (cachedClearTimeout === clearTimeout) {
+		    //normal enviroments in sane situations
+		    return clearTimeout(marker);
+		  }
+		  // if clearTimeout wasn't available but was latter defined
+		  if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+		    cachedClearTimeout = clearTimeout;
+		    return clearTimeout(marker);
+		  }
+		  try {
+		    // when when somebody has screwed with setTimeout but no I.E. maddness
+		    return cachedClearTimeout(marker);
+		  } catch (e) {
+		    try {
+		      // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+		      return cachedClearTimeout.call(null, marker);
+		    } catch (e) {
+		      // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+		      // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+		      return cachedClearTimeout.call(this, marker);
+		    }
+		  }
+		}
+		var queue = [];
+		var draining = false;
+		var currentQueue;
+		var queueIndex = -1;
+		function cleanUpNextTick() {
+		  if (!draining || !currentQueue) {
+		    return;
+		  }
+		  draining = false;
+		  if (currentQueue.length) {
+		    queue = currentQueue.concat(queue);
+		  } else {
+		    queueIndex = -1;
+		  }
+		  if (queue.length) {
+		    drainQueue();
+		  }
+		}
+		function drainQueue() {
+		  if (draining) {
+		    return;
+		  }
+		  var timeout = runTimeout(cleanUpNextTick);
+		  draining = true;
+		  var len = queue.length;
+		  while (len) {
+		    currentQueue = queue;
+		    queue = [];
+		    while (++queueIndex < len) {
+		      if (currentQueue) {
+		        currentQueue[queueIndex].run();
+		      }
+		    }
+		    queueIndex = -1;
+		    len = queue.length;
+		  }
+		  currentQueue = null;
+		  draining = false;
+		  runClearTimeout(timeout);
+		}
+		process.nextTick = function (fun) {
+		  var args = new Array(arguments.length - 1);
+		  if (arguments.length > 1) {
+		    for (var i = 1; i < arguments.length; i++) {
+		      args[i - 1] = arguments[i];
+		    }
+		  }
+		  queue.push(new Item(fun, args));
+		  if (queue.length === 1 && !draining) {
+		    runTimeout(drainQueue);
+		  }
+		};
+
+		// v8 likes predictible objects
+		function Item(fun, array) {
+		  this.fun = fun;
+		  this.array = array;
+		}
+		Item.prototype.run = function () {
+		  this.fun.apply(null, this.array);
+		};
+		process.title = 'browser';
+		process.browser = true;
+		process.env = {};
+		process.argv = [];
+		process.version = ''; // empty string to avoid regexp issues
+		process.versions = {};
+		function noop() {}
+		process.on = noop;
+		process.addListener = noop;
+		process.once = noop;
+		process.off = noop;
+		process.removeListener = noop;
+		process.removeAllListeners = noop;
+		process.emit = noop;
+		process.prependListener = noop;
+		process.prependOnceListener = noop;
+		process.listeners = function (name) {
+		  return [];
+		};
+		process.binding = function (name) {
+		  throw new Error('process.binding is not supported');
+		};
+		process.cwd = function () {
+		  return '/';
+		};
+		process.chdir = function (dir) {
+		  throw new Error('process.chdir is not supported');
+		};
+		process.umask = function () {
+		  return 0;
+		};
+		return browser.exports;
+	}
+
+	var browserExports = requireBrowser();
+	var process = /*@__PURE__*/getDefaultExportFromCjs(browserExports);
+
 	var react = {exports: {}};
 
 	var react_production_min = {};
@@ -393,15 +581,6 @@
 
 	var react_development = {exports: {}};
 
-	/**
-	 * @license React
-	 * react.development.js
-	 *
-	 * Copyright (c) Facebook, Inc. and its affiliates.
-	 *
-	 * This source code is licensed under the MIT license found in the
-	 * LICENSE file in the root directory of this source tree.
-	 */
 	react_development.exports;
 
 	var hasRequiredReact_development;
@@ -7190,7 +7369,7 @@
 	      throw new AxiosError$1('Blob is not supported. Use a Buffer instead.');
 	    }
 	    if (utils$2.isArrayBuffer(value) || utils$2.isTypedArray(value)) {
-	      return useBlob && typeof Blob === 'function' ? new Blob([value]) : Buffer.from(value);
+	      return useBlob && typeof Blob === 'function' ? new Blob([value]) : bufferExports.Buffer.from(value);
 	    }
 	    return value;
 	  }
@@ -9197,7 +9376,7 @@
 	    var i = r,
 	      o = t - n,
 	      s = r + o,
-	      u = Buffer.alloc(s);
+	      u = bufferExports.Buffer.alloc(s);
 	    for (u.write(e); o--;) u.write("=", i++);
 	    return u.toString();
 	  }
@@ -9210,10 +9389,10 @@
 	  });
 	  var Sr = Rt$1();
 	  function Ct(e, t) {
-	    return t === void 0 && (t = "utf8"), Buffer.isBuffer(e) ? at(e.toString("base64")) : at(Buffer.from(e, t).toString("base64"));
+	    return t === void 0 && (t = "utf8"), bufferExports.Buffer.isBuffer(e) ? at(e.toString("base64")) : at(bufferExports.Buffer.from(e, t).toString("base64"));
 	  }
 	  function Ur(e, t) {
-	    return t === void 0 && (t = "utf8"), Buffer.from(ut(e), "base64").toString(t);
+	    return t === void 0 && (t = "utf8"), bufferExports.Buffer.from(ut(e), "base64").toString(t);
 	  }
 	  function ut(e) {
 	    return e = e.toString(), Sr.default(e).replace(/\-/g, "+").replace(/_/g, "/");
@@ -9222,7 +9401,7 @@
 	    return e.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 	  }
 	  function Fr(e) {
-	    return Buffer.from(ut(e), "base64");
+	    return bufferExports.Buffer.from(ut(e), "base64");
 	  }
 	  var O = Ct;
 	  O.encode = Ct;
@@ -10547,8 +10726,8 @@
 	    n = await t.sign(r),
 	    i = await x$1().hash(n);
 	  return {
-	    signature: Buffer.from(n),
-	    id: Buffer.from(i)
+	    signature: bufferExports.Buffer.from(n),
+	    id: bufferExports.Buffer.from(i)
 	  };
 	}
 	async function Wt$1(e, t) {
@@ -10561,7 +10740,7 @@
 	var $$1 = class {
 	  buf;
 	  pos;
-	  constructor(t = Buffer.alloc(tt$1), r = 0) {
+	  constructor(t = bufferExports.Buffer.alloc(tt$1), r = 0) {
 	    this.buf = t, this.pos = r;
 	  }
 	  writeTags(t) {
@@ -10576,7 +10755,7 @@
 	    this.writeLong(0);
 	  }
 	  toBuffer() {
-	    let t = Buffer.alloc(this.pos);
+	    let t = bufferExports.Buffer.alloc(this.pos);
 	    if (this.pos > this.buf.length) throw new Error(`Too many tag bytes (${this.pos} > ${this.buf.length})`);
 	    return this.buf.copy(t, 0, 0, this.pos), t;
 	  }
@@ -10597,7 +10776,7 @@
 	    this.pos++, this.buf = r;
 	  }
 	  writeString(t) {
-	    let r = Buffer.byteLength(t),
+	    let r = bufferExports.Buffer.byteLength(t),
 	      n = this.buf;
 	    this.writeLong(r);
 	    let i = this.pos;
@@ -10850,14 +11029,14 @@
 	  let n = t.publicKey,
 	    i = r?.target ? yr$1.default.toBuffer(r.target) : null,
 	    o = 1 + (i?.byteLength ?? 0),
-	    s = r?.anchor ? Buffer.from(r.anchor) : null,
+	    s = r?.anchor ? bufferExports.Buffer.from(r.anchor) : null,
 	    u = 1 + (s?.byteLength ?? 0),
 	    h = (r?.tags?.length ?? 0) > 0 ? dt$1(r.tags) : null,
 	    p = 16 + (h ? h.byteLength : 0),
-	    f = Buffer.from(e),
+	    f = bufferExports.Buffer.from(e),
 	    c = f.byteLength,
 	    U = 2 + t.signatureLength + t.ownerLength + o + u + p + c,
-	    l = Buffer.alloc(U);
+	    l = bufferExports.Buffer.alloc(U);
 	  if (l.set(Vt$1(t.signatureType), 0), l.set(new Uint8Array(t.signatureLength).fill(0), 2), n.byteLength !== t.ownerLength) throw new Error(`Owner must be ${t.ownerLength} bytes, but was incorrectly ${n.byteLength}`);
 	  l.set(n, 2 + t.signatureLength);
 	  let R = 2 + t.signatureLength + t.ownerLength;
@@ -14425,7 +14604,7 @@
 			  const offset = bufferToInt(offsetBuffer);
 			  const remainder = proof.slice(left.length + right.length + offsetBuffer.length);
 			  const pathHash = await hash([await hash(left), await hash(right), await hash(offsetBuffer)]);
-			  const updatedOutput = `${output}\n${JSON.stringify(Buffer.from(left))},${JSON.stringify(Buffer.from(right))},${offset} => ${JSON.stringify(pathHash)}`;
+			  const updatedOutput = `${output}\n${JSON.stringify(bufferExports.Buffer.from(left))},${JSON.stringify(bufferExports.Buffer.from(right))},${offset} => ${JSON.stringify(pathHash)}`;
 			  return debug(remainder, updatedOutput);
 			}
 			exports.debug = debug; 
@@ -15774,8 +15953,6 @@
 	var webExports = requireWeb();
 	var ArweaveModule = /*@__PURE__*/getDefaultExportFromCjs(webExports);
 
-	// src/index.ts
-
 	// src/lib/config/config.constants.ts
 	var DEFAULT_OTHENT_CONFIG = {
 	  debug: false,
@@ -16213,7 +16390,7 @@
 	    };
 	    const replacer = (key, value) => {
 	      let bufferValues = [];
-	      if (value instanceof Buffer || value instanceof DataView || ArrayBuffer.isView(value)) {
+	      if (value instanceof bufferExports.Buffer || value instanceof DataView || ArrayBuffer.isView(value)) {
 	        bufferValues = Array.from(new Uint8Array(value.buffer));
 	      } else if (value instanceof ArrayBuffer) {
 	        bufferValues = Array.from(new Uint8Array(value));
@@ -17760,15 +17937,6 @@
 
 	var reactIs_development = {};
 
-	/** @license React v16.13.1
-	 * react-is.development.js
-	 *
-	 * Copyright (c) Facebook, Inc. and its affiliates.
-	 *
-	 * This source code is licensed under the MIT license found in the
-	 * LICENSE file in the root directory of this source tree.
-	 */
-
 	var hasRequiredReactIs_development;
 
 	function requireReactIs_development () {
@@ -18066,13 +18234,6 @@
 		return has;
 	}
 
-	/**
-	 * Copyright (c) 2013-present, Facebook, Inc.
-	 *
-	 * This source code is licensed under the MIT license found in the
-	 * LICENSE file in the root directory of this source tree.
-	 */
-
 	var checkPropTypes_1;
 	var hasRequiredCheckPropTypes;
 
@@ -18158,13 +18319,6 @@
 		checkPropTypes_1 = checkPropTypes;
 		return checkPropTypes_1;
 	}
-
-	/**
-	 * Copyright (c) 2013-present, Facebook, Inc.
-	 *
-	 * This source code is licensed under the MIT license found in the
-	 * LICENSE file in the root directory of this source tree.
-	 */
 
 	var factoryWithTypeCheckers;
 	var hasRequiredFactoryWithTypeCheckers;
@@ -18777,13 +18931,6 @@
 		};
 		return factoryWithThrowingShims;
 	}
-
-	/**
-	 * Copyright (c) 2013-present, Facebook, Inc.
-	 *
-	 * This source code is licensed under the MIT license found in the
-	 * LICENSE file in the root directory of this source tree.
-	 */
 
 	var hasRequiredPropTypes;
 
@@ -24549,16 +24696,6 @@
 	}
 
 	var reactJsxRuntime_development = {};
-
-	/**
-	 * @license React
-	 * react-jsx-runtime.development.js
-	 *
-	 * Copyright (c) Facebook, Inc. and its affiliates.
-	 *
-	 * This source code is licensed under the MIT license found in the
-	 * LICENSE file in the root directory of this source tree.
-	 */
 
 	var hasRequiredReactJsxRuntime_development;
 
@@ -33456,12 +33593,6 @@
 	function Onairos(props) {
 	  return /*#__PURE__*/React$1.createElement(React$1.Fragment, null, /*#__PURE__*/React$1.createElement(OnairosButton, props));
 	}
-
-	// src/index.js
-	globalThis.module = globalThis.module || {};
-	globalThis.exports = globalThis.exports || {};
-
-	// You can also export additional functions or constants if needed
 
 	var sha256$3 = {exports: {}};
 
