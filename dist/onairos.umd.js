@@ -1,8 +1,8 @@
 (function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('react')) :
-	typeof define === 'function' && define.amd ? define(['exports', 'react'], factory) :
-	(global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.Onairos = {}, global.React));
-})(this, (function (exports, React$1) { 'use strict';
+	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('react')) :
+	typeof define === 'function' && define.amd ? define(['react'], factory) :
+	(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.Onairos = factory(global.React));
+})(this, (function (React$1) { 'use strict';
 
 	function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -30821,6 +30821,10 @@
 	  return /*#__PURE__*/React__default["default"].createElement(React__default["default"].Fragment, null, /*#__PURE__*/React__default["default"].createElement(OnairosButton, props));
 	}
 
+	// src/index.js
+
+	// You can also export additional functions or constants if needed
+
 	var sha256$3 = {exports: {}};
 
 	function commonjsRequire(path) {
@@ -31785,9 +31789,7 @@
 		'default': sha256
 	}, [sha256Exports]);
 
-	exports.Onairos = Onairos;
-
-	Object.defineProperty(exports, '__esModule', { value: true });
+	return Onairos;
 
 }));
 //# sourceMappingURL=onairos.umd.js.map

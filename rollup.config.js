@@ -14,7 +14,7 @@ export default {
     file: 'dist/onairos.umd.js',
     format: 'umd',
     name: 'Onairos',
-    exports: 'named', // <--- This forces named export
+    exports: 'default', // <--- This forces named export
     globals: {
       react: 'React',
       'react-dom': 'ReactDOM',
