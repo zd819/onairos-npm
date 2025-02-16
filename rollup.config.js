@@ -7,14 +7,17 @@ import json from '@rollup/plugin-json';
 import inject from '@rollup/plugin-inject';
 
 export default {
-  input: 'src/index.js', // Your cleaned entry file
+  // Tell Rollup not to include react and react-dom in the bundle:
+  external: ['react', 'react-dom'],
+  input: 'src/index.js',
   output: {
     file: 'dist/onairos.umd.js',
     format: 'umd',
     name: 'Onairos',
+    exports: 'named', // <--- This forces named export
     globals: {
-      react: "React",
-      "react-dom": "ReactDOM",
+      react: 'React',
+      'react-dom': 'ReactDOM',
     },
     inlineDynamicImports: true,
     sourcemap: true,
@@ -22,9 +25,9 @@ export default {
   plugins: [
     json(),
     resolve({
-      browser: true,             // Use browser-specific modules
-      preferBuiltins: false,     // Bundle dependencies instead of using Node built-ins
-      mainFields: ["browser", "module", "main"],
+      browser: true,
+      preferBuiltins: false,
+      mainFields: ['browser', 'module', 'main'],
     }),
     typescript(),
     babel({
@@ -34,7 +37,7 @@ export default {
     }),
     commonjs({
       include: /node_modules/,
-      requireReturnsDefault: "auto",
+      requireReturnsDefault: 'auto',
     }),
     // Inject polyfills for Node globals:
     inject({
@@ -43,3 +46,4 @@ export default {
     }),
   ],
 };
+
