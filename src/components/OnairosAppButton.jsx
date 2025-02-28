@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { authenticateWithBiometrics } from '../utils/biometrics';
+import { authenticateWithBiometrics } from '../utils/biometrics.js';
 
 export default function OnairosAppButton({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -75,7 +75,7 @@ export default function OnairosAppButton({ onLoginSuccess }) {
         <img
           src="https://onairos.sirv.com/Images/OnairosBlack.png"
           alt="Onairos"
-          className="w-6 h-6"
+          className="w-10 h-6"
         />
       </button>
       <span className="text-xs mt-2 text-gray-600">Login with App</span>

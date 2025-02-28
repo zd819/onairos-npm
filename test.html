@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Onairos Button Integration</title>
+
+    <!-- Minimal polyfills for Node globals (if needed) -->
+    <script>
+      window.process = { env: {} };
+      window.global = window;
+    </script>
+
+    <!-- Load React and ReactDOM from CDNs -->
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"
+    ></script>
+
+    <!-- Load the UMD bundle for Onairos -->
+    <script src="./dist/onairos.umd.js"></script>
+  </head>
+  <body>
+    <!-- Container where the Onairos component will be mounted -->
+    <div id="onairos-container"></div>
+    <div id="results"></div>
+
+    <script>
+      // Wait for the page to fully load before rendering
+      window.addEventListener("load", function () {
+        // Check that React, ReactDOM, and our Onairos component are available
+        if (!window.React || !window.ReactDOM) {
+          console.error("React or ReactDOM is not loaded.");
+          return;
+        }
+        if (!window.Onairos) {
+          console.error("Onairos component is not available on the global scope.");
+          return;
+        }
+        
+        // Define the input data for personalities with the correct format
+        const inputData = [
+          {
+            "text": "Analytical thinking, strategic planning, and systematic problem-solving approaches",
+            "category": "Analyst",
+            "img_url": ""
+          },
+          {
+            "text": "Empathy, emotional intelligence, and ability to build harmonious relationships",
+            "category": "Diplomat",
+            "img_url": ""
+          },
+          {
+            "text": "Structured thinking, detail-oriented focus, and methodical execution",
+            "category": "Sentinel",
+            "img_url": ""
+          },
+          {
+            "text": "Adaptability, spontaneity, and hands-on experiential learning style",
+            "category": "Explorer",
+            "img_url": ""
+          },
+          {
+            "text": "Strategic vision, system building, and long-term planning capabilities",
+            "category": "Architect",
+            "img_url": ""
+          },
+          {
+            "text": "Theoretical analysis, pattern recognition, and conceptual problem solving",
+            "category": "Logician",
+            "img_url": ""
+          },
+          {
+            "text": "Leadership skills, decision-making ability, and strategic direction setting",
+            "category": "Commander",
+            "img_url": ""
+          },
+          {
+            "text": "Critical thinking, debate skills, and intellectual discourse preferences",
+            "category": "Debater",
+            "img_url": ""
+          },
+          {
+            "text": "Idealistic thinking, moral conviction, and pursuit of meaningful goals",
+            "category": "Advocate",
+            "img_url": ""
+          },
+          {
+            "text": "Creative expression, emotional depth, and value-based decision making",
+            "category": "Mediator",
+            "img_url": ""
+          },
+          {
+            "text": "Inspirational leadership, people development, and community building",
+            "category": "Protagonist",
+            "img_url": ""
+          },
+          {
+            "text": "Innovation, enthusiasm, and ability to generate and implement new ideas",
+            "category": "Campaigner",
+            "img_url": ""
+          },
+          {
+            "text": "Practical organization, efficiency optimization, and systematic execution",
+            "category": "Logistician",
+            "img_url": ""
+          },
+          {
+            "text": "Supportive nature, reliability, and dedication to helping others",
+            "category": "Defender",
+            "img_url": ""
+          },
+          {
+            "text": "Administrative capability, traditional values, and organizational leadership",
+            "category": "Executive",
+            "img_url": ""
+          },
+          {
+            "text": "Social coordination, interpersonal relationships, and community engagement",
+            "category": "Consul",
+            "img_url": ""
+          }
+        ];
+
+        // Use the default export if available
+        const OnairosComponent = window.Onairos;
+        // Define the props to pass to Onairos
+        const onairosProps = {
+          login: true,
+          buttonType: "pill",
+          textColor: "white",
+          textLayout: "right",
+          requestData: {
+            Small: {
+              type: "Personality",
+              descriptions: "Insight into your Interests",
+              reward: "10% Discount"
+            },
+            Medium: {
+              type: "Personality",
+              descriptions: "Insight into your Interests",
+              reward: "2 USDC"
+            },
+            Large: {
+              type: "Personality",
+              descriptions: "Insight into your Interests",
+              reward: "3.5 USDC"
+            },
+          },
+          className: "w-20 h-20 py-2 px-4 ml-5",
+          autoFetch: false,
+          webpageName: "Odysee",
+          proofMode: false,
+          inputData: inputData,
+          onComplete: function(onairosData) {
+            // Process the Onairos data and create matching output
+            const personalityScores = {
+              Analyst: onairosData.scores[0],
+              Diplomat: onairosData.scores[1],
+              Sentinel: onairosData.scores[2],
+              Explorer: onairosData.scores[3],
+              Architect: onairosData.scores[4],
+              Logician: onairosData.scores[5],
+              Commander: onairosData.scores[6],
+              Debater: onairosData.scores[7],
+              Advocate: onairosData.scores[8],
+              Mediator: onairosData.scores[9],
+              Protagonist: onairosData.scores[10],
+              Campaigner: onairosData.scores[11],
+              Logistician: onairosData.scores[12],
+              Defender: onairosData.scores[13],
+              Executive: onairosData.scores[14],
+              Consul: onairosData.scores[15]
+            };
+
+            // Display results (optional)
+            document.getElementById('results').innerText = JSON.stringify(personalityScores, null, 2);
+            
+            // Return the personality scores
+            return personalityScores;
+          }
+        };
+
+        // Render the Onairos component using ReactDOM.createRoot (React 18)
+        const container = document.getElementById("onairos-container");
+        const root = ReactDOM.createRoot(container);
+        root.render(React.createElement(OnairosComponent, onairosProps));
+      });
+    </script>
+  </body>
+</html>

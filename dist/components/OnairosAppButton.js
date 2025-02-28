@@ -5,7 +5,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = OnairosAppButton;
 var _react = require("react");
-var _biometrics = require("../utils/biometrics");
+var _biometrics = require("../utils/biometrics.js");
 var _jsxRuntime = require("react/jsx-runtime");
 function OnairosAppButton(_ref) {
   let {
@@ -74,7 +74,7 @@ function OnairosAppButton(_ref) {
       children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
         src: "https://onairos.sirv.com/Images/OnairosBlack.png",
         alt: "Onairos",
-        className: "w-6 h-6"
+        className: "w-10 h-6"
       })
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
       className: "text-xs mt-2 text-gray-600",

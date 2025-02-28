@@ -9,4 +9,4 @@ Object.defineProperty(exports, "Onairos", {
     return _onairos.Onairos;
   }
 });
-var _onairos = require("./onairos");
+var _onairos = require("./onairos.jsx");

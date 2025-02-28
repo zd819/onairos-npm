@@ -1,11 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
-import { jwtDecode } from "jwt-decode";
-import AuthButtons from '../components/AuthButtons';
-import IndividualConnection from './IndividualConnection';
-import SecuritySetup from '../components/SecuritySetup';
-import UniversalOnboarding from '../components/UniversalOnboarding';
-import SignUp from '../components/SignUp';
+import AuthButtons from '../components/AuthButtons.jsx';
+import IndividualConnection from './IndividualConnection.js';
+import SecuritySetup from '../components/SecuritySetup.js';
+import UniversalOnboarding from '../components/UniversalOnboarding.js';
+import SignUp from '../components/SignUp.js';
 
 
 export default function Overlay({ 
@@ -28,7 +26,7 @@ export default function Overlay({
   isAuthenticated,
   onClose,
   onLoginSuccess,
-  setOthent,
+  setOthentUser,
   setHashedOthentSub,
   setEncryptedPin,
   accountInfo
@@ -36,6 +34,36 @@ export default function Overlay({
   const [loginError, setLoginError] = useState(null);
   const [loading, setLoading] = useState(false);
   const overlayRef = useRef(null);
+
+  // Manages Checkboxes
+  // Maintain the `isChecked` state for all checkboxes in the parent
+  const [checkedStates, setCheckedStates] = useState({});
+
+  const handleCheckboxChange = (key, isChecked) => {
+    console.log(key, " is being changed check to:", isChecked)
+    setCheckedStates((prevState) => ({
+      ...prevState,
+      [key]: isChecked,
+    }));
+    // Call the `changeGranted` function accordingly
+    changeGranted(isChecked ? 1 : -1);
+
+    // Call the `handleConnectionSelection` function
+    const product = requestData[key];
+    handleConnectionSelection(
+      dataRequester,
+      key,
+      product.index,
+      product.type,
+      product.reward,
+      isChecked
+    );
+    console.log(product, " Selection registered")
+    handleConnectionSelection(dataRequester, key, product.index, product.type, product.reward, true)
+
+  };
+
+
   const [currentView, setCurrentView] = useState(() => {
     if (isAuthenticated) {
       if (accountInfo && accountInfo.models?.length > 0) {
@@ -85,34 +113,6 @@ export default function Overlay({
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [handleClose]);
-
-  const handleGoogleSuccess = async (credentialResponse) => {
-    try {
-      setLoginError(null);
-      const decoded = jwtDecode(credentialResponse.credential);
-      const response = await fetch(`${API_URL}/auth/google`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: credentialResponse.credential,
-          email: decoded.email
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Google authentication failed');
-      }
-
-      const { token } = await response.json();
-      localStorage.setItem('onairosToken', token);
-      await handleLoginSuccess(decoded.email, true);
-    } catch (error) {
-      console.error('Google login failed:', error);
-      setLoginError('Google login failed. Please try again.');
-    }
-  };
 
   const handleInputChange = (e) => {
     setFormData({
@@ -176,7 +176,7 @@ export default function Overlay({
   const handleSecurityComplete = (securityDetails) => {
     // Handle security setup completion
     if (securityDetails.method === 'othent') {
-      setOthent(true);
+      setOthentUser(true);
     } else if (securityDetails.method === 'pin') {
       setEncryptedPin(securityDetails.value);
     }
@@ -249,9 +249,14 @@ export default function Overlay({
                 })
                 .map((key, index) => {
                   const product = requestData[key];
-                  const active = product.type === 'Personality' ? activeModels.includes(product.type) 
-                             : product.type === 'Avatar' ? avatar
-                             : product.type === 'Traits' ? traits : false;
+                  const active = product.type === 'Personality' 
+                    ? activeModels.includes(product.type)
+                    : product.type === 'Avatar'
+                    ? avatar
+                    : product.type === 'Traits'
+                    ? traits
+                    : false;
+
                   return (
                     <IndividualConnection
                       key={key}
@@ -262,8 +267,8 @@ export default function Overlay({
                       descriptions={product.descriptions}
                       rewards={product.reward}
                       size={key}
-                      changeGranted={changeGranted}
-                      onSelectionChange={(isSelected) => handleConnectionSelection(dataRequester, key, index, product.type, product.reward, isSelected)}
+                      isChecked={!!checkedStates[key]} // Pass the state from the parent
+                      onCheckboxChange={(isChecked) => handleCheckboxChange(key, isChecked)} // Handle the change
                     />
                   );
                 })}
@@ -280,7 +285,7 @@ export default function Overlay({
         return (
           <SignUp 
             onSignUpSuccess={handleLoginSuccess}
-            setOthent={setOthent}
+            setOthentUser={setOthentUser}
             setHashedOthentSub={setHashedOthentSub}
             setEncryptedPin={setEncryptedPin}
           />
@@ -316,7 +321,7 @@ export default function Overlay({
 
             <AuthButtons 
               onLoginSuccess={handleLoginSuccess}
-              setOthent={setOthent}
+              setOthentUser={setOthentUser}
               setHashedOthentSub={setHashedOthentSub}
               setEncryptedPin={setEncryptedPin}
             />
@@ -384,20 +389,20 @@ export default function Overlay({
   useEffect(() => {
   }, [isAuthenticated, accountInfo])
 
-  if (loading) {
-    return (
-      <>
-        <div className="fixed inset-0 bg-black bg-opacity-50" />
-        <div 
-          ref={overlayRef} 
-          className="fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out flex items-center justify-center"
-          style={{ height: 'calc(var(--vh, 1vh) * 50)' }}
-        >
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        </div>
-      </>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <>
+  //       <div className="fixed inset-0 bg-black bg-opacity-50" />
+  //       <div 
+  //         ref={overlayRef} 
+  //         className="fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out flex items-center justify-center"
+  //         style={{ height: 'calc(var(--vh, 1vh) * 50)' }}
+  //       >
+  //         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+  //       </div>
+  //     </>
+  //   );
+  // }
 
   return (
     <>

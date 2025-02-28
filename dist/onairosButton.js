@@ -1,17 +1,26 @@
-import React, {useEffect, useState, useRef} from 'react';
-// import {connect, decrypt} from '@othent/kms';
-import { Othent, AppInfo } from "@othent/kms";
-// import sha256 from 'crypto-js/sha256';
-import { rsaEncrypt } from './RSA.jsx';
-import getPin from './getPin.js';
-// import { Buffer } from 'buffer';
-import Overlay from './overlay/overlay.js';
-// import { miniApp } from '@telegram-apps/sdk';
-import { useLaunchParams } from "@telegram-apps/sdk-react";
+"use strict";
 
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.OnairosButton = OnairosButton;
+exports.default = void 0;
+var _react = _interopRequireWildcard(require("react"));
+var _kms = require("@othent/kms");
+var _RSA = require("./RSA.jsx");
+var _getPin = _interopRequireDefault(require("./getPin.js"));
+var _overlay = _interopRequireDefault(require("./overlay/overlay.js"));
+var _sdkReact = require("@telegram-apps/sdk-react");
+var _jsxRuntime = require("react/jsx-runtime");
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
+function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; } // import {connect, decrypt} from '@othent/kms';
+// import sha256 from 'crypto-js/sha256';
+// import { Buffer } from 'buffer';
+// import { miniApp } from '@telegram-apps/sdk';
 // Dynamic import for crypto-js's sha256
 const loadSha256 = async () => {
-  const module = await import(/* webpackChunkName: "sha256" */ 'crypto-js/sha256');
+  const module = await Promise.resolve().then(() => _interopRequireWildcard(require(/* webpackChunkName: "sha256" */'crypto-js/sha256')));
   return module.default;
 };
 
@@ -27,52 +36,46 @@ const loadSha256 = async () => {
 //   }
 // };
 
-
-
 // import Buffer
-export function OnairosButton({
-  requestData, 
-  webpageName, 
-  inferenceData = null, 
-  onComplete = null, 
-  autoFetch = true,
-  proofMode = false, 
-  textLayout = 'below', 
-  textColor = 'white',
-  login = false,
-  buttonType = 'pill',
-  loginReturn = null,
-  loginType = 'signIn',
-  visualType = 'full',
-}) {
-
+function OnairosButton(_ref) {
+  let {
+    requestData,
+    webpageName,
+    inferenceData = null,
+    onComplete = null,
+    autoFetch = true,
+    proofMode = false,
+    textLayout = 'below',
+    textColor = 'white',
+    login = false,
+    buttonType = 'pill',
+    loginReturn = null,
+    loginType = 'signIn',
+    visualType = 'full'
+  } = _ref;
   const isTelegramMiniApp = () => {
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     return typeof window.Telegram !== 'undefined' && /telegram/i.test(userAgent) && /mobile/i.test(navigator.userAgent);
   };
-
-  const [launchParams, setLaunchParams] = useState(null);
+  const [launchParams, setLaunchParams] = (0, _react.useState)(null);
 
   // Modified useEffect for launch params
-  useEffect(() => {
+  (0, _react.useEffect)(() => {
     let mounted = true;
-
     if (isTelegramMiniApp()) {
-      const params = useLaunchParams();
+      const params = (0, _sdkReact.useLaunchParams)();
       if (mounted) {
         setLaunchParams(params);
       }
     }
-
     return () => {
       mounted = false;
     };
   }, []);
 
   // Modified useEffect for handling launch parameters
-  useEffect(() => {
+  (0, _react.useEffect)(() => {
     if (!launchParams) return;
-
     console.log('Launch Params:', launchParams);
     if (launchParams.startParam) {
       try {
@@ -91,9 +94,8 @@ export function OnairosButton({
   }, [launchParams]);
 
   // Modified Telegram initialization
-  useEffect(() => {
+  (0, _react.useEffect)(() => {
     if (!isTelegramMiniApp()) return;
-
     try {
       const webApp = window.Telegram?.WebApp;
       if (webApp) {
@@ -103,63 +105,55 @@ export function OnairosButton({
       console.error('Error initializing Telegram WebApp:', err);
     }
   }, []);
-  
-  const [userData, setUserData] = useState(null);
-  const [showOverlay, setShowOverlay] = useState(false);
-  const [activeModels, setActiveModels] = useState([]);
-  const [granted, setGranted] = useState(0);
-  const [selectedRequests, setSelectedRequests] = useState({});
-  const [avatar, setAvatar] = useState(false);
-  const [traits, setTraits] = useState(false);
-  const [othentUser, setOthentUser] = useState(false);
-  const [othentConnected, setOthentConnected] = useState(false);
-  const NoAccount = useRef(false);
-  const NoModel = useRef(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authToken, setAuthToken] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [hashedOthentSub, setHashedOthentSub] = useState(null);
-  const [encryptedPin, setEncryptedPin] = useState(null);
-  const [authDialog, setAuthDialog] = useState({
+  const [userData, setUserData] = (0, _react.useState)(null);
+  const [showOverlay, setShowOverlay] = (0, _react.useState)(false);
+  const [activeModels, setActiveModels] = (0, _react.useState)([]);
+  const [granted, setGranted] = (0, _react.useState)(0);
+  const [selectedRequests, setSelectedRequests] = (0, _react.useState)({});
+  const [avatar, setAvatar] = (0, _react.useState)(false);
+  const [traits, setTraits] = (0, _react.useState)(false);
+  const [othentUser, setOthentUser] = (0, _react.useState)(false);
+  const [othentConnected, setOthentConnected] = (0, _react.useState)(false);
+  const NoAccount = (0, _react.useRef)(false);
+  const NoModel = (0, _react.useRef)(false);
+  const [isAuthenticated, setIsAuthenticated] = (0, _react.useState)(false);
+  const [authToken, setAuthToken] = (0, _react.useState)(null);
+  const [loading, setLoading] = (0, _react.useState)(true);
+  const [hashedOthentSub, setHashedOthentSub] = (0, _react.useState)(null);
+  const [encryptedPin, setEncryptedPin] = (0, _react.useState)(null);
+  const [authDialog, setAuthDialog] = (0, _react.useState)({
     show: false,
     type: null,
     data: null
   });
-  const [accountInfo, setAccountInfo] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isProcessingAuth, setIsProcessingAuth] = useState(false);
-  const hasProcessedCallback = useRef(false);
-  const [authError, setAuthError] = useState(null);
-  const [notif, setNotif] = useState({
-    show:false,
-    color:null,
-    message:null
+  const [accountInfo, setAccountInfo] = (0, _react.useState)(null);
+  const [isLoading, setIsLoading] = (0, _react.useState)(false);
+  const [isProcessingAuth, setIsProcessingAuth] = (0, _react.useState)(false);
+  const hasProcessedCallback = (0, _react.useRef)(false);
+  const [authError, setAuthError] = (0, _react.useState)(null);
+  const [notif, setNotif] = (0, _react.useState)({
+    show: false,
+    color: null,
+    message: null
   });
-
-
-
-  const [startParam, setStartParam] = useState(null);
-  const [message, setMessage] = useState("Initializing...");
+  const [startParam, setStartParam] = (0, _react.useState)(null);
+  const [message, setMessage] = (0, _react.useState)("Initializing...");
 
   // const telegram = useTelegram();
   // const { webApp } = telegram; 
   const API_URL = 'https://api2.onairos.uk';
   // const API_URL = 'http://localhost:8080';
 
-
   // Modified callback handling
-  useEffect(() => {
+  (0, _react.useEffect)(() => {
     if (!isTelegramMiniApp()) return;
-
     const handleCallback = async () => {
       const callbackURL = new URL(window.location.href);
       const code = callbackURL.searchParams.get("code");
       const state = callbackURL.searchParams.get("state");
-
       if (code && state && !hasProcessedCallback.current && !isProcessingAuth) {
         hasProcessedCallback.current = true;
         setIsProcessingAuth(true);
-        
         try {
           // Make API call to Onairos server to get Othent token
           const response = await fetch(`${API_URL}/auth/callback`, {
@@ -167,14 +161,17 @@ export function OnairosButton({
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ code, state })
+            body: JSON.stringify({
+              code,
+              state
+            })
           });
-
           if (!response.ok) {
             throw new Error('Failed to get Othent token');
           }
-
-          const { sessionId } = await response.json();
+          const {
+            sessionId
+          } = await response.json();
 
           // Start polling for the Othent token
           const pollForToken = async () => {
@@ -182,15 +179,14 @@ export function OnairosButton({
               try {
                 const tokenResponse = await fetch(`${API_URL}/auth/token/${sessionId}`, {
                   method: 'GET',
-                  headers: { 'Content-Type': 'application/json' }
+                  headers: {
+                    'Content-Type': 'application/json'
+                  }
                 });
-
                 if (!tokenResponse.ok) {
                   throw new Error(`HTTP error! Status: ${tokenResponse.status}`);
                 }
-
                 const data = await tokenResponse.json();
-                
                 if (data.othentToken) {
                   clearInterval(pollInterval);
                   // Complete authentication with the received token
@@ -215,9 +211,7 @@ export function OnairosButton({
               }
             }, 120000);
           };
-
           pollForToken();
-
         } catch (error) {
           console.error("Auth callback processing failed:", error);
           setAuthError(error.message);
@@ -225,49 +219,41 @@ export function OnairosButton({
         }
       }
     };
-
     handleCallback();
   }, []);
-
-  const completeAuth = async (othentToken) => {
+  const completeAuth = async othentToken => {
     try {
       const appInfo = {
         name: "Onairos",
         version: "1.0.0",
-        env: "production",
+        env: "production"
       };
-
-      const othent = new Othent({
+      const othent = new _kms.Othent({
         appInfo,
         throwErrors: true,
         auth0LogInMethod: "redirect",
         auth0RedirectURI: window.location.href,
-        auth0ReturnToURI: window.location.href,
+        auth0ReturnToURI: window.location.href
       });
 
       // Use the provided Othent token to complete authentication
       const userDetails = await othent.completeConnectionWithToken(othentToken);
-
       setIsAuthenticated(true);
       const sha256 = await loadSha256();
       const hashedOthentSub = sha256(userDetails.sub).toString();
       setHashedOthentSub(hashedOthentSub);
-      
-      const userOnairosPin = await getPin(hashedOthentSub);
+      const userOnairosPin = await (0, _getPin.default)(hashedOthentSub);
       setEncryptedPin(userOnairosPin.result);
       setAuthToken(userOnairosPin.token);
-
       await fetchAccountInfo(userDetails.email, true);
       setShowOverlay(true);
-
       localStorage.setItem('othentToken', JSON.stringify(userDetails));
       localStorage.setItem('onairosToken', userDetails.token);
-
     } catch (error) {
       setNotif({
         show: true,
         color: 'red',
-        message: 'An error has occurred, please try again',
+        message: 'An error has occurred, please try again'
       });
       console.error("Authentication failed:", error);
       throw error;
@@ -277,91 +263,78 @@ export function OnairosButton({
   };
 
   // Add error display
-  useEffect(() => {
+  (0, _react.useEffect)(() => {
     if (authError) {
       // Show error to user (implement your error UI here)
       console.error("Authentication error:", authError);
     }
   }, [authError]);
-
-    const isMobileDevice = () => {
-      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-      return /android|iphone|ipad|ipod|windows phone/i.test(userAgent);
+  const isMobileDevice = () => {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    return /android|iphone|ipad|ipod|windows phone/i.test(userAgent);
+  };
+  const findLargestDataObject = arrayOfObjects => {
+    // Update the hierarchy
+    const hierarchy = {
+      'Small': 16,
+      'Medium': 32,
+      'Large': 64
     };
-
-    
-
-    const findLargestDataObject = (arrayOfObjects) => {
-      // Update the hierarchy
-      const hierarchy = {
-        'Small': 16,
-        'Medium': 32,
-        'Large': 64
-      };
-    
-      let largestObject = null;
-      let largestValue = 0;
-    
-      arrayOfObjects.forEach(obj => {
-        const currentValue = hierarchy[obj.data];
-        if (currentValue > largestValue) {
-          largestValue = currentValue;
-          largestObject = obj;
-        }
-      });
-    
-      return largestValue;
-    };
-
-
-    useEffect(() => {
-      // Only proceed if autoFetch is true and onComplete is a function
-      if (autoFetch && inferenceData && typeof onComplete === 'function') {
-        const handleAPIResponse = async (event) => {
-          if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE' && event.data.unique === "Onairos-Response") {
-            const { APIurl, approved, accessToken } = event.data;
-
-            const trimSize = findLargestDataObject(approved);      
-            // Trim the data array based on the allowed number of items
-            const trimmedData = inferenceData.slice(0, trimSize);
-            // Fetch the new anime data from the API URL
-            const jsonData = 
-            {
-              Input: trimmedData // Your request payload
-            };
-
-
-            try {
-              const response = await fetch(APIurl, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${accessToken}`
-                },
-                body: JSON.stringify(jsonData)
-              });
-              const data = await response.json();
-              onComplete(data);
-            } catch (error) {
-              console.error(error);
-              onComplete(null, error);
-            }
-          }
-        };
-    
-        window.addEventListener('message', handleAPIResponse);
-        return () => {
-          window.removeEventListener('message', handleAPIResponse);
-        };
+    let largestObject = null;
+    let largestValue = 0;
+    arrayOfObjects.forEach(obj => {
+      const currentValue = hierarchy[obj.data];
+      if (currentValue > largestValue) {
+        largestValue = currentValue;
+        largestObject = obj;
       }
-    }, []);
-    
-    
-
-  const generateRandomData = (structure) => {
-    const generateRandomNumbers = (obj) => {
+    });
+    return largestValue;
+  };
+  (0, _react.useEffect)(() => {
+    // Only proceed if autoFetch is true and onComplete is a function
+    if (autoFetch && inferenceData && typeof onComplete === 'function') {
+      const handleAPIResponse = async event => {
+        if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE' && event.data.unique === "Onairos-Response") {
+          const {
+            APIurl,
+            approved,
+            accessToken
+          } = event.data;
+          const trimSize = findLargestDataObject(approved);
+          // Trim the data array based on the allowed number of items
+          const trimmedData = inferenceData.slice(0, trimSize);
+          // Fetch the new anime data from the API URL
+          const jsonData = {
+            Input: trimmedData // Your request payload
+          };
+          try {
+            const response = await fetch(APIurl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify(jsonData)
+            });
+            const data = await response.json();
+            onComplete(data);
+          } catch (error) {
+            console.error(error);
+            onComplete(null, error);
+          }
+        }
+      };
+      window.addEventListener('message', handleAPIResponse);
+      return () => {
+        window.removeEventListener('message', handleAPIResponse);
+      };
+    }
+  }, []);
+  const generateRandomData = structure => {
+    const generateRandomNumbers = obj => {
       if (Array.isArray(obj)) {
-        return obj.map((item) => generateRandomNumbers(item));
+        return obj.map(item => generateRandomNumbers(item));
       } else if (obj !== null && typeof obj === 'object') {
         return Object.keys(obj).reduce((acc, key) => {
           acc[key] = generateRandomNumbers(obj[key]);
@@ -373,33 +346,31 @@ export function OnairosButton({
     };
     return generateRandomNumbers(structure);
   };
-
   const handleConnectionSelection = (dataRequester, key, index, type, reward, isSelected) => {
     setSelectedRequests(prev => ({
       ...prev,
-      [`${dataRequester}-${key}-${index}`]: { type, reward, isSelected }
+      [`${dataRequester}-${key}-${index}`]: {
+        type,
+        reward,
+        isSelected
+      }
     }));
   };
-
-  const changeGranted = (value) => {
-    setGranted((prev) => Math.max(prev + value, 0));
+  const changeGranted = value => {
+    setGranted(prev => Math.max(prev + value, 0));
   };
-  
-
   const handleAPIRequestForMobile = async () => {
     if (isMobileDevice()) {
       setShowOverlay(true);
-    } 
-    return ;
+    }
+    return;
   };
-
   const rejectDataRequest = () => {
     setShowOverlay(false);
     if (onComplete) {
       onComplete('rejected');
     }
   };
-
   const makeApiCall = async (approvedRequests, pin, othentSub) => {
     const jsonData = {
       Info: {
@@ -408,20 +379,18 @@ export function OnairosButton({
         web3Type: 'othent',
         Domain: window.location.href,
         proofMode: false,
-        OthentSub: othentSub,
-      },
+        OthentSub: othentSub
+      }
     };
-  
     try {
       const response = await fetch('https://api2.onairos.uk/getAPIurl', {
         // const response = await fetch('http://localhost:8080/getAPIurl', {
-          method: 'POST',
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(jsonData),
+        body: JSON.stringify(jsonData)
       });
-  
       const data = await response.json();
       if (autoFetch && onComplete) {
         onComplete(data);
@@ -430,9 +399,10 @@ export function OnairosButton({
           show: true,
           type: 'apiURL',
           data: {
-            code: data, // Updated from response.body.apiUrl to data.apiUrl
-            state: pin,
-          },
+            code: data,
+            // Updated from response.body.apiUrl to data.apiUrl
+            state: pin
+          }
         });
         // chrome.runtime.sendMessage({
         //   source: 'dataRequestPage',
@@ -449,17 +419,15 @@ export function OnairosButton({
       }
     }
   };
-  
   const sendDataRequest = async () => {
     if (granted <= 0) return;
-  
     try {
       // Retrieve approved requests
-      const approvedRequests = Object.values(selectedRequests)
-        .filter((req) => req.isSelected)
-        .map((req) => ({ type: req.type, reward: req.reward }));
-  
-      if (encryptedPin==null && othentUser && !othentConnected) {
+      const approvedRequests = Object.values(selectedRequests).filter(req => req.isSelected).map(req => ({
+        type: req.type,
+        reward: req.reward
+      }));
+      if (encryptedPin == null && othentUser && !othentConnected) {
         setAuthDialog({
           show: true,
           type: 'debug',
@@ -468,38 +436,39 @@ export function OnairosButton({
             state1: encryptedPin,
             state2: othentConnected,
             state3: othentUser
-          },
+          }
         });
-  
         const appInfo = {
           name: 'Onairos',
           version: '1.0.0',
-          env: 'production',
+          env: 'production'
         };
-        const othent = new Othent({ appInfo, throwErrors: false });
+        const othent = new _kms.Othent({
+          appInfo,
+          throwErrors: false
+        });
         const userDetails = await othent.connect();
-  
         const sha256 = await loadSha256();
         const hashedSub = sha256(userDetails.sub).toString();
         setHashedOthentSub(hashedSub);
-  
+
         // Wait for the pin to be retrieved
         // const userOnairosDetails = await getPin((userDetails.sub).toString());
-        const userOnairosDetails = await getPin(hashedSub);
+        const userOnairosDetails = await (0, _getPin.default)(hashedSub);
         const pin = userOnairosDetails.result;
         setEncryptedPin(pin);
         // setAuthToken(userOnairosDetails.token);
-  
+
         setOthentConnected(true);
         setAuthDialog({
           show: true,
           type: 'callback',
           data: {
             code: 'Just Before API',
-            state: userOnairosDetails.token,
-          },
+            state: userOnairosDetails.token
+          }
         });
-  
+
         // Make API call with newly retrieved data
         await makeApiCall(approvedRequests, pin, hashedSub);
       } else {
@@ -516,13 +485,11 @@ export function OnairosButton({
       setShowOverlay(false);
     }
   };
-
   const validateRequestData = () => {
     const validKeys = ['Small', 'Medium', 'Large'];
     const requiredProperties = ['type', 'descriptions', 'reward'];
-    if( typeof webpageName !== 'string'){
+    if (typeof webpageName !== 'string') {
       throw new Error(`Property webpageName must be a String`);
-
     }
     for (const key of validKeys) {
       if (!(key in requestData)) {
@@ -549,49 +516,48 @@ export function OnairosButton({
       console.log('Onairos is not installed.');
     }
     // Or listen for the onairosReady event
-    window.addEventListener('onairosReady', function() {
+    window.addEventListener('onairosReady', function () {
       console.log('Onairos was just detected!');
     });
     return typeof window.onairos !== 'undefined';
   };
-
   const validateDomain = async () => {
-      // Your logic to validate the domain goes here
-      // For example, you could make an API request to your backend
-      return fetch('https://api2.onairos.uk/valid/validate-domain', {
-        // return fetch('http://localhost:8080/valid/validate-domain', {
-          method: 'POST',
+    // Your logic to validate the domain goes here
+    // For example, you could make an API request to your backend
+    return fetch('https://api2.onairos.uk/valid/validate-domain', {
+      // return fetch('http://localhost:8080/valid/validate-domain', {
+      method: 'POST',
       headers: {
-      'Content-Type': 'application/json',
-      },
-      }).then(r => r.json().then(data => ({status: r.status, body: data})))
-      .catch(error => console.error(error));
+        'Content-Type': 'application/json'
+      }
+    }).then(r => r.json().then(data => ({
+      status: r.status,
+      body: data
+    }))).catch(error => console.error(error));
   };
   const OnairosChecks = async () => {
     if (checkOnairosExtension()) {
-        // The extension is installed
+      // The extension is installed
+      // Proceed with the domain validation request or any other logic
+      if ((await validateDomain()).body.status) {
+        // Valid Domain
         // Proceed with the domain validation request or any other logic
-        if((await validateDomain()).body.status){
-
-          // Valid Domain
-          // Proceed with the domain validation request or any other logic
-          try {
-            validateRequestData();
-            await ConnectOnairos();
-          } catch (error) {
-            // Handle any errors here
-            console.error("Error connecting to Onairos", error);
-          }
-        }else{
-          console.error("Please make sure this is an Onairos Partnered app");
+        try {
+          validateRequestData();
+          await ConnectOnairos();
+        } catch (error) {
+          // Handle any errors here
+          console.error("Error connecting to Onairos", error);
         }
+      } else {
+        console.error("Please make sure this is an Onairos Partnered app");
+      }
     } else {
-        // The extension is not installed
-        // Open the Chrome Web Store page to download the extension
-        window.open('https://chromewebstore.google.com/detail/onairos/apkfageplidiblifhnadehmplfccapkf', '_blank');
-    }   
+      // The extension is not installed
+      // Open the Chrome Web Store page to download the extension
+      window.open('https://chromewebstore.google.com/detail/onairos/apkfageplidiblifhnadehmplfccapkf', '_blank');
+    }
   };
-
   const OnairosPublicKey = `
     -----BEGIN PUBLIC KEY-----
     MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4wkWvRPaJiY8CwQ5BoJI
@@ -603,10 +569,7 @@ export function OnairosButton({
     lQIDAQAB
     -----END PUBLIC KEY-----
       `;
-
   const domain = window.location.href;
-
-
   const openTerminal = async () => {
     if (isMobileDevice()) {
       // Testing
@@ -622,36 +585,35 @@ export function OnairosButton({
       key: "Key"
     });
   };
-
-  useEffect(() => {
+  (0, _react.useEffect)(() => {
     // Listener to receive messages
-    const handleMessage = (event) => {
+    const handleMessage = event => {
       if (event.data && event.data.action === 'terminalOpened') {
         ConnectOnairos();
       }
     };
-  
     window.addEventListener('message', handleMessage);
     return () => {
       window.removeEventListener('message', handleMessage);
     };
   }, []);
-
-
   const ConnectOnairos = async () => {
-    try{
+    try {
       const appInfo = {
         name: "Onairos",
         version: "1.0.0",
-        env: "production",
+        env: "production"
       };
-      const othent = new Othent({ appInfo, throwErrors: false});
+      const othent = new _kms.Othent({
+        appInfo,
+        throwErrors: false
+      });
       // Get User Othent Secure Details
       // const { connect} = await loadOthentKms();
       const userDetails = await othent.connect();
       const sha256 = await loadSha256();
       const hashedOthentSub = sha256(userDetails.sub).toString();
-      const encryptedPin = await getPin(hashedOthentSub);
+      const encryptedPin = await (0, _getPin.default)(hashedOthentSub);
       console.log("Got your Pin");
       function convertToBuffer(string) {
         try {
@@ -666,60 +628,48 @@ export function OnairosButton({
           console.error("Error converting to Buffer :", e);
         }
       }
-      
       const bufferPIN = convertToBuffer(encryptedPin.result);
-      
+
       // const {decrypt }= await loadOthentKms();
       const userPin = await othent.decrypt(bufferPIN);
       // RSA Encrypt the PIN to transmit to Terminal and backend
-      rsaEncrypt(OnairosPublicKey, userPin)
-      .then(encryptedData => {
-
-          // Prepare the data to be sent
-          window.postMessage({
-            source: 'webpage',
-            type: 'GET_API_URL',
-            webpageName: webpageName,
-            domain:domain,
-            requestData: requestData,
-            proofMode:proofMode,
-            HashedOthentSub:hashedOthentSub,
-            EncryptedUserPin:encryptedData
-          });
-      })
-      .catch(error => {
-          console.error("Encryption failed:", error);
+      (0, _RSA.rsaEncrypt)(OnairosPublicKey, userPin).then(encryptedData => {
+        // Prepare the data to be sent
+        window.postMessage({
+          source: 'webpage',
+          type: 'GET_API_URL',
+          webpageName: webpageName,
+          domain: domain,
+          requestData: requestData,
+          proofMode: proofMode,
+          HashedOthentSub: hashedOthentSub,
+          EncryptedUserPin: encryptedData
+        });
+      }).catch(error => {
+        console.error("Encryption failed:", error);
       });
-
-    }catch(e){
+    } catch (e) {
       console.error("Error Sending Data to Terminal: ", e);
     }
-
   };
 
   // Styling and button class based on visual type and login mode
-  const buttonClass = 
-    `flex items-center justify-center font-bold rounded cursor-pointer ${
-    buttonType === 'pill' ? 'px-4 py-2' : 'w-12 h-12'
-    } ${login ? 'bg-white border border-gray-300' : 'bg-transparent'}
-    ${ isMobileDevice()? '':'OnairosConnect'}
-    `
-  ;
-
+  const buttonClass = `flex items-center justify-center font-bold rounded cursor-pointer ${buttonType === 'pill' ? 'px-4 py-2' : 'w-12 h-12'} ${login ? 'bg-white border border-gray-300' : 'bg-transparent'}
+    ${isMobileDevice() ? '' : 'OnairosConnect'}
+    `;
   const buttonStyle = {
     flexDirection: textLayout === 'below' ? 'column' : 'row',
     backgroundColor: login ? '#ffffff' : 'transparent',
     color: login ? 'black' : textColor,
-    border: login ? '1px solid #ddd' : '1px solid transparent',
+    border: login ? '1px solid #ddd' : '1px solid transparent'
   };
 
   // Icon and text style based on the visualType
   const logoStyle = {
     width: '20px',
     height: '20px',
-    marginRight: visualType === 'full' ? '12px' : '0',  // Space between icon and text only in full mode
+    marginRight: visualType === 'full' ? '12px' : '0' // Space between icon and text only in full mode
   };
-
   const getText = () => {
     switch (loginType) {
       case 'signUp':
@@ -733,18 +683,16 @@ export function OnairosButton({
 
   // Make sure you have this environment variable set
 
-  const fetchAccountInfo = async (identifier, isEmail = false) => {
+  const fetchAccountInfo = async function (identifier) {
+    let isEmail = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
     try {
-      const jsonData = isEmail?
-      {
-        Info:{
+      const jsonData = isEmail ? {
+        Info: {
           identifier: identifier
         }
-      }
-      :
-      { 
-        Info:{
-          userName:identifier
+      } : {
+        Info: {
+          userName: identifier
         }
       };
       const endpoint = isEmail ? '/getAccountInfo/email' : '/getAccountInfo';
@@ -756,33 +704,27 @@ export function OnairosButton({
         },
         body: JSON.stringify(jsonData)
       });
-
       if (!response.ok) {
         throw new Error('Failed to fetch account info');
       }
-
       const data = await response.json();
-      
       if (data.AccountInfo === "No Account Found") {
         NoAccount.current = true;
         setAccountInfo(null);
         return null;
       }
       setAccountInfo(data.AccountInfo);
-      
       if (data.AccountInfo.models) {
         setActiveModels(data.AccountInfo.models);
       } else {
         NoModel.current = true;
       }
-
       if (data.AccountInfo.avatar) {
         setAvatar(true);
       }
       if (data.AccountInfo.UserTraits) {
         setTraits(true);
       }
-
       if (data.AccountInfo.othent) {
         setOthentUser(true);
       }
@@ -798,17 +740,15 @@ export function OnairosButton({
       throw error;
     }
   };
-
   const checkExistingToken = async () => {
     try {
       const onairosToken = localStorage.getItem('onairosToken');
       const legacyToken = localStorage.getItem('token');
       const token = onairosToken || legacyToken;
-
       if (token) {
         const response = await fetch('https://api2.onairos.uk/verifyToken', {
           // const response = await fetch('http://localhost:8080/verifyToken', {
-            headers: {
+          headers: {
             'Authorization': `Bearer ${token}`
           }
         });
@@ -831,28 +771,26 @@ export function OnairosButton({
       setLoading(false);
     }
   };
-
-  useEffect(() => {
+  (0, _react.useEffect)(() => {
     if (isMobileDevice()) {
       checkExistingToken();
     }
   }, []);
-
   const handleCloseOverlay = () => {
     setGranted(0);
     setShowOverlay(false);
   };
 
   // Check for existing token and fetch account info on mount
-  useEffect(() => {
+  (0, _react.useEffect)(() => {
     const token = localStorage.getItem('onairosToken');
     const username = localStorage.getItem('username');
     if (token && username) {
       fetchAccountInfo(username, false);
     }
   }, []);
-
-  const handleLoginSuccess = async (identifier, isEmail = false) => {
+  const handleLoginSuccess = async function (identifier) {
+    let isEmail = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
     try {
       const accountData = await fetchAccountInfo(identifier, isEmail);
       // Update authentication first
@@ -868,12 +806,11 @@ export function OnairosButton({
   };
 
   // Check for stored tokens on mount
-  useEffect(() => {
+  (0, _react.useEffect)(() => {
     const checkStoredAuth = async () => {
       const token = localStorage.getItem('onairosToken');
       const username = localStorage.getItem('username');
       const othentToken = localStorage.getItem('othentToken');
-
       if (token) {
         try {
           // Verify token is still valid
@@ -884,7 +821,6 @@ export function OnairosButton({
               'Authorization': `Bearer ${token}`
             }
           });
-
           if (response.ok) {
             setIsAuthenticated(true);
             if (username) {
@@ -905,115 +841,115 @@ export function OnairosButton({
         }
       }
     };
-
     checkStoredAuth();
   }, []);
-
-  return (
-    <>
-      <div className="flex items-center justify-center">
-        <button
-          className={buttonClass}
-          onClick={openTerminal} 
-          style={buttonStyle}
-        >
-          {/* Render based on visualType prop */}
-          {(visualType === 'full' || visualType === 'icon') && (
-            <img
-              src={login ? "https://onairos.sirv.com/Images/OnairosWhite.png" : "https://onairos.sirv.com/Images/OnairosBlack.png"}
-              alt="Onairos Logo"
-              style={logoStyle}
-              className={`${buttonType === 'pill' ? 'w-6 h-6' : 'w-8 h-8'} object-contain`}
-            />
-          )}
-
-          {/* Only render text if visualType is 'full' or 'textOnly' */}
-          {(visualType === 'full' || visualType === 'textOnly') && (
-            <span className={`${login ? 'text-black' : textColor === 'black' ? 'text-black' : 'text-white'} ${visualType === 'icon' ? 'sr-only' : ''} ${textLayout === 'right' ? 'ml-2' : textLayout === 'left' ? 'mr-2' : ''}`}>
-              {getText()}
-            </span>
-          )}
-        </button>
-      </div>
-      
-      {/* {notif.show && <Notification message={notif.message} color={notif.color} />} */}
-      {authDialog.show && 
-      // {false && 
-        (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setAuthDialog({ show: false, type: null, data: null })} />
-          <div className="relative bg-white rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <button 
-              onClick={() => setAuthDialog({ show: false, type: null, data: null })}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <span className="sr-only">Close</span>
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            
-            <h3 className="text-lg font-semibold mb-4">
-              {authDialog.type === 'callback' ? 'Callback Details' : 'Authentication Result'}
-            </h3>
-
-            <h3 className="text-lg font-semibold mb-4">
-              {authDialog.type === 'debug' ? 'Debug Results' : 'Authentication Result'}
-            </h3>
-           
-            <h3 className="text-lg font-semibold mb-4">
-              {authDialog.type === 'apiURL' ? 'API Url Returned' : 'Authentication Result'}
-            </h3>
-            
-            <div className="bg-gray-50 rounded p-4 overflow-x-auto">
-              <pre className="text-sm">
-                {JSON.stringify(authDialog.data, null, 2)}
-              </pre>
-            </div>
-            
-            {authDialog.type === 'auth' && (
-              <div className={`mt-4 p-3 rounded ${authDialog.data?.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {authDialog.data?.success ? 'Authentication successful!' : 'Authentication failed'}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      {isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading your account...</p>
-          </div>
-        </div>
-      )}
-      {showOverlay && !isLoading && (
-        <Overlay
-          setOthentConnected={setOthentConnected}
-          dataRequester={webpageName}
-          NoAccount={NoAccount}
-          NoModel={NoModel}
-          accountInfo={accountInfo}
-          activeModels={activeModels}
-          avatar={avatar}
-          traits={traits}
-          requestData={requestData}
-          handleConnectionSelection={handleConnectionSelection}
-          changeGranted={changeGranted}
-          granted={granted}
-          allowSubmit={granted > 0}
-          rejectDataRequest={rejectDataRequest}
-          sendDataRequest={sendDataRequest}
-          isAuthenticated={isAuthenticated}
-          onLoginSuccess={handleLoginSuccess}
-          onClose={handleCloseOverlay}
-          setOthentUser={setOthentUser}
-          setHashedOthentSub={setHashedOthentSub}
-          setEncryptedPin={setEncryptedPin}
-        />
-      )}
-    </>
-  )
+  return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      className: "flex items-center justify-center",
+      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+        className: buttonClass,
+        onClick: openTerminal,
+        style: buttonStyle,
+        children: [(visualType === 'full' || visualType === 'icon') && /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+          src: login ? "https://onairos.sirv.com/Images/OnairosWhite.png" : "https://onairos.sirv.com/Images/OnairosBlack.png",
+          alt: "Onairos Logo",
+          style: logoStyle,
+          className: `${buttonType === 'pill' ? 'w-6 h-6' : 'w-8 h-8'} object-contain`
+        }), (visualType === 'full' || visualType === 'textOnly') && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+          className: `${login ? 'text-black' : textColor === 'black' ? 'text-black' : 'text-white'} ${visualType === 'icon' ? 'sr-only' : ''} ${textLayout === 'right' ? 'ml-2' : textLayout === 'left' ? 'mr-2' : ''}`,
+          children: getText()
+        })]
+      })
+    }), authDialog.show &&
+    /*#__PURE__*/
+    // {false && 
+    (0, _jsxRuntime.jsxs)("div", {
+      className: "fixed inset-0 z-50 flex items-center justify-center",
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "fixed inset-0 bg-black bg-opacity-50",
+        onClick: () => setAuthDialog({
+          show: false,
+          type: null,
+          data: null
+        })
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "relative bg-white rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+          onClick: () => setAuthDialog({
+            show: false,
+            type: null,
+            data: null
+          }),
+          className: "absolute top-4 right-4 text-gray-400 hover:text-gray-600",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "sr-only",
+            children: "Close"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+            className: "h-6 w-6",
+            fill: "none",
+            viewBox: "0 0 24 24",
+            stroke: "currentColor",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+              strokeLinecap: "round",
+              strokeLinejoin: "round",
+              strokeWidth: 2,
+              d: "M6 18L18 6M6 6l12 12"
+            })
+          })]
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("h3", {
+          className: "text-lg font-semibold mb-4",
+          children: authDialog.type === 'callback' ? 'Callback Details' : 'Authentication Result'
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("h3", {
+          className: "text-lg font-semibold mb-4",
+          children: authDialog.type === 'debug' ? 'Debug Results' : 'Authentication Result'
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("h3", {
+          className: "text-lg font-semibold mb-4",
+          children: authDialog.type === 'apiURL' ? 'API Url Returned' : 'Authentication Result'
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "bg-gray-50 rounded p-4 overflow-x-auto",
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("pre", {
+            className: "text-sm",
+            children: JSON.stringify(authDialog.data, null, 2)
+          })
+        }), authDialog.type === 'auth' && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: `mt-4 p-3 rounded ${authDialog.data?.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`,
+          children: authDialog.data?.success ? 'Authentication successful!' : 'Authentication failed'
+        })]
+      })]
+    }), isLoading && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50",
+      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "bg-white p-6 rounded-lg shadow-xl",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
+          className: "mt-4 text-gray-600",
+          children: "Loading your account..."
+        })]
+      })
+    }), showOverlay && !isLoading && /*#__PURE__*/(0, _jsxRuntime.jsx)(_overlay.default, {
+      setOthentConnected: setOthentConnected,
+      dataRequester: webpageName,
+      NoAccount: NoAccount,
+      NoModel: NoModel,
+      accountInfo: accountInfo,
+      activeModels: activeModels,
+      avatar: avatar,
+      traits: traits,
+      requestData: requestData,
+      handleConnectionSelection: handleConnectionSelection,
+      changeGranted: changeGranted,
+      granted: granted,
+      allowSubmit: granted > 0,
+      rejectDataRequest: rejectDataRequest,
+      sendDataRequest: sendDataRequest,
+      isAuthenticated: isAuthenticated,
+      onLoginSuccess: handleLoginSuccess,
+      onClose: handleCloseOverlay,
+      setOthentUser: setOthentUser,
+      setHashedOthentSub: setHashedOthentSub,
+      setEncryptedPin: setEncryptedPin
+    })]
+  });
 }
-
-export default OnairosButton;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+var _default = exports.default = OnairosButton;

@@ -1,19 +1,17 @@
 "use strict";
 
-var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = Overlay;
 var _react = require("react");
-var _google = require("@react-oauth/google");
-var _jwtDecode = require("jwt-decode");
-var _AuthButtons = _interopRequireDefault(require("../components/AuthButtons"));
-var _IndividualConnection = _interopRequireDefault(require("./IndividualConnection"));
-var _SecuritySetup = _interopRequireDefault(require("../components/SecuritySetup"));
-var _UniversalOnboarding = _interopRequireDefault(require("../components/UniversalOnboarding"));
-var _SignUp = _interopRequireDefault(require("../components/SignUp"));
+var _AuthButtons = _interopRequireDefault(require("../components/AuthButtons.jsx"));
+var _IndividualConnection = _interopRequireDefault(require("./IndividualConnection.js"));
+var _SecuritySetup = _interopRequireDefault(require("../components/SecuritySetup.js"));
+var _UniversalOnboarding = _interopRequireDefault(require("../components/UniversalOnboarding.js"));
+var _SignUp = _interopRequireDefault(require("../components/SignUp.js"));
 var _jsxRuntime = require("react/jsx-runtime");
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 function Overlay(_ref) {
   let {
     setOthentConnected,
@@ -35,7 +33,7 @@ function Overlay(_ref) {
     isAuthenticated,
     onClose,
     onLoginSuccess,
-    setOthent,
+    setOthentUser,
     setHashedOthentSub,
     setEncryptedPin,
     accountInfo
@@ -43,6 +41,25 @@ function Overlay(_ref) {
   const [loginError, setLoginError] = (0, _react.useState)(null);
   const [loading, setLoading] = (0, _react.useState)(false);
   const overlayRef = (0, _react.useRef)(null);
+
+  // Manages Checkboxes
+  // Maintain the `isChecked` state for all checkboxes in the parent
+  const [checkedStates, setCheckedStates] = (0, _react.useState)({});
+  const handleCheckboxChange = (key, isChecked) => {
+    console.log(key, " is being changed check to:", isChecked);
+    setCheckedStates(prevState => ({
+      ...prevState,
+      [key]: isChecked
+    }));
+    // Call the `changeGranted` function accordingly
+    changeGranted(isChecked ? 1 : -1);
+
+    // Call the `handleConnectionSelection` function
+    const product = requestData[key];
+    handleConnectionSelection(dataRequester, key, product.index, product.type, product.reward, isChecked);
+    console.log(product, " Selection registered");
+    handleConnectionSelection(dataRequester, key, product.index, product.type, product.reward, true);
+  };
   const [currentView, setCurrentView] = (0, _react.useState)(() => {
     if (isAuthenticated) {
       if (accountInfo && accountInfo.models?.length > 0) {
@@ -91,33 +108,6 @@ function Overlay(_ref) {
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [handleClose]);
-  const handleGoogleSuccess = async credentialResponse => {
-    try {
-      setLoginError(null);
-      const decoded = (0, _jwtDecode.jwtDecode)(credentialResponse.credential);
-      const response = await fetch(`${API_URL}/auth/google`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          token: credentialResponse.credential,
-          email: decoded.email
-        })
-      });
-      if (!response.ok) {
-        throw new Error('Google authentication failed');
-      }
-      const {
-        token
-      } = await response.json();
-      localStorage.setItem('onairosToken', token);
-      await handleLoginSuccess(decoded.email, true);
-    } catch (error) {
-      console.error('Google login failed:', error);
-      setLoginError('Google login failed. Please try again.');
-    }
-  };
   const handleInputChange = e => {
     setFormData({
       ...formData,
@@ -173,7 +163,7 @@ function Overlay(_ref) {
   const handleSecurityComplete = securityDetails => {
     // Handle security setup completion
     if (securityDetails.method === 'othent') {
-      setOthent(true);
+      setOthentUser(true);
     } else if (securityDetails.method === 'pin') {
       setEncryptedPin(securityDetails.value);
     }
@@ -252,8 +242,9 @@ function Overlay(_ref) {
               descriptions: product.descriptions,
               rewards: product.reward,
               size: key,
-              changeGranted: changeGranted,
-              onSelectionChange: isSelected => handleConnectionSelection(dataRequester, key, index, product.type, product.reward, isSelected)
+              isChecked: !!checkedStates[key] // Pass the state from the parent
+              ,
+              onCheckboxChange: isChecked => handleCheckboxChange(key, isChecked) // Handle the change
             }, key);
           })
         })
@@ -265,7 +256,7 @@ function Overlay(_ref) {
       case 'signup':
         return /*#__PURE__*/(0, _jsxRuntime.jsx)(_SignUp.default, {
           onSignUpSuccess: handleLoginSuccess,
-          setOthent: setOthent,
+          setOthentUser: setOthentUser,
           setHashedOthentSub: setHashedOthentSub,
           setEncryptedPin: setEncryptedPin
         });
@@ -299,7 +290,7 @@ function Overlay(_ref) {
             children: loginError
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_AuthButtons.default, {
             onLoginSuccess: handleLoginSuccess,
-            setOthent: setOthent,
+            setOthentUser: setOthentUser,
             setHashedOthentSub: setHashedOthentSub,
             setEncryptedPin: setEncryptedPin
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -359,22 +350,22 @@ function Overlay(_ref) {
     };
   }, []);
   (0, _react.useEffect)(() => {}, [isAuthenticated, accountInfo]);
-  if (loading) {
-    return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
-      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "fixed inset-0 bg-black bg-opacity-50"
-      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        ref: overlayRef,
-        className: "fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out flex items-center justify-center",
-        style: {
-          height: 'calc(var(--vh, 1vh) * 50)'
-        },
-        children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"
-        })
-      })]
-    });
-  }
+
+  // if (loading) {
+  //   return (
+  //     <>
+  //       <div className="fixed inset-0 bg-black bg-opacity-50" />
+  //       <div 
+  //         ref={overlayRef} 
+  //         className="fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out flex items-center justify-center"
+  //         style={{ height: 'calc(var(--vh, 1vh) * 50)' }}
+  //       >
+  //         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+  //       </div>
+  //     </>
+  //   );
+  // }
+
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "fixed inset-0 bg-black bg-opacity-50",

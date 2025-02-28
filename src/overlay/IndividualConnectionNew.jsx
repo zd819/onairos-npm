@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Box from './box';
+import Box from './CheckBox';
 import PropTypes from 'prop-types';
 
 function IndividualConnection(props) {

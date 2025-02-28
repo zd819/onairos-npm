@@ -1,52 +1,47 @@
-import React, { useState, useRef, useEffect } from 'react';
-import Box from './box';
-// import traitsIcon;
-// import interestIcon;
-// import Sentiment from '../icons/Sentiment.png';
-// import Avatar from '../icons/Avatar.png';
-// import Avatar2 from '../icons/Avatar2.png';
-// import Trait from '../icons/Trait.png';
+import React from 'react';
 import PropTypes from 'prop-types';
 
-export default function IndividualConnection(props) {
-  const [selected, setSelected] = useState(false);
-
+export default function IndividualConnection({
+  active,
+  title,
+  id,
+  number,
+  descriptions,
+  rewards,
+  size,
+  isChecked,
+  onCheckboxChange,
+}) {
   return (
     <div className="bg-white rounded-lg p-4 shadow border border-gray-200">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Box
-            active={props.active}
-            onSelectionChange={props.onSelectionChange}
-            changeGranted={props.changeGranted}
-            setSelected={setSelected} 
-            number={props.number + 1} 
-            type={"Test"} 
-            title={props.title}
-          /> 
+          <div className="group">
+            <div>
+              <input
+                disabled={!active}
+                type="checkbox"
+                checked={isChecked}
+                onChange={(e) => onCheckboxChange(e.target.checked)}
+              />
+            </div>
+          </div>
         </div>
+
         <div className="flex items-center">
-          {/* {props.title === "Traits" ? (
-            // Image to represent Traits
-            <img src={Trait} alt="Traits Icon" className="w-6 h-6 mr-2" />
-          ) :
-          props.title === "Avatar" ? (
-            // Image to represent Traits
-            <img src={Avatar2} alt="Avatar Icon" className="w-8 h-8 mr-2" />
-          ) :
-           (
-            // Image to represent Interest
-            <img src={Sentiment} alt="Interest Icon" className="w-6 h-6 mr-2" />
-          )} */}
-          {/* <p className="text-sm font-medium text-gray-900 dark:text-gray-300">
-            Access your Onairos {Insight}
-          </p> */}
+          {/* Optional icons or additional UI elements */}
         </div>
-        {props.descriptions && (props.title !== "Avatar") && (
-          <p className="text-sm font-medium text-gray-900 dark:text-gray-300">Intent: {props.descriptions}</p>
+
+        {descriptions && title !== "Avatar" && (
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-300">
+            Intent: {descriptions}
+          </p>
         )}
-        {props.rewards && (
-          <p className="text-sm font-medium text-gray-900 dark:text-gray-300">Rewards: {props.rewards}</p>
+
+        {rewards && (
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-300">
+            Rewards: {rewards}
+          </p>
         )}
       </div>
     </div>
@@ -61,6 +56,6 @@ IndividualConnection.propTypes = {
   descriptions: PropTypes.string,
   rewards: PropTypes.string,
   size: PropTypes.string.isRequired,
-  changeGranted: PropTypes.func.isRequired,
-  onSelectionChange: PropTypes.func.isRequired
+  isChecked: PropTypes.bool.isRequired,
+  onCheckboxChange: PropTypes.func.isRequired,
 };

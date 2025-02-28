@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import GoogleButton from './GoogleButton';
-import OnairosAppButton from './OnairosAppButton';
-import OthentButton from './OthentButton';
+import OnairosAppButton from './OnairosAppButton.jsx';
+ // import GoogleButton from './GoogleButton';
+import TestTelegramButton from './TestTelegramButton.js';
 
 export default function AuthButtons({ 
   onLoginSuccess, 
@@ -36,8 +36,9 @@ export default function AuthButtons({
 
   return (
     <div className="flex flex-row justify-center items-center space-x-4">
-      {/* <GoogleButton onSuccess={onLoginSuccess} /> */}
-      <OthentButton onSuccess={handleOthentSuccess} onLoginSuccess={othentLogin}/>
+      {/* <OthentButton onSuccess={handleOthentSuccess} onLoginSuccess={othentLogin}/> */}
+      {/* <GoogleButton onLoginSuccess={othentLogin}/> */}
+      <TestTelegramButton />
       <OnairosAppButton 
         hasSavedCredentials={hasSavedCredentials}
         onSuccess={onLoginSuccess}
