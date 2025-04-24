@@ -647,12 +647,32 @@ export function OnairosButton({
       };
       const othent = new Othent({ appInfo, throwErrors: false});
       // Get User Othent Secure Details
-      // const { connect} = await loadOthentKms();
       const userDetails = await othent.connect();
       const sha256 = await loadSha256();
       const hashedOthentSub = sha256(userDetails.sub).toString();
-      const encryptedPin = await getPin(hashedOthentSub);
+      const encryptedPinResponse = await getPin(hashedOthentSub);
       console.log("Got your Pin");
+      
+      // Check if user account exists
+      if (encryptedPinResponse.result === "No user account") {
+        // No user account found, trigger universal onboarding
+        console.log("No user account found, triggering universal onboarding");
+        
+        // Send message to trigger universal onboarding without encrypted pin
+        window.postMessage({
+          source: 'webpage',
+          type: 'TRIGGER_ONBOARDING',
+          webpageName: webpageName,
+          domain: domain,
+          requestData: requestData,
+          proofMode: proofMode,
+          HashedOthentSub: hashedOthentSub
+          // No EncryptedUserPin field
+        });
+        
+        return; // Exit the function early
+      }
+      
       function convertToBuffer(string) {
         try {
           // Decode base64 string
@@ -667,24 +687,22 @@ export function OnairosButton({
         }
       }
       
-      const bufferPIN = convertToBuffer(encryptedPin.result);
+      const bufferPIN = convertToBuffer(encryptedPinResponse.result);
       
-      // const {decrypt }= await loadOthentKms();
       const userPin = await othent.decrypt(bufferPIN);
       // RSA Encrypt the PIN to transmit to Terminal and backend
       rsaEncrypt(OnairosPublicKey, userPin)
       .then(encryptedData => {
-
           // Prepare the data to be sent
           window.postMessage({
             source: 'webpage',
             type: 'GET_API_URL',
             webpageName: webpageName,
-            domain:domain,
+            domain: domain,
             requestData: requestData,
-            proofMode:proofMode,
-            HashedOthentSub:hashedOthentSub,
-            EncryptedUserPin:encryptedData
+            proofMode: proofMode,
+            HashedOthentSub: hashedOthentSub,
+            EncryptedUserPin: encryptedData
           });
       })
       .catch(error => {
@@ -694,7 +712,6 @@ export function OnairosButton({
     }catch(e){
       console.error("Error Sending Data to Terminal: ", e);
     }
-
   };
 
   // Styling and button class based on visual type and login mode
