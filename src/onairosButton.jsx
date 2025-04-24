@@ -15,20 +15,6 @@ const loadSha256 = async () => {
   return module.default;
 };
 
-// // Dynamic import for @othent/kms
-// const loadOthentKms = async () => {
-//   try{
-//     console.log("Entering Dynamic Othent Load")
-//     const module = await import(/* webpackChunkName: "othent-kms" */ '@othent/kms');
-//     console.log("DYNAMICALLY LOADED OTHENT")
-//     return module;
-//   }catch(e){
-//     console.error("Error loading Othent DYnamically : ", e)
-//   }
-// };
-
-
-
 // import Buffer
 export function OnairosButton({
   requestData, 
@@ -49,6 +35,12 @@ export function OnairosButton({
   const isTelegramMiniApp = () => {
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     return typeof window.Telegram !== 'undefined' && /telegram/i.test(userAgent) && /mobile/i.test(navigator.userAgent);
+  };
+
+  // Detect if running in a React Native environment
+  const isReactNative = () => {
+    return typeof global !== 'undefined' && global.nativeModuleProxy !== undefined || 
+           typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
   };
 
   const [launchParams, setLaunchParams] = useState(null);
@@ -386,11 +378,31 @@ export function OnairosButton({
   };
   
 
+  // Handles API request for mobile devices
   const handleAPIRequestForMobile = async () => {
-    if (isMobileDevice()) {
+    if (isMobileDevice() || isReactNative()) {
+      // For React Native, provide generic account data
+      if (isReactNative()) {
+        console.log("React Native detected - setting up data request overlay");
+        // Create generic mock data for testing
+        const genericAccountData = {
+          hashedOthentSub: 'mock-othent-sub-hash',
+          encryptedUserPin: 'mock-encrypted-pin',
+          activeModels: ['Personality', 'Demographics'],
+          requestData: requestData || {
+            data_type: 'personality',
+            data_fields: ['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism']
+          }
+        };
+        
+        // Set mock data for testing
+        setActiveModels(genericAccountData.activeModels);
+      }
+      
+      // Show the overlay for both mobile and React Native
       setShowOverlay(true);
     } 
-    return ;
+    return;
   };
 
   const rejectDataRequest = () => {
@@ -608,7 +620,11 @@ export function OnairosButton({
 
 
   const openTerminal = async () => {
-    if (isMobileDevice()) {
+    if (isReactNative()) {
+      console.log("React Native environment detected");
+      await handleAPIRequestForMobile();
+      return;
+    } else if (isMobileDevice()) {
       // Testing
       await handleAPIRequestForMobile();
       return;
@@ -926,6 +942,30 @@ export function OnairosButton({
     checkStoredAuth();
   }, []);
 
+  // This function handles the completion of a data request and invokes the onComplete callback
+  const handleDataRequestCompletion = (approvedRequests) => {
+    // Generate a sample API URL for testing
+    const sampleApiUrl = "https://api.onairos.com/v1/data/mock-user-id-12345";
+    
+    // Close the overlay
+    setShowOverlay(false);
+    
+    // If there's a callback function, invoke it with the sample API URL
+    if (onComplete && typeof onComplete === 'function') {
+      onComplete({
+        success: true,
+        apiUrl: sampleApiUrl,
+        approvedRequests: approvedRequests || ['personality']
+      });
+    }
+  };
+
+  // Simulate a data request response for React Native testing
+  const completeDataRequest = () => {
+    const approvedRequests = ['personality']; // Sample approved requests
+    handleDataRequestCompletion(approvedRequests);
+  };
+
   return (
     <>
       <div className="flex items-center justify-center">
@@ -953,10 +993,56 @@ export function OnairosButton({
         </button>
       </div>
       
-      {/* {notif.show && <Notification message={notif.message} color={notif.color} />} */}
-      {authDialog.show && 
-      // {false && 
-        (
+      {/* Add React Native data request overlay */}
+      {showOverlay && isReactNative() && (
+        <Overlay onClose={() => setShowOverlay(false)}>
+          <div className="onairos-data-request-container">
+            <div className="onairos-data-request-header">
+              <h2>Data Request</h2>
+              <p>The app is requesting access to your data</p>
+            </div>
+            <div className="onairos-data-request-body">
+              <p>Would you like to share your data with this application?</p>
+              <div className="onairos-data-items">
+                {activeModels.map((model, index) => (
+                  <div key={index} className="onairos-data-item">
+                    <span>{model}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="onairos-data-request-footer">
+              <button 
+                className="onairos-reject-button" 
+                onClick={() => setShowOverlay(false)}
+              >
+                Reject
+              </button>
+              <button 
+                className="onairos-confirm-button" 
+                onClick={completeDataRequest}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </Overlay>
+      )}
+      
+      {/* Regular overlay for non-React Native environments */}
+      {showOverlay && !isReactNative() && (
+        <Overlay onClose={() => setShowOverlay(false)}>
+          {NoAccount.current ? 
+            <div className="no-account">No Onairos Account Found</div> : 
+            NoModel.current ? 
+              <div className="no-model">No Model Found</div> : 
+              <div className="data-request-container">Data Request</div>
+          }
+        </Overlay>
+      )}
+      
+      {/* Original auth dialog */}
+      {authDialog.show && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setAuthDialog({ show: false, type: null, data: null })} />
           <div className="relative bg-white rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
@@ -987,7 +1073,7 @@ export function OnairosButton({
                 {JSON.stringify(authDialog.data, null, 2)}
               </pre>
             </div>
-            
+
             {authDialog.type === 'auth' && (
               <div className={`mt-4 p-3 rounded ${authDialog.data?.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                 {authDialog.data?.success ? 'Authentication successful!' : 'Authentication failed'}
@@ -996,36 +1082,43 @@ export function OnairosButton({
           </div>
         </div>
       )}
+      
       {isLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading your account...</p>
+          <div className="bg-white p-6 rounded-lg shadow-lg w-80">
+            <div className="flex justify-center mb-4">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
+            </div>
+            <p className="text-center text-gray-700">Loading...</p>
           </div>
         </div>
       )}
-      {showOverlay && !isLoading && (
-        <Overlay
-          setOthentConnected={setOthentConnected}
-          dataRequester={webpageName}
-          NoAccount={NoAccount}
-          NoModel={NoModel}
-          accountInfo={accountInfo}
-          activeModels={activeModels}
+      
+      {isProcessingAuth && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-80">
+            <div className="flex justify-center mb-4">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
+            </div>
+            <p className="text-center text-gray-700">Attempting to connect your Onairos Account...</p>
+          </div>
+        </div>
+      )}
+      
+      {accountInfo && (
+        <Overlay 
+          onClose={handleCloseOverlay}
+          userData={userData}
           avatar={avatar}
           traits={traits}
-          requestData={requestData}
-          handleConnectionSelection={handleConnectionSelection}
-          changeGranted={changeGranted}
-          granted={granted}
-          allowSubmit={granted > 0}
-          rejectDataRequest={rejectDataRequest}
-          sendDataRequest={sendDataRequest}
-          isAuthenticated={isAuthenticated}
-          onLoginSuccess={handleLoginSuccess}
-          onClose={handleCloseOverlay}
-          setOthentUser={setOthentUser}
+          othentUser={othentUser}
+          othentConnected={othentConnected}
+          setIsAuthenticated={setIsAuthenticated}
+          authToken={authToken}
+          setAuthToken={setAuthToken}
+          hashedOthentSub={hashedOthentSub}
           setHashedOthentSub={setHashedOthentSub}
+          encryptedPin={encryptedPin}
           setEncryptedPin={setEncryptedPin}
         />
       )}
@@ -1033,4 +1126,4 @@ export function OnairosButton({
   )
 }
 
-export default OnairosButton;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+export default OnairosButton;
