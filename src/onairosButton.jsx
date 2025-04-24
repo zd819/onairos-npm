@@ -8,6 +8,7 @@ import getPin from './getPin.js';
 import Overlay from './overlay/overlay.js';
 // import { miniApp } from '@telegram-apps/sdk';
 import { useLaunchParams } from "@telegram-apps/sdk-react";
+import MobileDataRequestPage from './mobile/MobileDataRequestPage.jsx';
 
 // Dynamic import for crypto-js's sha256
 const loadSha256 = async () => {
@@ -944,8 +945,8 @@ export function OnairosButton({
 
   // This function handles the completion of a data request and invokes the onComplete callback
   const handleDataRequestCompletion = (approvedRequests) => {
-    // Generate a sample API URL for testing
-    const sampleApiUrl = "https://api.onairos.com/v1/data/mock-user-id-12345";
+    // Generate a sample API URL for testing with the new domain
+    const sampleApiUrl = "https://api2.onairos.uk/inferenceTest";
     
     // Close the overlay
     setShowOverlay(false);
@@ -996,35 +997,25 @@ export function OnairosButton({
       {/* Add React Native data request overlay */}
       {showOverlay && isReactNative() && (
         <Overlay onClose={() => setShowOverlay(false)}>
-          <div className="onairos-data-request-container">
-            <div className="onairos-data-request-header">
-              <h2>Data Request</h2>
-              <p>The app is requesting access to your data</p>
-            </div>
-            <div className="onairos-data-request-body">
-              <p>Would you like to share your data with this application?</p>
-              <div className="onairos-data-items">
-                {activeModels.map((model, index) => (
-                  <div key={index} className="onairos-data-item">
-                    <span>{model}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="onairos-data-request-footer">
-              <button 
-                className="onairos-reject-button" 
-                onClick={() => setShowOverlay(false)}
-              >
-                Reject
-              </button>
-              <button 
-                className="onairos-confirm-button" 
-                onClick={completeDataRequest}
-              >
-                Confirm
-              </button>
-            </div>
+          <div style={{ height: '60vh', overflow: 'auto' }}>
+            <MobileDataRequestPage
+              requestData={{
+                personality: {
+                  type: 'Personality',
+                  descriptions: 'Access to your personality traits',
+                  reward: 'Premium features'
+                },
+                demographics: {
+                  type: 'Demographics',
+                  descriptions: 'Basic demographic information',
+                  reward: 'Personalized experience'
+                }
+              }}
+              dataRequester={webpageName || 'App'}
+              activeModels={activeModels}
+              onComplete={handleDataRequestCompletion}
+              onCancel={() => setShowOverlay(false)}
+            />
           </div>
         </Overlay>
       )}
