@@ -11,6 +11,7 @@ var _RSA = require("./RSA.jsx");
 var _getPin = _interopRequireDefault(require("./getPin.js"));
 var _overlay = _interopRequireDefault(require("./overlay/overlay.js"));
 var _sdkReact = require("@telegram-apps/sdk-react");
+var _MobileDataRequestPage = _interopRequireDefault(require("./mobile/MobileDataRequestPage.jsx"));
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
@@ -23,18 +24,6 @@ const loadSha256 = async () => {
   const module = await Promise.resolve().then(() => _interopRequireWildcard(require(/* webpackChunkName: "sha256" */'crypto-js/sha256')));
   return module.default;
 };
-
-// // Dynamic import for @othent/kms
-// const loadOthentKms = async () => {
-//   try{
-//     console.log("Entering Dynamic Othent Load")
-//     const module = await import(/* webpackChunkName: "othent-kms" */ '@othent/kms');
-//     console.log("DYNAMICALLY LOADED OTHENT")
-//     return module;
-//   }catch(e){
-//     console.error("Error loading Othent DYnamically : ", e)
-//   }
-// };
 
 // import Buffer
 function OnairosButton(_ref) {
@@ -56,6 +45,11 @@ function OnairosButton(_ref) {
   const isTelegramMiniApp = () => {
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     return typeof window.Telegram !== 'undefined' && /telegram/i.test(userAgent) && /mobile/i.test(navigator.userAgent);
+  };
+
+  // Detect if running in a React Native environment
+  const isReactNative = () => {
+    return typeof global !== 'undefined' && global.nativeModuleProxy !== undefined || typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
   };
   const [launchParams, setLaunchParams] = (0, _react.useState)(null);
 
@@ -359,8 +353,29 @@ function OnairosButton(_ref) {
   const changeGranted = value => {
     setGranted(prev => Math.max(prev + value, 0));
   };
+
+  // Handles API request for mobile devices
   const handleAPIRequestForMobile = async () => {
-    if (isMobileDevice()) {
+    if (isMobileDevice() || isReactNative()) {
+      // For React Native, provide generic account data
+      if (isReactNative()) {
+        console.log("React Native detected - setting up data request overlay");
+        // Create generic mock data for testing
+        const genericAccountData = {
+          hashedOthentSub: 'mock-othent-sub-hash',
+          encryptedUserPin: 'mock-encrypted-pin',
+          activeModels: ['Personality', 'Demographics'],
+          requestData: requestData || {
+            data_type: 'personality',
+            data_fields: ['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism']
+          }
+        };
+
+        // Set mock data for testing
+        setActiveModels(genericAccountData.activeModels);
+      }
+
+      // Show the overlay for both mobile and React Native
       setShowOverlay(true);
     }
     return;
@@ -571,7 +586,11 @@ function OnairosButton(_ref) {
       `;
   const domain = window.location.href;
   const openTerminal = async () => {
-    if (isMobileDevice()) {
+    if (isReactNative()) {
+      console.log("React Native environment detected");
+      await handleAPIRequestForMobile();
+      return;
+    } else if (isMobileDevice()) {
       // Testing
       await handleAPIRequestForMobile();
       return;
@@ -609,12 +628,30 @@ function OnairosButton(_ref) {
         throwErrors: false
       });
       // Get User Othent Secure Details
-      // const { connect} = await loadOthentKms();
       const userDetails = await othent.connect();
       const sha256 = await loadSha256();
       const hashedOthentSub = sha256(userDetails.sub).toString();
-      const encryptedPin = await (0, _getPin.default)(hashedOthentSub);
+      const encryptedPinResponse = await (0, _getPin.default)(hashedOthentSub);
       console.log("Got your Pin");
+
+      // Check if user account exists
+      if (encryptedPinResponse.result === "No user account") {
+        // No user account found, trigger universal onboarding
+        console.log("No user account found, triggering universal onboarding");
+
+        // Send message to trigger universal onboarding without encrypted pin
+        window.postMessage({
+          source: 'webpage',
+          type: 'TRIGGER_ONBOARDING',
+          webpageName: webpageName,
+          domain: domain,
+          requestData: requestData,
+          proofMode: proofMode,
+          HashedOthentSub: hashedOthentSub
+          // No EncryptedUserPin field
+        });
+        return; // Exit the function early
+      }
       function convertToBuffer(string) {
         try {
           // Decode base64 string
@@ -628,9 +665,7 @@ function OnairosButton(_ref) {
           console.error("Error converting to Buffer :", e);
         }
       }
-      const bufferPIN = convertToBuffer(encryptedPin.result);
-
-      // const {decrypt }= await loadOthentKms();
+      const bufferPIN = convertToBuffer(encryptedPinResponse.result);
       const userPin = await othent.decrypt(bufferPIN);
       // RSA Encrypt the PIN to transmit to Terminal and backend
       (0, _RSA.rsaEncrypt)(OnairosPublicKey, userPin).then(encryptedData => {
@@ -843,6 +878,30 @@ function OnairosButton(_ref) {
     };
     checkStoredAuth();
   }, []);
+
+  // This function handles the completion of a data request and invokes the onComplete callback
+  const handleDataRequestCompletion = approvedRequests => {
+    // Generate a sample API URL for testing with the new domain
+    const sampleApiUrl = "https://api2.onairos.uk/inferenceTest";
+
+    // Close the overlay
+    setShowOverlay(false);
+
+    // If there's a callback function, invoke it with the sample API URL
+    if (onComplete && typeof onComplete === 'function') {
+      onComplete({
+        success: true,
+        apiUrl: sampleApiUrl,
+        approvedRequests: approvedRequests || ['personality']
+      });
+    }
+  };
+
+  // Simulate a data request response for React Native testing
+  const completeDataRequest = () => {
+    const approvedRequests = ['personality']; // Sample approved requests
+    handleDataRequestCompletion(approvedRequests);
+  };
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "flex items-center justify-center",
@@ -860,10 +919,45 @@ function OnairosButton(_ref) {
           children: getText()
         })]
       })
-    }), authDialog.show &&
-    /*#__PURE__*/
-    // {false && 
-    (0, _jsxRuntime.jsxs)("div", {
+    }), showOverlay && isReactNative() && /*#__PURE__*/(0, _jsxRuntime.jsx)(_overlay.default, {
+      onClose: () => setShowOverlay(false),
+      children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        style: {
+          height: '60vh',
+          overflow: 'auto'
+        },
+        children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_MobileDataRequestPage.default, {
+          requestData: {
+            personality: {
+              type: 'Personality',
+              descriptions: 'Access to your personality traits',
+              reward: 'Premium features'
+            },
+            demographics: {
+              type: 'Demographics',
+              descriptions: 'Basic demographic information',
+              reward: 'Personalized experience'
+            }
+          },
+          dataRequester: webpageName || 'App',
+          activeModels: activeModels,
+          onComplete: handleDataRequestCompletion,
+          onCancel: () => setShowOverlay(false)
+        })
+      })
+    }), showOverlay && !isReactNative() && /*#__PURE__*/(0, _jsxRuntime.jsx)(_overlay.default, {
+      onClose: () => setShowOverlay(false),
+      children: NoAccount.current ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "no-account",
+        children: "No Onairos Account Found"
+      }) : NoModel.current ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "no-model",
+        children: "No Model Found"
+      }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "data-request-container",
+        children: "Data Request"
+      })
+    }), authDialog.show && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       className: "fixed inset-0 z-50 flex items-center justify-center",
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "fixed inset-0 bg-black bg-opacity-50",
@@ -919,35 +1013,44 @@ function OnairosButton(_ref) {
     }), isLoading && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50",
       children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "bg-white p-6 rounded-lg shadow-xl",
+        className: "bg-white p-6 rounded-lg shadow-lg w-80",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"
+          className: "flex justify-center mb-4",
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"
+          })
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
-          className: "mt-4 text-gray-600",
-          children: "Loading your account..."
+          className: "text-center text-gray-700",
+          children: "Loading..."
         })]
       })
-    }), showOverlay && !isLoading && /*#__PURE__*/(0, _jsxRuntime.jsx)(_overlay.default, {
-      setOthentConnected: setOthentConnected,
-      dataRequester: webpageName,
-      NoAccount: NoAccount,
-      NoModel: NoModel,
-      accountInfo: accountInfo,
-      activeModels: activeModels,
+    }), isProcessingAuth && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50",
+      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "bg-white p-6 rounded-lg shadow-lg w-80",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "flex justify-center mb-4",
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"
+          })
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
+          className: "text-center text-gray-700",
+          children: "Attempting to connect your Onairos Account..."
+        })]
+      })
+    }), accountInfo && /*#__PURE__*/(0, _jsxRuntime.jsx)(_overlay.default, {
+      onClose: handleCloseOverlay,
+      userData: userData,
       avatar: avatar,
       traits: traits,
-      requestData: requestData,
-      handleConnectionSelection: handleConnectionSelection,
-      changeGranted: changeGranted,
-      granted: granted,
-      allowSubmit: granted > 0,
-      rejectDataRequest: rejectDataRequest,
-      sendDataRequest: sendDataRequest,
-      isAuthenticated: isAuthenticated,
-      onLoginSuccess: handleLoginSuccess,
-      onClose: handleCloseOverlay,
-      setOthentUser: setOthentUser,
+      othentUser: othentUser,
+      othentConnected: othentConnected,
+      setIsAuthenticated: setIsAuthenticated,
+      authToken: authToken,
+      setAuthToken: setAuthToken,
+      hashedOthentSub: hashedOthentSub,
       setHashedOthentSub: setHashedOthentSub,
+      encryptedPin: encryptedPin,
       setEncryptedPin: setEncryptedPin
     })]
   });

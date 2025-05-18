@@ -1,6 +1,6 @@
 {
   "name": "onairos",
-  "version": "0.1.399",
+  "version": "0.1.400",
   "dependencies": {
     "@othent/kms": "^2.0.0-beta.10",
     "@react-oauth/google": "^0.12.1",
@@ -21,7 +21,8 @@
   "sideEffects": false,
   "scripts": {
     "start": "react-scripts start",
-    "build": "babel src --out-dir dist --copy-files && webpack --mode production && babel src/index.js --out-file dist/onairos.esm.js",
+    "build": "babel src --out-dir dist --copy-files && webpack --mode production && babel src/index.js --out-file dist/onairos.esm.js && webpack --config webpack.native.config.js",
+    "build:native": "webpack --config webpack.native.config.js",
     "buildDev": "babel src --out-dir dist --copy-files && webpack --mode development",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -59,6 +60,8 @@
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-typescript": "^12.1.2",
     "babel-loader": "^9.1.3",
+    "file-loader": "^6.2.0",
+    "lucide-react": "^0.503.0",
     "rollup": "^2.79.2",
     "rollup-plugin-terser": "^7.0.2",
     "rollup-plugin-use-client": "^1.4.0",
@@ -71,6 +74,7 @@
   "peerDependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-native": ">=0.69.0",
     "tailwindcss": "^3.3.5"
   },
   "description": "The Onairos Library is a collection of functions that enable Applications to connect and communicate data with Onairos Identities via User Authorization. Integration for developers is designed to be seamless, simple and effective for all applications",
@@ -78,6 +82,7 @@
   "module": "dist/onairos.esm.js",
   "types": "onairos.d.ts",
   "browser": "dist/onairos.umd.js",
+  "react-native": "dist/onairos.native.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/zd819/onairos-npm"
