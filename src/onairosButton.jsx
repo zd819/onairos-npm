@@ -9,6 +9,7 @@ import Overlay from './overlay/overlay.js';
 // import { miniApp } from '@telegram-apps/sdk';
 import { useLaunchParams } from "@telegram-apps/sdk-react";
 import MobileDataRequestPage from './mobile/MobileDataRequestPage.jsx';
+import { openDataRequestIframe, closeDataRequestIframe, sendDataToIframe, listenForIframeMessages } from './iframe/dataRequestHandler.js';
 
 // Dynamic import for crypto-js's sha256
 const loadSha256 = async () => {
@@ -619,139 +620,96 @@ export function OnairosButton({
 
   const domain = window.location.href;
 
+  // Add state for iframe window reference
+  const [iframeWindowRef, setIframeWindowRef] = useState(null);
+  const cleanupRef = useRef(null);
 
   const openTerminal = async () => {
-    if (isReactNative()) {
-      console.log("React Native environment detected");
-      await handleAPIRequestForMobile();
-      return;
-    } else if (isMobileDevice()) {
-      // Testing
-      await handleAPIRequestForMobile();
-      return;
-    }
-    console.log("openTerminal clicked");
-    window.postMessage({
-      source: 'webpage',
-      type: 'openTerminal',
-      webpageName: webpageName,
-      domain: domain,
-      key: "Key"
-    });
-  };
-
-  useEffect(() => {
-    // Listener to receive messages
-    const handleMessage = (event) => {
-      if (event.data && event.data.action === 'terminalOpened') {
-        ConnectOnairos();
-      }
-    };
-  
-    window.addEventListener('message', handleMessage);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
-  }, []);
-
-
-  const ConnectOnairos = async () => {
-    try{
-      const appInfo = {
-        name: "Onairos",
-        version: "1.0.0",
-        env: "production",
-      };
-      const othent = new Othent({ appInfo, throwErrors: false});
-      // Get User Othent Secure Details
-      const userDetails = await othent.connect();
-      const sha256 = await loadSha256();
-      const hashedOthentSub = sha256(userDetails.sub).toString();
-      const encryptedPinResponse = await getPin(hashedOthentSub);
-      console.log("Got your Pin");
+    try {
+      // Open the iframe in a new window
+      const iframeWindow = openDataRequestIframe();
       
-      // Check if user account exists
-      if (encryptedPinResponse.result === "No user account") {
-        // No user account found, trigger universal onboarding
-        console.log("No user account found, triggering universal onboarding");
-        
-        // Send message to trigger universal onboarding without encrypted pin
-        window.postMessage({
-          source: 'webpage',
-          type: 'TRIGGER_ONBOARDING',
-          webpageName: webpageName,
-          domain: domain,
-          requestData: requestData,
-          proofMode: proofMode,
-          HashedOthentSub: hashedOthentSub
-          // No EncryptedUserPin field
-        });
-        
-        return; // Exit the function early
+      if (!iframeWindow) {
+        console.error('Failed to open iframe window');
+        return;
       }
       
-      function convertToBuffer(string) {
+      // Store reference to the iframe window
+      setIframeWindowRef(iframeWindow);
+      
+      // Set up message listener
+      const cleanup = listenForIframeMessages(async (data) => {
         try {
-          // Decode base64 string
-          const encodedData = window.atob(string);
-          const uint8Array = new Uint8Array(encodedData.length);
-          for (let i = 0; i < encodedData.length; i++) {
-            uint8Array[i] = encodedData.charCodeAt(i);
+          if (data.action === 'iframeReady') {
+            // The iframe is ready to receive data
+            await sendDataToIframe(iframeWindow, {
+              type: 'initDataRequest',
+              requestData: requestData,
+              dataRequester: webpageName,
+              domain: window.location.href
+            });
+          } else if (data.action === 'dataRequestConfirmed') {
+            // Handle confirmed data request
+            if (onComplete) {
+              await onComplete(data.approvedRequests);
+            }
+            setIframeWindowRef(null);
+          } else if (data.action === 'dataRequestRejected') {
+            // Handle rejected data request
+            if (onComplete) {
+              await onComplete(null);
+            }
+            setIframeWindowRef(null);
+          } else if (data.action === 'terminalClosed') {
+            // Handle iframe closed event
+            setIframeWindowRef(null);
           }
-          return uint8Array.buffer; // This is an ArrayBuffer
-        } catch (e) {
-          console.error("Error converting to Buffer :", e);
+        } catch (error) {
+          console.error('Error handling iframe message:', error);
+          closeDataRequestIframe(iframeWindow);
+          setIframeWindowRef(null);
         }
-      }
-      
-      const bufferPIN = convertToBuffer(encryptedPinResponse.result);
-      
-      const userPin = await othent.decrypt(bufferPIN);
-      // RSA Encrypt the PIN to transmit to Terminal and backend
-      rsaEncrypt(OnairosPublicKey, userPin)
-      .then(encryptedData => {
-          // Prepare the data to be sent
-          window.postMessage({
-            source: 'webpage',
-            type: 'GET_API_URL',
-            webpageName: webpageName,
-            domain: domain,
-            requestData: requestData,
-            proofMode: proofMode,
-            HashedOthentSub: hashedOthentSub,
-            EncryptedUserPin: encryptedData
-          });
-      })
-      .catch(error => {
-          console.error("Encryption failed:", error);
       });
-
-    }catch(e){
-      console.error("Error Sending Data to Terminal: ", e);
+      
+      // Store cleanup function
+      cleanupRef.current = cleanup;
+      
+    } catch (error) {
+      console.error('Error in openTerminal:', error);
+      setIframeWindowRef(null);
     }
   };
 
-  // Styling and button class based on visual type and login mode
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
+      if (iframeWindowRef) {
+        closeDataRequestIframe(iframeWindowRef);
+      }
+    };
+  }, [iframeWindowRef]);
+
+  // Styling and button class based on visual type
   const buttonClass = 
     `flex items-center justify-center font-bold rounded cursor-pointer ${
     buttonType === 'pill' ? 'px-4 py-2' : 'w-12 h-12'
-    } ${login ? 'bg-white border border-gray-300' : 'bg-transparent'}
-    ${ isMobileDevice()? '':'OnairosConnect'}
-    `
-  ;
+    } bg-transparent OnairosConnect`;
 
   const buttonStyle = {
     flexDirection: textLayout === 'below' ? 'column' : 'row',
-    backgroundColor: login ? '#ffffff' : 'transparent',
-    color: login ? 'black' : textColor,
-    border: login ? '1px solid #ddd' : '1px solid transparent',
+    backgroundColor: 'transparent',
+    color: textColor,
+    border: '1px solid transparent',
   };
 
   // Icon and text style based on the visualType
   const logoStyle = {
     width: '20px',
     height: '20px',
-    marginRight: visualType === 'full' ? '12px' : '0',  // Space between icon and text only in full mode
+    marginRight: visualType === 'full' ? '12px' : '0',
   };
 
   const getText = () => {
@@ -943,178 +901,30 @@ export function OnairosButton({
     checkStoredAuth();
   }, []);
 
-  // This function handles the completion of a data request and invokes the onComplete callback
-  const handleDataRequestCompletion = (approvedRequests) => {
-    // Generate a sample API URL for testing with the new domain
-    const sampleApiUrl = "https://api2.onairos.uk/inferenceTest";
-    
-    // Close the overlay
-    setShowOverlay(false);
-    
-    // If there's a callback function, invoke it with the sample API URL
-    if (onComplete && typeof onComplete === 'function') {
-      onComplete({
-        success: true,
-        apiUrl: sampleApiUrl,
-        approvedRequests: approvedRequests || ['personality']
-      });
-    }
-  };
-
-  // Simulate a data request response for React Native testing
-  const completeDataRequest = () => {
-    const approvedRequests = ['personality']; // Sample approved requests
-    handleDataRequestCompletion(approvedRequests);
-  };
-
   return (
-    <>
-      <div className="flex items-center justify-center">
-        <button
-          className={buttonClass}
-          onClick={openTerminal} 
-          style={buttonStyle}
-        >
-          {/* Render based on visualType prop */}
-          {(visualType === 'full' || visualType === 'icon') && (
-            <img
-              src={login ? "https://onairos.sirv.com/Images/OnairosWhite.png" : "https://onairos.sirv.com/Images/OnairosBlack.png"}
-              alt="Onairos Logo"
-              style={logoStyle}
-              className={`${buttonType === 'pill' ? 'w-6 h-6' : 'w-8 h-8'} object-contain`}
-            />
-          )}
+    <div className="flex items-center justify-center">
+      <button
+        className={buttonClass}
+        onClick={openTerminal}
+        style={buttonStyle}
+      >
+        {(visualType === 'full' || visualType === 'icon') && (
+          <img
+            src="https://onairos.sirv.com/Images/OnairosBlack.png"
+            alt="Onairos Logo"
+            style={logoStyle}
+            className={`${buttonType === 'pill' ? 'w-6 h-6' : 'w-8 h-8'} object-contain`}
+          />
+        )}
 
-          {/* Only render text if visualType is 'full' or 'textOnly' */}
-          {(visualType === 'full' || visualType === 'textOnly') && (
-            <span className={`${login ? 'text-black' : textColor === 'black' ? 'text-black' : 'text-white'} ${visualType === 'icon' ? 'sr-only' : ''} ${textLayout === 'right' ? 'ml-2' : textLayout === 'left' ? 'mr-2' : ''}`}>
-              {getText()}
-            </span>
-          )}
-        </button>
-      </div>
-      
-      {/* Add React Native data request overlay */}
-      {showOverlay && isReactNative() && (
-        <Overlay onClose={() => setShowOverlay(false)}>
-          <div style={{ height: '60vh', overflow: 'auto' }}>
-            <MobileDataRequestPage
-              requestData={{
-                personality: {
-                  type: 'Personality',
-                  descriptions: 'Access to your personality traits',
-                  reward: 'Premium features'
-                },
-                demographics: {
-                  type: 'Demographics',
-                  descriptions: 'Basic demographic information',
-                  reward: 'Personalized experience'
-                }
-              }}
-              dataRequester={webpageName || 'App'}
-              activeModels={activeModels}
-              onComplete={handleDataRequestCompletion}
-              onCancel={() => setShowOverlay(false)}
-            />
-          </div>
-        </Overlay>
-      )}
-      
-      {/* Regular overlay for non-React Native environments */}
-      {showOverlay && !isReactNative() && (
-        <Overlay onClose={() => setShowOverlay(false)}>
-          {NoAccount.current ? 
-            <div className="no-account">No Onairos Account Found</div> : 
-            NoModel.current ? 
-              <div className="no-model">No Model Found</div> : 
-              <div className="data-request-container">Data Request</div>
-          }
-        </Overlay>
-      )}
-      
-      {/* Original auth dialog */}
-      {authDialog.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setAuthDialog({ show: false, type: null, data: null })} />
-          <div className="relative bg-white rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <button 
-              onClick={() => setAuthDialog({ show: false, type: null, data: null })}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <span className="sr-only">Close</span>
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            
-            <h3 className="text-lg font-semibold mb-4">
-              {authDialog.type === 'callback' ? 'Callback Details' : 'Authentication Result'}
-            </h3>
-
-            <h3 className="text-lg font-semibold mb-4">
-              {authDialog.type === 'debug' ? 'Debug Results' : 'Authentication Result'}
-            </h3>
-           
-            <h3 className="text-lg font-semibold mb-4">
-              {authDialog.type === 'apiURL' ? 'API Url Returned' : 'Authentication Result'}
-            </h3>
-            
-            <div className="bg-gray-50 rounded p-4 overflow-x-auto">
-              <pre className="text-sm">
-                {JSON.stringify(authDialog.data, null, 2)}
-              </pre>
-            </div>
-
-            {authDialog.type === 'auth' && (
-              <div className={`mt-4 p-3 rounded ${authDialog.data?.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {authDialog.data?.success ? 'Authentication successful!' : 'Authentication failed'}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      
-      {isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-80">
-            <div className="flex justify-center mb-4">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
-            </div>
-            <p className="text-center text-gray-700">Loading...</p>
-          </div>
-        </div>
-      )}
-      
-      {isProcessingAuth && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-80">
-            <div className="flex justify-center mb-4">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
-            </div>
-            <p className="text-center text-gray-700">Attempting to connect your Onairos Account...</p>
-          </div>
-        </div>
-      )}
-      
-      {accountInfo && (
-        <Overlay 
-          onClose={handleCloseOverlay}
-          userData={userData}
-          avatar={avatar}
-          traits={traits}
-          othentUser={othentUser}
-          othentConnected={othentConnected}
-          setIsAuthenticated={setIsAuthenticated}
-          authToken={authToken}
-          setAuthToken={setAuthToken}
-          hashedOthentSub={hashedOthentSub}
-          setHashedOthentSub={setHashedOthentSub}
-          encryptedPin={encryptedPin}
-          setEncryptedPin={setEncryptedPin}
-        />
-      )}
-    </>
-  )
+        {(visualType === 'full' || visualType === 'textOnly') && (
+          <span className={`${textColor === 'black' ? 'text-black' : 'text-white'} ${visualType === 'icon' ? 'sr-only' : ''} ${textLayout === 'right' ? 'ml-2' : textLayout === 'left' ? 'mr-2' : ''}`}>
+            {getText()}
+          </span>
+        )}
+      </button>
+    </div>
+  );
 }
 
 export default OnairosButton;

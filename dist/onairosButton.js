@@ -12,6 +12,7 @@ var _getPin = _interopRequireDefault(require("./getPin.js"));
 var _overlay = _interopRequireDefault(require("./overlay/overlay.js"));
 var _sdkReact = require("@telegram-apps/sdk-react");
 var _MobileDataRequestPage = _interopRequireDefault(require("./mobile/MobileDataRequestPage.jsx"));
+var _dataRequestHandler = require("./iframe/dataRequestHandler.js");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
@@ -585,106 +586,137 @@ function OnairosButton(_ref) {
     -----END PUBLIC KEY-----
       `;
   const domain = window.location.href;
+
+  // Add state for iframe window reference
+  const [iframeWindowRef, setIframeWindowRef] = (0, _react.useState)(null);
   const openTerminal = async () => {
     if (isReactNative()) {
       console.log("React Native environment detected");
       await handleAPIRequestForMobile();
       return;
     } else if (isMobileDevice()) {
-      // Testing
       await handleAPIRequestForMobile();
       return;
     }
     console.log("openTerminal clicked");
-    window.postMessage({
-      source: 'webpage',
-      type: 'openTerminal',
-      webpageName: webpageName,
-      domain: domain,
-      key: "Key"
-    });
-  };
-  (0, _react.useEffect)(() => {
-    // Listener to receive messages
-    const handleMessage = event => {
-      if (event.data && event.data.action === 'terminalOpened') {
-        ConnectOnairos();
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
-  }, []);
-  const ConnectOnairos = async () => {
     try {
-      const appInfo = {
-        name: "Onairos",
-        version: "1.0.0",
-        env: "production"
-      };
-      const othent = new _kms.Othent({
-        appInfo,
-        throwErrors: false
-      });
-      // Get User Othent Secure Details
-      const userDetails = await othent.connect();
-      const sha256 = await loadSha256();
-      const hashedOthentSub = sha256(userDetails.sub).toString();
-      const encryptedPinResponse = await (0, _getPin.default)(hashedOthentSub);
-      console.log("Got your Pin");
-
-      // Check if user account exists
-      if (encryptedPinResponse.result === "No user account") {
-        // No user account found, trigger universal onboarding
-        console.log("No user account found, triggering universal onboarding");
-
-        // Send message to trigger universal onboarding without encrypted pin
-        window.postMessage({
-          source: 'webpage',
-          type: 'TRIGGER_ONBOARDING',
-          webpageName: webpageName,
-          domain: domain,
-          requestData: requestData,
-          proofMode: proofMode,
-          HashedOthentSub: hashedOthentSub
-          // No EncryptedUserPin field
-        });
-        return; // Exit the function early
+      // Open the iframe in a new window at the top-right corner
+      const iframeWindow = (0, _dataRequestHandler.openDataRequestIframe)();
+      if (!iframeWindow) {
+        console.error('Failed to open iframe window');
+        return;
       }
-      function convertToBuffer(string) {
+
+      // Store reference to the iframe window
+      setIframeWindowRef(iframeWindow);
+
+      // Set up message listener with cleanup
+      const cleanup = (0, _dataRequestHandler.listenForIframeMessages)(async data => {
         try {
-          // Decode base64 string
-          const encodedData = window.atob(string);
-          const uint8Array = new Uint8Array(encodedData.length);
-          for (let i = 0; i < encodedData.length; i++) {
-            uint8Array[i] = encodedData.charCodeAt(i);
+          if (data.action === 'iframeReady') {
+            // The iframe is ready to receive data
+            await (0, _dataRequestHandler.sendDataToIframe)(iframeWindow, {
+              type: 'initDataRequest',
+              requestData: requestData,
+              dataRequester: webpageName,
+              activeModels: activeModels,
+              avatar: avatar,
+              traits: traits,
+              domain: domain,
+              proofMode: proofMode,
+              HashedOthentSub: hashedOthentSub,
+              EncryptedUserPin: encryptedPin
+            });
+          } else if (data.action === 'dataRequestConfirmed') {
+            // Handle confirmed data request
+            await handleApprovedDataRequest(data.approvedRequests);
+          } else if (data.action === 'dataRequestRejected') {
+            // Handle rejected data request
+            await handleRejectedDataRequest();
+          } else if (data.action === 'terminalClosed') {
+            // Handle iframe closed event
+            setIframeWindowRef(null);
           }
-          return uint8Array.buffer; // This is an ArrayBuffer
-        } catch (e) {
-          console.error("Error converting to Buffer :", e);
+        } catch (error) {
+          console.error('Error handling iframe message:', error);
+          // Close the iframe on error
+          (0, _dataRequestHandler.closeDataRequestIframe)(iframeWindow);
+          setIframeWindowRef(null);
         }
-      }
-      const bufferPIN = convertToBuffer(encryptedPinResponse.result);
-      const userPin = await othent.decrypt(bufferPIN);
-      // RSA Encrypt the PIN to transmit to Terminal and backend
-      (0, _RSA.rsaEncrypt)(OnairosPublicKey, userPin).then(encryptedData => {
-        // Prepare the data to be sent
-        window.postMessage({
-          source: 'webpage',
-          type: 'GET_API_URL',
-          webpageName: webpageName,
-          domain: domain,
-          requestData: requestData,
-          proofMode: proofMode,
-          HashedOthentSub: hashedOthentSub,
-          EncryptedUserPin: encryptedData
-        });
-      }).catch(error => {
-        console.error("Encryption failed:", error);
       });
-    } catch (e) {
-      console.error("Error Sending Data to Terminal: ", e);
+
+      // Store cleanup function in ref for later use
+      cleanupRef.current = cleanup;
+    } catch (error) {
+      console.error('Error in openTerminal:', error);
+      setIframeWindowRef(null);
+    }
+  };
+
+  // Add cleanup ref
+  const cleanupRef = (0, _react.useRef)(null);
+
+  // Update cleanup effect
+  (0, _react.useEffect)(() => {
+    return () => {
+      // Clean up message listener
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
+      // Close the iframe if it's still open
+      if (iframeWindowRef) {
+        (0, _dataRequestHandler.closeDataRequestIframe)(iframeWindowRef);
+      }
+    };
+  }, [iframeWindowRef]);
+
+  // Update handlers to be async
+  const handleApprovedDataRequest = async approvedRequests => {
+    try {
+      console.log('Approved data requests:', approvedRequests);
+      // Process the approved requests
+      await handleDataRequestCompletion(approvedRequests);
+    } catch (error) {
+      console.error('Error handling approved request:', error);
+    } finally {
+      // Clear the iframe reference
+      setIframeWindowRef(null);
+    }
+  };
+  const handleRejectedDataRequest = async () => {
+    try {
+      console.log('Data request rejected by user');
+      // Handle rejection - reset states if needed
+      setSelectedRequests({});
+      setGranted(0);
+    } catch (error) {
+      console.error('Error handling rejected request:', error);
+    } finally {
+      // Clear the iframe reference
+      setIframeWindowRef(null);
+    }
+  };
+
+  // Remove the duplicate handleDataRequestCompletion function and update the existing one
+  const handleDataRequestCompletion = async approvedRequests => {
+    try {
+      // Generate a sample API URL for testing with the new domain
+      const sampleApiUrl = "https://api2.onairos.uk/inferenceTest";
+
+      // Close the overlay
+      setShowOverlay(false);
+
+      // If there's a callback function, invoke it with the sample API URL
+      if (onComplete && typeof onComplete === 'function') {
+        await onComplete({
+          success: true,
+          apiUrl: sampleApiUrl,
+          approvedRequests: approvedRequests || ['personality']
+        });
+      }
+    } catch (error) {
+      console.error('Error in handleDataRequestCompletion:', error);
+      throw error; // Re-throw to be handled by caller
     }
   };
 
@@ -878,30 +910,6 @@ function OnairosButton(_ref) {
     };
     checkStoredAuth();
   }, []);
-
-  // This function handles the completion of a data request and invokes the onComplete callback
-  const handleDataRequestCompletion = approvedRequests => {
-    // Generate a sample API URL for testing with the new domain
-    const sampleApiUrl = "https://api2.onairos.uk/inferenceTest";
-
-    // Close the overlay
-    setShowOverlay(false);
-
-    // If there's a callback function, invoke it with the sample API URL
-    if (onComplete && typeof onComplete === 'function') {
-      onComplete({
-        success: true,
-        apiUrl: sampleApiUrl,
-        approvedRequests: approvedRequests || ['personality']
-      });
-    }
-  };
-
-  // Simulate a data request response for React Native testing
-  const completeDataRequest = () => {
-    const approvedRequests = ['personality']; // Sample approved requests
-    handleDataRequestCompletion(approvedRequests);
-  };
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "flex items-center justify-center",
