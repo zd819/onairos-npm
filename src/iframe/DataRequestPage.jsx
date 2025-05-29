@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button'; // Adjust import path as needed
-import LoadingPage from '@/components/LoadingPage'; // Adjust import path as needed
-import UniversalOnboarding from '@/components/UniversalOnboarding'; // Adjust import path as needed
-import IndividualConnection from './components/IndividualConnection'; // Updated import path
-import OnairosWhite from '@/icons/OnairosWhite'; // Adjust import path as needed
-import { getAPIAccess } from '../utils/api'; // Adjust import path as needed
+import UniversalOnboarding from '../components/UniversalOnboarding.js';
+import IndividualConnection from './components/IndividualConnection';
 
 /**
  * DataRequestPage Component
@@ -19,7 +15,7 @@ const DataRequestPage = ({ requestData = {}, dataRequester = 'App', proofMode = 
   const [traits, setTraits] = useState(false);
   const [selectedRequests, setSelectedRequests] = useState({});
   const selectedConnections = useRef([]);
-  const hashedOthentSub = useRef(null);
+  const userSub = useRef(null);
   const encryptedUserPin = useRef(null);
 
   // Update allowSubmit when granted changes
@@ -60,8 +56,8 @@ const DataRequestPage = ({ requestData = {}, dataRequester = 'App', proofMode = 
         if (event.data.activeModels) {
           setActiveModels(event.data.activeModels);
         }
-        if (event.data.hashedOthentSub) {
-          hashedOthentSub.current = event.data.hashedOthentSub;
+        if (event.data.userSub) {
+          userSub.current = event.data.userSub;
         }
         if (event.data.encryptedUserPin) {
           encryptedUserPin.current = event.data.encryptedUserPin;
@@ -84,7 +80,6 @@ const DataRequestPage = ({ requestData = {}, dataRequester = 'App', proofMode = 
   async function rejectDataRequest() {
     window.top.postMessage({type: 'closeIframe'}, '*');
     window.postMessage({type: 'closeIframe'}, '*');
-    // await RejectDataRequest();
   }
 
   /**
@@ -99,43 +94,20 @@ const DataRequestPage = ({ requestData = {}, dataRequester = 'App', proofMode = 
         message: 'Confirm ' + dataRequester + ' Data Access',
         confirmations: selectedConnections.current
       };
-      // console.log("User Granted Data Access : ", selectedConnections.current);
       
-      // Potentially Sign With Othent
-      // chrome.runtime.sendMessage({
-      //   source: 'dataRequestPage',
-      //   type: 'sign_acccess',
-      //   SignMessage: SignMessage,
-      //   confirmations: selectedConnections.current
-      // }); 
-      
-      // Reply with API URL and User Authorized Data
+      // Send simplified response
       try {
-        getAPIAccess({
-          proofMode: proofMode, 
-          Web3Type: "Othent", 
-          Confirmations: selectedConnections.current, 
-          EncryptedUserPin: encryptedUserPin.current, 
-          Domain: domain, 
-          OthentSub: hashedOthentSub.current
-        })
-        .then((response) => {
-          chrome.runtime.sendMessage({
-            source: 'dataRequestPage',
-            type: 'returnedAPIurl',
-            APIurl: response.body.apiUrl,
-            accessToken: response.body.token,
-            approved: selectedConnections.current,
-          }).then(
-            (data) => {
-              // window.top.postMessage({type: 'closeIframe'}, '*');
-              // window.postMessage({type: 'closeIframe'}, '*'); 
-            }
-          );
-        }).finally(() => {
-          // window.top.postMessage({type: 'closeIframe'}, '*');
-          // window.postMessage({type: 'closeIframe'}, '*');            
-        });
+        window.top.postMessage({
+          type: 'dataRequestComplete',
+          approved: selectedConnections.current,
+          message: SignMessage
+        }, '*');
+        
+        window.postMessage({
+          type: 'dataRequestComplete',
+          approved: selectedConnections.current,
+          message: SignMessage
+        }, '*');
       } catch (error) {
         console.error("Error sending data request:", error);
         window.close();
@@ -181,36 +153,36 @@ const DataRequestPage = ({ requestData = {}, dataRequester = 'App', proofMode = 
   return (
     <div className="min-h-screen bg-gray-50">
       {loading ? (
-        <LoadingPage theme="black" />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin h-8 w-8 border-2 border-blue-600 rounded-full border-t-transparent"></div>
+        </div>
       ) : (activeModels.length === 0 ? (
-        // <NoModelPage />
-        <UniversalOnboarding appIcon={OnairosWhite} appName={dataRequester}/>
+        <UniversalOnboarding appIcon="https://onairos.sirv.com/Images/OnairosBlack.png" appName={dataRequester}/>
       ) : (
         <div className="max-w-md mx-auto p-4 space-y-2">
           <header className="border space-y-4 bg-white p-4 rounded-lg outline-2 outline-black/10 shadow-sm">
             <h1 className="text-lg font-bold text-black">Data Requests from {dataRequester}</h1>
             <div className="flex items-center justify-between gap-4">
-              <Button
-                variant="outline"
+              <button
                 onClick={rejectDataRequest}
-                className="border w-full border-2 border-black/10 hover:bg-gray-50 text-black font-medium"
+                className="border w-full border-2 border-black/10 hover:bg-gray-50 text-black font-medium py-2 px-4 rounded"
               >
                 Reject All
-              </Button>
-              <Button
+              </button>
+              <button
                 disabled={!allowSubmit}
                 onClick={sendDataRequest}
-                className="w-full bg-black hover:bg-black/90 text-white font-medium"
+                className="w-full bg-black hover:bg-black/90 text-white font-medium py-2 px-4 rounded"
               >
                 Confirm ({granted})
-              </Button>
+              </button>
             </div>
           </header>
 
           <div className="space-y-2">
             {activeModels.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-8 space-y-4 rounded-lg bg-white border-2 border-black/10">
-                <img src={OnairosWhite || "/placeholder.svg"} alt="Logo" className="w-20 h-20" />
+                <img src="https://onairos.sirv.com/Images/OnairosBlack.png" alt="Logo" className="w-20 h-20" />
                 <p className="text-center text-sm text-black/70">
                   Please connect{" "}
                   <a href="https://onairos.uk/connections" className="text-black font-medium hover:underline">

@@ -1,21 +1,8 @@
 const path = require('path');
 const TerserPlugin = require('terser-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 
-module.exports = {
-  entry: {
-    main: path.resolve(__dirname, 'src', 'onairos.jsx'),
-    iframe: path.resolve(__dirname, 'src', 'iframe', 'data_request_page.js')
-  },
-  output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: '[name].bundle.js',
-    libraryTarget: 'umd',
-    globalObject: 'this',
-    umdNamedDefine: true,
-    publicPath: 'auto',
-  },
+const baseConfig = {
   externals: {
     react: {
       commonjs: 'react',
@@ -74,21 +61,57 @@ module.exports = {
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
-  },
-  plugins: [
-    new HtmlWebpackPlugin({
-      template: path.resolve(__dirname, 'src', 'iframe', 'data_request_iframe.html'),
-      filename: 'data_request_iframe.html',
-      chunks: ['iframe'],
-      inject: true
-    }),
-    new CopyWebpackPlugin({
-      patterns: [
-        {
-          from: path.resolve(__dirname, 'src', 'iframe', 'data_request_iframe.html'),
-          to: path.resolve(__dirname, 'dist', 'data_request_iframe.html')
-        }
-      ]
-    })
-  ]
+  }
 };
+
+module.exports = [
+  // UMD build for browsers
+  {
+    ...baseConfig,
+    entry: {
+      onairos: path.resolve(__dirname, 'src', 'onairos.jsx'),
+      iframe: path.resolve(__dirname, 'src', 'iframe', 'data_request_page.js')
+    },
+    output: {
+      path: path.resolve(__dirname, 'dist'),
+      filename: (pathData) => {
+        return pathData.chunk.name === 'onairos' ? 'onairos.bundle.js' : '[name].bundle.js';
+      },
+      libraryTarget: 'umd',
+      library: 'Onairos',
+      globalObject: 'this',
+      umdNamedDefine: true,
+      publicPath: 'auto',
+    },
+    plugins: [
+      new HtmlWebpackPlugin({
+        template: path.resolve(__dirname, 'src', 'iframe', 'data_request_iframe.html'),
+        filename: 'data_request_iframe.html',
+        chunks: ['iframe'],
+        inject: true
+      })
+    ]
+  },
+  // ESM build
+  {
+    ...baseConfig,
+    entry: path.resolve(__dirname, 'src', 'onairos.jsx'),
+    experiments: {
+      outputModule: true
+    },
+    output: {
+      path: path.resolve(__dirname, 'dist'),
+      filename: 'onairos.esm.js',
+      library: {
+        type: 'module'
+      },
+      environment: {
+        module: true
+      }
+    },
+    externals: {
+      react: 'react',
+      'react-dom': 'react-dom'
+    }
+  }
+];

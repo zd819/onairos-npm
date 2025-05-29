@@ -1,19 +1,15 @@
 {
   "name": "onairos",
-  "version": "1.0.3",
+  "version": "1.0.15",
   "dependencies": {
-    "@othent/kms": "^2.0.0-beta.10",
     "@react-oauth/google": "^0.12.1",
     "@telegram-apps/sdk-react": "^2.0.25",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
-    "1.0.1": "^1.0.0",
     "axios": "^1.6.5",
     "buffer": "^6.0.3",
     "caniuse-lite": "^1.0.30001718",
-    "crypto-js": "^4.2.0",
-    "framer-motion": "^11.15.0",
     "process": "^0.11.10",
     "react-scripts": "^5.0.1",
     "stream-browserify": "^3.0.0",
@@ -29,7 +25,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "webpack --mode production && npm run copy-assets",
-    "copy-assets": "mkdir -p dist/_next/static && cp src/iframe/data_request_iframe.html dist/_next/static/",
+    "copy-assets": "echo 'Assets copied by webpack'",
     "dev": "webpack --mode development --watch",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
@@ -96,7 +92,7 @@
   "main": "dist/onairos.bundle.js",
   "module": "dist/onairos.esm.js",
   "types": "onairos.d.ts",
-  "browser": "dist/onairos.umd.js",
+  "browser": "dist/onairos.bundle.js",
   "react-native": "dist/onairos.native.js",
   "repository": {
     "type": "git",

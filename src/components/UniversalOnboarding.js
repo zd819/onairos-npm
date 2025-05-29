@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Lock, Send, Check, AlertCircle, ExternalLink } from 'lucide-react';
-import { createOAuthWindow } from './utils/oauthHelper';
 
 const socialPlatforms = [
   {
@@ -88,14 +86,17 @@ export default function UniversalOnboarding({ onComplete, appIcon }) {
   const handleConnect = async (platformName) => {
     try {
       setIsLoading(true);
-      // Use OAuth helper to open popup window
-      const authWindow = createOAuthWindow(
-        `https://api2.onairos.uk/auth/${platformName.toLowerCase()}`,
-        platformName
-      );
       
-      // The actual connection will be handled by the useEffect that listens for the OAuth callback
-      setIsLoading(false);
+      // Simulate connection for demo purposes
+      setTimeout(() => {
+        setPlatforms(platforms.map(p => 
+          p.name === platformName 
+            ? { ...p, connected: true } 
+            : p
+        ));
+        setIsLoading(false);
+      }, 1000);
+      
     } catch (error) {
       console.error(`Failed to connect to ${platformName}:`, error);
       setIsLoading(false);
@@ -148,12 +149,7 @@ export default function UniversalOnboarding({ onComplete, appIcon }) {
   };
 
   const renderConnectStep = () => (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="flex flex-col items-center space-y-6 w-full"
-    >
+    <div className="flex flex-col items-center space-y-6 w-full">
       <h2 className="text-xl font-semibold text-gray-900">Connect Your Accounts</h2>
       
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 w-full max-w-md">
@@ -167,13 +163,11 @@ export default function UniversalOnboarding({ onComplete, appIcon }) {
 
       <div className="grid grid-cols-2 gap-4 w-full max-w-md">
         {platforms.map((platform) => (
-          <motion.button
+          <button
             key={platform.name}
             onClick={() => handleConnect(platform.name)}
             disabled={isLoading || platform.connected}
-            whileHover={{ scale: platform.connected ? 1 : 1.03 }}
-            whileTap={{ scale: platform.connected ? 1 : 0.98 }}
-            className={`flex flex-col items-center justify-center p-4 rounded-lg border ${
+            className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
               platform.connected 
                 ? 'bg-green-50 border-green-500' 
                 : 'border-gray-300 hover:border-blue-500 hover:shadow-sm'
@@ -190,7 +184,7 @@ export default function UniversalOnboarding({ onComplete, appIcon }) {
             <span className={`text-sm ${platform.connected ? 'text-green-600' : 'text-gray-700'}`}>
               {platform.connected ? 'Connected' : `Connect`}
             </span>
-          </motion.button>
+          </button>
         ))}
       </div>
 
@@ -209,16 +203,11 @@ export default function UniversalOnboarding({ onComplete, appIcon }) {
       <p className="text-xs text-gray-500 max-w-md text-center">
         Connect at least one account to create your personalized AI model
       </p>
-    </motion.div>
+    </div>
   );
 
   const renderPassphraseStep = () => (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="flex flex-col items-center space-y-6 w-full"
-    >
+    <div className="flex flex-col items-center space-y-6 w-full">
       <h2 className="text-xl font-semibold text-gray-900">Create Your Secure Passphrase</h2>
       
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 w-full max-w-md">
@@ -263,16 +252,11 @@ export default function UniversalOnboarding({ onComplete, appIcon }) {
           Continue
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 
   const renderConfirmStep = () => (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="flex flex-col items-center space-y-6 w-full"
-    >
+    <div className="flex flex-col items-center space-y-6 w-full">
       <h2 className="text-xl font-semibold text-gray-900">Confirm Data Transfer</h2>
       
       <div className="flex justify-center items-center w-full max-w-md py-8">
@@ -285,13 +269,9 @@ export default function UniversalOnboarding({ onComplete, appIcon }) {
             />
           </div>
           
-          <motion.div
-            animate={{ x: [0, 10, 0] }}
-            transition={{ repeat: Infinity, duration: 1.5 }}
-            className="mx-4"
-          >
+          <div className="mx-4 animate-pulse">
             <Send size={24} className="text-blue-500" />
-          </motion.div>
+          </div>
           
           <div className="p-3 bg-blue-100 rounded-full">
             <img 
@@ -345,15 +325,11 @@ export default function UniversalOnboarding({ onComplete, appIcon }) {
           Privacy Policy <ExternalLink size={12} className="ml-0.5" />
         </a>
       </p>
-    </motion.div>
+    </div>
   );
 
   const renderUnifyingStep = () => (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex flex-col items-center justify-center space-y-6 p-6"
-    >
+    <div className="flex flex-col items-center justify-center space-y-6 p-6">
       <h2 className="text-xl font-semibold text-gray-900">Creating Your Personal AI Model</h2>
       <p className="text-gray-600 text-center">
         Please wait while we securely process your information
@@ -373,48 +349,38 @@ export default function UniversalOnboarding({ onComplete, appIcon }) {
               </span>
             </div>
           </div>
-          <motion.div 
-            className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200"
-          >
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${unifyProgress}%` }}
-              transition={{ duration: 0.5 }}
-              className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"
+          <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
+            <div
+              style={{ width: `${unifyProgress}%` }}
+              className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-500"
             />
-          </motion.div>
+          </div>
         </div>
       </div>
 
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-        className="w-12 h-12"
-      >
+      <div className="w-12 h-12 animate-spin">
         <svg className="w-full h-full text-blue-500" viewBox="0 0 24 24">
           <path
             fill="currentColor"
             d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z"
           />
         </svg>
-      </motion.div>
+      </div>
       
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 w-full max-w-md">
         <p className="text-sm text-blue-700">
           Your data is being encrypted with your passphrase and securely processed. This may take a few minutes.
         </p>
       </div>
-    </motion.div>
+    </div>
   );
 
   return (
     <div className="flex flex-col items-center space-y-6 p-6 w-full">
-      <AnimatePresence mode="wait">
-        {currentStep === steps.CONNECT && renderConnectStep()}
-        {currentStep === steps.PASSPHRASE && renderPassphraseStep()}
-        {currentStep === steps.CONFIRM && renderConfirmStep()}
-        {currentStep === steps.UNIFYING && renderUnifyingStep()}
-      </AnimatePresence>
+      {currentStep === steps.CONNECT && renderConnectStep()}
+      {currentStep === steps.PASSPHRASE && renderPassphraseStep()}
+      {currentStep === steps.CONFIRM && renderConfirmStep()}
+      {currentStep === steps.UNIFYING && renderUnifyingStep()}
     </div>
   );
 }
