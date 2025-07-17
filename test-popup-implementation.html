@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Popup Implementation</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f3f4f6;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Import the popup handler functions (simulated for testing)
+        const openDataRequestPopup = (data = {}) => {
+            const popupUrl = './public/data_request_popup.html';
+            const width = 450;
+            const height = 700;
+            const screenWidth = window.screen.availWidth;
+            const screenHeight = window.screen.availHeight;
+            const left = Math.max(0, (screenWidth - width) / 2);
+            const top = Math.max(0, (screenHeight - height) / 2);
+
+            const popupWindow = window.open(
+                popupUrl,
+                'OnairosDataRequest',
+                `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes,status=no,location=no,toolbar=no,menubar=no`
+            );
+
+            if (popupWindow) {
+                popupWindow.focus();
+                
+                // Send data to popup once loaded
+                setTimeout(() => {
+                    popupWindow.postMessage({
+                        type: 'dataRequest',
+                        ...data,
+                        timestamp: Date.now()
+                    }, '*');
+                }, 1000);
+            }
+
+            return popupWindow;
+        };
+
+        function TestApp() {
+            const [result, setResult] = useState(null);
+            const [popupWindow, setPopupWindow] = useState(null);
+
+            // Listen for messages from popup
+            React.useEffect(() => {
+                const handleMessage = (event) => {
+                    if (event.data && event.data.source === 'onairosPopup') {
+                        console.log('Received popup message:', event.data);
+                        setResult(event.data);
+                        
+                        if (event.data.type === 'dataRequestComplete') {
+                            setPopupWindow(null);
+                        }
+                    }
+                };
+
+                window.addEventListener('message', handleMessage);
+                return () => window.removeEventListener('message', handleMessage);
+            }, []);
+
+            const openPopup = () => {
+                const popup = openDataRequestPopup({
+                    requestData: ['email', 'profile', 'social'],
+                    webpageName: 'Test Application',
+                    userData: { email: 'test@example.com' },
+                    autoFetch: true,
+                    proofMode: false
+                });
+                setPopupWindow(popup);
+            };
+
+            const closePopup = () => {
+                if (popupWindow && !popupWindow.closed) {
+                    popupWindow.close();
+                    setPopupWindow(null);
+                }
+            };
+
+            return (
+                <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-lg">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-6">
+                        Onairos Popup Implementation Test
+                    </h1>
+                    
+                    <div className="space-y-4 mb-6">
+                        <p className="text-gray-600">
+                            This test demonstrates the new popup-based data request system with autoFetch functionality.
+                        </p>
+                        
+                        <div className="flex space-x-4">
+                            <button
+                                onClick={openPopup}
+                                disabled={popupWindow && !popupWindow.closed}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Open Data Request Popup
+                            </button>
+                            
+                            <button
+                                onClick={closePopup}
+                                disabled={!popupWindow || popupWindow.closed}
+                                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Close Popup
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Features */}
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h3 className="font-semibold text-blue-900 mb-2">New Features:</h3>
+                        <ul className="text-blue-800 text-sm space-y-1">
+                            <li>✅ Popup window instead of modal overlay (fixes cutoff issue)</li>
+                            <li>✅ AutoFetch enabled by default</li>
+                            <li>✅ Automatic API calls after data approval</li>
+                            <li>✅ Better positioning and sizing</li>
+                            <li>✅ Improved error handling</li>
+                            <li>✅ Real-time status updates</li>
+                        </ul>
+                    </div>
+
+                    {/* Result Display */}
+                    {result && (
+                        <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                            <h3 className="font-semibold text-gray-900 mb-2">Last Result:</h3>
+                            <pre className="text-sm text-gray-700 overflow-auto">
+                                {JSON.stringify(result, null, 2)}
+                            </pre>
+                        </div>
+                    )}
+
+                    {/* Status */}
+                    <div className="mt-6 p-4 border rounded-lg">
+                        <h3 className="font-semibold text-gray-900 mb-2">Status:</h3>
+                        <p className="text-sm text-gray-600">
+                            Popup Window: {
+                                popupWindow && !popupWindow.closed 
+                                    ? '🟢 Open' 
+                                    : '🔴 Closed'
+                            }
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<TestApp />, document.getElementById('root'));
+    </script>
+</body>
+</html> 

@@ -1,145 +1,74 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Check, AlertCircle } from 'lucide-react';
 
 export default function PinSetup({ onComplete, userEmail }) {
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [step, setStep] = useState('create'); // 'create' | 'confirm' | 'success'
-  const [error, setError] = useState('');
-  const [pinRequirements, setPinRequirements] = useState({
+  const [requirements, setRequirements] = useState({
     length: false,
-    number: false,
     uppercase: false,
-    lowercase: false
+    lowercase: false,
+    number: false,
+    special: false
   });
 
+  // Check PIN requirements
   useEffect(() => {
-    // Check PIN requirements
-    setPinRequirements({
+    setRequirements({
       length: pin.length >= 6,
-      number: /[0-9]/.test(pin),
       uppercase: /[A-Z]/.test(pin),
-      lowercase: /[a-z]/.test(pin)
+      lowercase: /[a-z]/.test(pin),
+      number: /[0-9]/.test(pin),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(pin)
     });
   }, [pin]);
 
-  const allRequirementsMet = Object.values(pinRequirements).every(req => req);
+  const allRequirementsMet = Object.values(requirements).every(req => req);
+  const pinsMatch = pin === confirmPin && pin.length > 0;
+  const canSubmit = allRequirementsMet && pinsMatch;
 
-  const handleCreatePin = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
-
-    if (!allRequirementsMet) {
-      setError('Please meet all PIN requirements');
-      return;
-    }
-
-    setStep('confirm');
-  };
-
-  const handleConfirmPin = (e) => {
-    e.preventDefault();
-    setError('');
-
-    if (pin !== confirmPin) {
-      setError('PINs do not match');
-      return;
-    }
-
-    setStep('success');
-    
-    // Simulate PIN storage
-    setTimeout(() => {
-      onComplete({ 
-        pin: pin, 
-        email: userEmail,
-        pinCreated: true 
+    if (canSubmit) {
+      // In a real app, you would hash the PIN before storing
+      onComplete({
+        pin: pin, // This should be hashed in production
+        pinCreated: true,
+        timestamp: new Date().toISOString()
       });
-    }, 1500);
+    }
   };
 
-  const renderCreateStep = () => (
-    <div className="flex flex-col items-center space-y-6 w-full">
-      <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full">
-        <Lock className="w-8 h-8 text-blue-600" />
-      </div>
-      
-      <div className="text-center">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Create Your PIN</h2>
-        <p className="text-gray-600">Your PIN secures your Onairos account</p>
+  return (
+    <div className="max-w-md mx-auto bg-white p-6">
+      <div className="text-center mb-6">
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a2 2 0 002 2zM12 7V3m0 4l3-3m-3 3L9 4" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Your Secure PIN</h2>
+        <p className="text-gray-600">Your PIN will be used to securely access your data</p>
       </div>
 
-      <form onSubmit={handleCreatePin} className="w-full max-w-md space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* PIN Input */}
         <div>
-          <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-1">
-            Create PIN
+          <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
+            Enter PIN
           </label>
           <input
             type="password"
             id="pin"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            placeholder="Enter your PIN"
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Enter your secure PIN"
           />
         </div>
 
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-700">PIN Requirements:</p>
-          {Object.entries(pinRequirements).map(([req, met]) => (
-            <div key={req} className="flex items-center">
-              <div className={`w-4 h-4 rounded-full mr-2 flex items-center justify-center ${
-                met ? 'bg-green-500' : 'bg-gray-300'
-              }`}>
-                {met && <Check size={12} className="text-white" />}
-              </div>
-              <span className={`text-sm ${met ? 'text-green-600' : 'text-gray-600'}`}>
-                {req === 'length' ? 'At least 6 characters' :
-                 req === 'number' ? 'One number' :
-                 req === 'uppercase' ? 'One uppercase letter' : 
-                 'One lowercase letter'}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {error && (
-          <div className="flex items-center text-red-600 text-sm">
-            <AlertCircle size={16} className="mr-1" />
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={!allRequirementsMet}
-          className={`w-full py-3 px-4 rounded-lg font-semibold ${
-            allRequirementsMet
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          Continue
-        </button>
-      </form>
-    </div>
-  );
-
-  const renderConfirmStep = () => (
-    <div className="flex flex-col items-center space-y-6 w-full">
-      <div className="flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full">
-        <Lock className="w-8 h-8 text-orange-600" />
-      </div>
-      
-      <div className="text-center">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Confirm Your PIN</h2>
-        <p className="text-gray-600">Enter your PIN again to confirm</p>
-      </div>
-
-      <form onSubmit={handleConfirmPin} className="w-full max-w-md space-y-4">
+        {/* Confirm PIN Input */}
         <div>
-          <label htmlFor="confirmPin" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="confirmPin" className="block text-sm font-medium text-gray-700 mb-2">
             Confirm PIN
           </label>
           <input
@@ -147,64 +76,65 @@ export default function PinSetup({ onComplete, userEmail }) {
             id="confirmPin"
             value={confirmPin}
             onChange={(e) => setConfirmPin(e.target.value)}
-            placeholder="Re-enter your PIN"
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Confirm your PIN"
           />
+          {confirmPin && !pinsMatch && (
+            <p className="text-red-500 text-sm mt-1">PINs do not match</p>
+          )}
+          {confirmPin && pinsMatch && (
+            <p className="text-green-500 text-sm mt-1">✅ PINs match</p>
+          )}
         </div>
 
-        {error && (
-          <div className="flex items-center text-red-600 text-sm">
-            <AlertCircle size={16} className="mr-1" />
-            {error}
+        {/* Requirements */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="text-sm font-medium text-gray-700 mb-3">PIN Requirements:</h4>
+          <div className="space-y-2">
+            {Object.entries({
+              length: 'At least 6 characters',
+              uppercase: 'One uppercase letter (A-Z)',
+              lowercase: 'One lowercase letter (a-z)',
+              number: 'One number (0-9)',
+              special: 'One special character (!@#$%^&*)'
+            }).map(([key, label]) => (
+              <div key={key} className="flex items-center">
+                <div className={`w-4 h-4 rounded-full mr-2 flex items-center justify-center ${
+                  requirements[key] ? 'bg-green-500' : 'bg-gray-300'
+                }`}>
+                  {requirements[key] && (
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className={`text-sm ${requirements[key] ? 'text-green-600' : 'text-gray-600'}`}>
+                  {label}
+                </span>
+              </div>
+            ))}
           </div>
-        )}
-
-        <div className="flex space-x-3">
-          <button
-            type="button"
-            onClick={() => {
-              setStep('create');
-              setConfirmPin('');
-              setError('');
-            }}
-            className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            Back
-          </button>
-          <button
-            type="submit"
-            className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
-          >
-            Create PIN
-          </button>
         </div>
+
+        {/* Submit Button */}
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${
+            canSubmit
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          Create PIN
+        </button>
       </form>
-    </div>
-  );
 
-  const renderSuccessStep = () => (
-    <div className="flex flex-col items-center space-y-6 w-full">
-      <div className="flex items-center justify-center w-16 h-16 bg-green-100 rounded-full">
-        <Check className="w-8 h-8 text-green-600" />
-      </div>
-      
-      <div className="text-center">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">PIN Created!</h2>
-        <p className="text-gray-600">Your account is now secure</p>
-      </div>
-
-      <div className="w-8 h-8">
-        <div className="animate-spin h-8 w-8 border-2 border-blue-600 rounded-full border-t-transparent"></div>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="flex flex-col items-center space-y-6 p-6 w-full">
-      {step === 'create' && renderCreateStep()}
-      {step === 'confirm' && renderConfirmStep()}
-      {step === 'success' && renderSuccessStep()}
+      {userEmail && (
+        <p className="text-center text-sm text-gray-500 mt-4">
+          Securing account for: <span className="font-medium">{userEmail}</span>
+        </p>
+      )}
     </div>
   );
 } 

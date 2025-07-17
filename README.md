@@ -1,5 +1,11 @@
+## Onairos Developer Documentation v2.0.0
 
-## Onairos Developer Documentation v0.0.0
+### 🚀 What's New in v2.0.0
+
+- **Popup-based Data Requests**: No more cutoff issues with improved popup window implementation
+- **AutoFetch by Default**: Automatic API calls after user approval - no manual handling required
+- **Simplified Integration**: Much cleaner and easier to use
+- **Enhanced UX**: Better positioning, loading states, and error handling
 
 ### 1. Create a Developer Account
 
@@ -7,21 +13,194 @@ Create a Developer account to access Onairos services. Register your domain to e
 
 https://Onairos.uk/dev-board
 
-### 2. Download the Onairos NPM package
+### 2. Installation
 
 ```bash
 npm install onairos
 ```
 
-Import the package as a default import 
+### 3. Basic Usage
+
+Import and use the OnairosButton component:
 
 ```jsx
-import Onairos from 'onairos';
+import { OnairosButton } from 'onairos';
+
+function MyApp() {
+  return (
+    <OnairosButton
+      requestData={['email', 'profile', 'social']}
+      webpageName="My Application"
+      autoFetch={true} // Default - automatically makes API calls
+      onComplete={(result) => {
+        console.log('Data approved:', result.approved);
+        console.log('API Response:', result.apiResponse); // Available when autoFetch is true
+        
+        if (result.apiResponse) {
+          // Use the API response data directly
+          console.log('User data:', result.apiResponse);
+        }
+      }}
+    />
+  );
+}
 ```
 
-### 3. Setup the Onairos Connection Object
+### 4. Configuration Options
 
-First create the Request Object which Users will Authorize (or not) in the extension popup
+#### OnairosButton Props
+
+- **`requestData`** (Array): Specific data types to request
+  - Available types: `'email'`, `'profile'`, `'social'`, `'activity'`, `'preferences'`
+- **`webpageName`** (String): Your application name displayed to users
+- **`autoFetch`** (Boolean, default: `true`): Enable automatic API calls after approval
+- **`onComplete`** (Function): Callback when data request completes
+- **`proofMode`** (Boolean, default: `false`): Enable proof mode for verification
+
+#### Response Format
+
+When `autoFetch` is enabled (default), the `onComplete` callback receives:
+
+```javascript
+{
+  approved: ['email', 'profile'], // Array of approved data types
+  timestamp: "2024-01-15T10:30:00.000Z",
+  userEmail: "user@example.com",
+  appName: "My Application",
+  apiResponse: { /* Your data here */ }, // API response (on success)
+  apiError: "Error message", // Error message (on failure)
+  apiUrl: "https://api2.onairos.uk/inferenceTest"
+}
+```
+
+### 5. Advanced Usage Examples
+
+#### Manual API Handling (AutoFetch Disabled)
+
+```jsx
+<OnairosButton
+  requestData={['email', 'profile']}
+  webpageName="My Application"
+  autoFetch={false}
+  onComplete={(result) => {
+    if (result.approved) {
+      // Handle approved data manually
+      makeCustomApiCall(result.dataTypes);
+    }
+  }}
+/>
+```
+
+#### With Custom Styling
+
+```jsx
+<OnairosButton
+  requestData={['profile', 'social']}
+  webpageName="Social Analytics App"
+  textColor="black"
+  textLayout="right"
+  visualType="full"
+  buttonType="pill"
+  onComplete={handleDataResponse}
+/>
+```
+
+### 6. Migration from v1.x
+
+**Before (v1.x - Complex)**:
+```jsx
+// Old complex setup with manual event listeners
+useEffect(() => {
+  const handleMessage = (event) => {
+    if (event.data?.source === 'content-script' && event.data?.type === 'API_URL_RESPONSE') {
+      const { APIurl, accessToken } = event.data;
+      // Manual API call handling
+      fetch(APIurl, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+        body: JSON.stringify(InputData),
+      });
+    }
+  };
+  window.addEventListener('message', handleMessage);
+  return () => window.removeEventListener('message', handleMessage);
+}, []);
+
+<Onairos requestData={complexRequestObject} webpageName={webpageName} />
+```
+
+**After (v2.0 - Simple)**:
+```jsx
+// New simplified approach
+<OnairosButton
+  requestData={['email', 'profile']}
+  webpageName="My App"
+  onComplete={(result) => {
+    // API call already made automatically
+    console.log('User data:', result.apiResponse);
+  }}
+/>
+```
+
+### 7. Data Types Available
+
+- **`email`**: Email address for account identification
+- **`profile`**: Basic profile information and preferences  
+- **`social`**: Connected social media accounts
+- **`activity`**: Usage patterns and interactions
+- **`preferences`**: User settings and customization choices
+
+### 8. Error Handling
+
+The component includes comprehensive error handling:
+
+```jsx
+<OnairosButton
+  requestData={['email']}
+  webpageName="My App"
+  onComplete={(result) => {
+    if (result.apiError) {
+      console.error('API Error:', result.apiError);
+      // Handle error appropriately
+    } else if (result.apiResponse) {
+      console.log('Success:', result.apiResponse);
+      // Process data
+    }
+  }}
+/>
+```
+
+### 9. Browser Compatibility
+
+- ✅ Chrome 80+
+- ✅ Firefox 75+
+- ✅ Safari 13+
+- ✅ Edge 80+
+
+### 10. Troubleshooting
+
+**Popup Blocked**: Ensure popups are allowed for your domain in browser settings.
+
+**API Calls Failing**: Verify your domain is registered in the developer console.
+
+**Data Not Loading**: Check browser console for errors and ensure proper integration.
+
+### 11. Support
+
+For issues or questions:
+- Check the [troubleshooting guide](./POPUP_IMPLEMENTATION_README.md)
+- Review browser console for errors
+- Contact support with detailed error information
+
+---
+
+## Legacy Documentation (v1.x)
+
+*The following sections document the previous complex implementation for reference:*
+
+### Legacy Request Object Format
+
+Previously required complex request objects:
 ```json
 "RequestObject":{ 
     "Small": {
@@ -40,235 +219,47 @@ First create the Request Object which Users will Authorize (or not) in the exten
       "reward":"2 USDC"
     }
   }
-
 ```
-RequestObject.size key:
- - `Small` - Upto 16 inference items
- - `Medium` - Upto 32 inference items
- - `Large` - Upto 64 inference items
 
-Individual Request Information:
- - `type`: Only the Personality key is valid at this time (represents the users Onairos Personality)
- - `description`: Description to display to users about your request
- - `reward`: Reward Given to User for granting Data Request
+### Legacy API Usage
 
-Then instantiate the Onairos object from the Onairos package - passing in your Request Object and other meta info
+Previously required manual event handling:
 ```jsx
-<Onairos requestData={requestData} webpageName={webpageName} proofMode={proofMode} />
-```
-
-Onairos Object fields:
- - `requestData` - Request Object - Json
- - `webpageName` - App Display Name - String 
- - `proofMode` - Wish to recieve ZK proof after recieving Data , default FALSE - boolean
-
-That is all for the initial setup
-
-### 4. Recieving the Inference API
-
-Once the user has clicked to Connect their Onairos account and authroized their data, you will recieve the Inference API via window.sendMessage with the following event types:
-```jsx
-event.data.source === 'content-script'
-&&
-event.data.type === 'API_URL_RESPONSE'
-&&
-event.data.unique ==='Onairos-Response'
-```
-
-You will also be given an ACCESS TOKEN which you must use in any API requests from that specific client.
-
-This is a short lived token, for usage on your developer registered domain only, and lasts for 1 hour from issue.
-
-For example:
-
-``` jsx
 export default async function UseAPIURL(event){
     if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE') {
       const { APIurl, accessToken } = event.data;
-      //Fetch Onairos Data from Returned API url
-  }
-}
-useEffect(() => {
-  window.addEventListener('message', UseAPIURL);
-  return () => {
-    window.removeEventListener('message', UseAPIURL);
-  };
-}, []);
-```
-
-## Using the Inference API
-
-The Inference API provides a machine learning model that can generate predictions based on the provided data. This documentation will guide you on how to properly format your input for the API and interpret the results received from the API.
-
-### 5. Input Format
-
-Send a POST request to the API endpoint with a JSON payload containing a set of entries for prediction. Each entry should include the following information:
-
-- `text`: The text input for the inference result (String) - required
-- `category`: The category to which the content belongs (String) - required
-- `img_url`: The URL of an image associated with the content (String) - optional
-
-
-Example JSON body for the POST request:
-
-```json
-
-  "Input": {
-    "input1": {
-      "text": "Example text input 1",
-      "category": "Example Category 1",
-      "img_url": "http://example.com/image1.jpg"
-    },
-    "input2": {
-      "text": "Example text input 2",
-      "category": "Example Category 2",
-      "img_url": "http://example.com/image2.jpg"
-    },
-    "input3": {
-      "text": "Example text input 3",
-      "category": "Example Category 3",
-      "img_url": "http://example.com/image3.jpg"
-    },
-  }
-    // Additional entries can be added here
-  
-
-```
-
-You can then call the Inference API with the Inference object created above.
-
-Remember to include the access token in the Authorization header of your API request.
-
-
-```jsx
-export default async function UseAPIURL(event){
-    if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE') {
-      const { apiUrl, accessToken } = event.data;
-      await fetch(apiUrl, {
+      await fetch(APIurl, {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}` // Include the access token in the Authorization header
+              'Authorization': `Bearer ${accessToken}`
           },
           body: JSON.stringify(InputData),
       }).then(async (data)=>{
             // process Onairos Data
       })
       .catch(error => console.error(error));
-      
-    }}
-  
+    }
+}
 ```
 
-### 6. Output Format
+*This manual approach is no longer needed with v2.0's autoFetch functionality.*
 
-The API responds with a JSON object containing an `output` field. This field is an array of arrays, where each sub-array contains a single element representing the prediction score from the model. This score is a floating-point number reflecting the model's confidence for the input provided.
+### Legacy Output Format
 
-Example of the output format:
-
+API still responds with the same format:
 ```json
 {
   "output": [
     [[0.9998]],
     [[0.9999]],
     [[0.9922]],
-    [[0.0013]],
-    // Additional scores for more entries
+    [[0.0013]]
   ]
 }
 ```
 
-Each score is deeply nested within two arrays to maintain compatibility with batch processing systems that may require this format.
+### Integration Notes
 
-### Errors and Debugging
-
-All Errors and Debugging from the Inference API will be of the form
-```jsx
-    res.status(statusCode).send({ error: message }); 
-```
-Statuses of 200 are valid, and all others indicate potential issues
-
-### Integrating the onairos Package into Your Application
-
-When integrating the onairos package into your application, please ensure the following steps are taken to correctly handle dynamically loaded modules:
-
-## Webpack Configuration: 
-Your application's Webpack configuration needs to be set up to handle dynamic imports. Specifically, the output.publicPath in your webpack.config.js should be configured to reflect the URL path from which your application will serve its assets. If your application is served from a subdirectory, make sure to include the subdirectory path in the publicPath.
-
-## Serving Chunks: 
-Ensure that your server is configured to serve the necessary chunk files located within the node_modules/onairos/dist directory. These files are essential for the dynamic modules to load correctly at runtime.
-
-Include Chunks in Your Deployment: When deploying your application, include the dist directory of the onairos package in your deployment artifacts. This directory contains the chunk files generated by Webpack and is necessary for the proper functioning of the package.
-
-## Version Management: 
-The onairos package uses semantic versioning. Please note that major version changes may introduce breaking changes and require additional steps to integrate. Always refer to the release notes for guidance on upgrading.
-
-## Local Testing: 
-Prior to deployment, you can link the onairos package locally to ensure that dynamic imports work as expected. Use the npm link command for this purpose and verify that the application behaves correctly and loads all necessary modules.
-
-If you encounter any issues while integrating the onairos package, please refer to the troubleshooting guide provided in our documentation, or reach out to our support team for assistance.
-
-### Interpretation of Output
-
-- A score close to `1` indicates a high confidence level in the prediction.
-- A score close to `0` indicates a low confidence level in the prediction.
-- The sequence of scores corresponds to the order of the input entries.
-
-### Example Usage in a React Application
-
-The following React component demonstrates how to send a prediction request to the API and display the results:
-
-```jsx
-import React, { useState } from 'react';
-
-function App() {
-
-    async function UseAPIURL(event){
-     if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE') {
-      const { apiUrl, accessToken } = event.data;
-       await fetch(apiUrl, {
-           method: 'POST',
-           headers: {
-               'Content-Type': 'application/json',
-               'Authorization': `Bearer ${accessToken}` // Include the access token in the Authorization header
-           },
-           body: JSON.stringify(InputData),
-       }).then(async (data)=>{
-             // process Onairos Data
-       })
-       .catch(error => console.error(error));
-      
-    }}
-
-  const requestData = { 
-    Small: {
-      type:"Personality",
-      descriptions:"Insight into your Interests",
-      reward:"10% Discount"
-    },
-    Medium:{
-      type:"Personality",
-      descriptions:"Insight into your Interests",
-      reward:"2 USDC"
-    },
-    Large:{
-      type:"Personality",
-      descriptions:"Insight into your Interests",
-      reward:"2 USDC"
-    },
-  };
-  useEffect(() => {
-    window.addEventListener('message', UseAPIURL);
-    return () => {
-      window.removeEventListener('message', UseAPIURL);
-    };
-    }, []);
-
-  const onairosID = 'test';
-  return (
-      <Onairos requestData={requestData} webpageName={webpageName} proofMode={proofMode} />
-
-  );
-}
-export default InferenceComponent;
+When integrating the onairos package into your application, ensure your Webpack configuration handles dynamic imports correctly and serves the necessary chunk files from `node_modules/onairos/dist`.
 

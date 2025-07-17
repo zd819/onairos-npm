@@ -291,7 +291,7 @@ export default function Overlay({
           />
         );
       case 'onboarding':
-        return <UniversalOnboarding onComplete={handleOnboardingComplete} />;
+        return <UniversalOnboarding onComplete={handleOnboardingComplete} username={accountInfo?.username || formData.username} />;
       case 'security':
         return <SecuritySetup onComplete={handleSecurityComplete} />;
       case 'datarequests':

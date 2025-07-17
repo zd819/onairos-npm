@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixed Onairos Flow Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root" class="p-8">
+        <h1 class="text-3xl font-bold mb-6">Fixed Onairos Flow Test</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="p-6 bg-green-50 border border-green-200 rounded-lg">
+                <h2 class="text-xl font-semibold text-green-800 mb-4">✅ Fixed Issues</h2>
+                <ul class="space-y-2 text-green-700">
+                    <li>• Modal popup with backdrop (not inline component)</li>
+                    <li>• Universal onboarding with vertical toggles</li>
+                    <li>• App logo → arrow → Onairos logo</li>
+                    <li>• Single PIN screen with requirements</li>
+                    <li>• Improved data request flow</li>
+                    <li>• Proper modal close behavior</li>
+                </ul>
+            </div>
+            
+            <div class="p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                <h2 class="text-xl font-semibold text-blue-800 mb-4">🔥 Test Flow</h2>
+                <ol class="space-y-2 text-blue-700">
+                    <li>1. Click button → Modal opens</li>
+                    <li>2. Email: any@email.com, Code: 123456</li>
+                    <li>3. Connect accounts with toggles</li>
+                    <li>4. Create PIN with requirements</li>
+                    <li>5. Approve data types</li>
+                    <li>6. Modal closes with callback</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3">Test Button:</h3>
+            <div id="button-container" class="inline-block"></div>
+        </div>
+
+        <div id="result" class="mt-6 p-4 bg-gray-50 border rounded-lg hidden">
+            <h3 class="font-semibold mb-2">Completion Result:</h3>
+            <pre id="result-data" class="text-sm text-gray-700"></pre>
+        </div>
+    </div>
+
+    <script src="./dist/onairos.bundle.js"></script>
+    <script>
+        console.log('🔥 Testing fixed Onairos flow...');
+        
+        // Test the Onairos button
+        const { OnairosButton } = window.Onairos;
+        
+        function handleComplete(result) {
+            console.log('✅ Flow completed successfully:', result);
+            
+            // Show result
+            document.getElementById('result').classList.remove('hidden');
+            document.getElementById('result-data').textContent = JSON.stringify(result, null, 2);
+            
+            // Show success message
+            alert('✅ Success! Flow completed. Check the result below.');
+        }
+
+        // Create the button element
+        const buttonElement = React.createElement(OnairosButton, {
+            requestData: ['email', 'profile', 'social', 'activity'],
+            webpageName: 'Test App',
+            onComplete: handleComplete,
+            buttonType: 'pill',
+            visualType: 'full',
+            textColor: 'black'
+        });
+
+        // Render the button
+        ReactDOM.render(buttonElement, document.getElementById('button-container'));
+        
+        console.log('✅ Fixed Onairos button rendered successfully!');
+    </script>
+</body>
+</html> 

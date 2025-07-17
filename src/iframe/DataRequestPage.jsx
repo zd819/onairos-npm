@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import UniversalOnboarding from '../components/UniversalOnboarding.js';
 import IndividualConnection from './components/IndividualConnection';
+import onairosLogo from './icons/onairos_logo.png';
 
 /**
  * DataRequestPage Component
  * Displays different data requests and handles user interactions
  */
-const DataRequestPage = ({ requestData = {}, dataRequester = 'App', proofMode = false, domain = '' }) => {
+const DataRequestPage = ({ requestData = {}, dataRequester = 'App', proofMode = false, domain = '', appIcon = '' }) => {
   const [loading, setLoading] = useState(true);
   const [activeModels, setActiveModels] = useState([]);
   const [granted, setGranted] = useState(0);
   const [allowSubmit, setAllowSubmit] = useState(false);
-  const [avatar, setAvatar] = useState(false);
-  const [traits, setTraits] = useState(false);
+  const [userConnections, setUserConnections] = useState(['instagram', 'youtube', 'email']);
   const [selectedRequests, setSelectedRequests] = useState({});
   const selectedConnections = useRef([]);
   const userSub = useRef(null);
@@ -36,7 +36,7 @@ const DataRequestPage = ({ requestData = {}, dataRequester = 'App', proofMode = 
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Sample active models - this would come from your backend
-        setActiveModels(['Personality']);
+        setActiveModels(['Profile', 'User Memories']);
         setLoading(false);
       } catch (error) {
         console.error('Error loading data:', error);
@@ -151,90 +151,132 @@ const DataRequestPage = ({ requestData = {}, dataRequester = 'App', proofMode = 
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
       {loading ? (
         <div className="flex items-center justify-center min-h-screen">
           <div className="animate-spin h-8 w-8 border-2 border-blue-600 rounded-full border-t-transparent"></div>
         </div>
-      ) : (activeModels.length === 0 ? (
-        <UniversalOnboarding appIcon="https://onairos.sirv.com/Images/OnairosBlack.png" appName={dataRequester}/>
+      ) : activeModels.length === 0 ? (
+        <UniversalOnboarding 
+          appIcon="https://onairos.sirv.com/Images/OnairosBlack.png" 
+          appName={dataRequester}
+          username={localStorage.getItem("username")}
+        />
       ) : (
-        <div className="max-w-md mx-auto p-4 space-y-2">
-          <header className="border space-y-4 bg-white p-4 rounded-lg outline-2 outline-black/10 shadow-sm">
-            <h1 className="text-lg font-bold text-black">Data Requests from {dataRequester}</h1>
+        <div className="max-w-md mx-auto p-6 space-y-4">
+          <header className="bg-white p-6 rounded-xl shadow-md">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-2">
+                <img src={onairosLogo} alt="Onairos Logo" className="w-8 h-8" />
+                <div className="text-gray-400 mx-2">→</div>
+                {appIcon ? (
+                  <img src={appIcon} alt={`${dataRequester} Logo`} className="w-8 h-8 rounded-full" />
+                ) : (
+                  <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                    <span className="text-gray-600 text-xs font-bold">{dataRequester.charAt(0)}</span>
+                  </div>
+                )}
+              </div>
+              <h2 className="text-lg font-bold text-gray-800">{dataRequester}</h2>
+            </div>
+            
+            <h1 className="text-xl font-bold text-gray-800 mb-4">Data Access Request</h1>
+            <p className="text-gray-600 mb-6">Select the data you want to share with {dataRequester}</p>
+            
             <div className="flex items-center justify-between gap-4">
               <button
                 onClick={rejectDataRequest}
-                className="border w-full border-2 border-black/10 hover:bg-gray-50 text-black font-medium py-2 px-4 rounded"
+                className="border w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors"
               >
-                Reject All
+                Decline
               </button>
               <button
                 disabled={!allowSubmit}
                 onClick={sendDataRequest}
-                className="w-full bg-black hover:bg-black/90 text-white font-medium py-2 px-4 rounded"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Confirm ({granted})
+                Approve {granted > 0 && `(${granted})`}
               </button>
             </div>
           </header>
 
-          <div className="space-y-2">
-            {activeModels.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8 space-y-4 rounded-lg bg-white border-2 border-black/10">
-                <img src="https://onairos.sirv.com/Images/OnairosBlack.png" alt="Logo" className="w-20 h-20" />
-                <p className="text-center text-sm text-black/70">
-                  Please connect{" "}
-                  <a href="https://onairos.uk/connections" className="text-black font-medium hover:underline">
-                    Onairos
-                  </a>{" "}
-                  Personality to send {dataRequester} your data
-                </p>
-              </div>
-            ) : (
-              Object.keys(requestData)
-                .sort((a, b) => {
-                  const aIsActive = activeModels.includes(requestData[a].type)
-                  const bIsActive = activeModels.includes(requestData[b].type)
-
-                  if (requestData[a].type === "Avatar") return 1
-                  if (requestData[b].type === "Avatar") return -1
-                  if (requestData[b].type === "Traits") return 1
-                  if (requestData[a].type === "Traits") return -1
-                  if (aIsActive && !bIsActive) return -1
-                  if (bIsActive && !aIsActive) return 1
-                  return 0
-                })
-                .map((key, index) => {
-                  const product = requestData[key]
-                  const active =
-                    product.type === "Personality"
-                      ? activeModels.includes(product.type)
-                      : product.type === "Avatar"
-                        ? avatar
-                        : product.type === "Traits"
-                          ? traits
-                          : false
+          <div className="space-y-3">
+            {/* Only show Profile and User Memories */}
+            {['Profile', 'User Memories'].map((dataType, index) => {
+              const key = dataType.toLowerCase().replace(' ', '_');
+              const product = {
+                type: dataType,
+                descriptions: dataType === 'Profile' ? 
+                  'Basic profile information and preferences' : 
+                  'Your personal context and memory data',
+                reward: dataType === 'Profile' ? 
+                  'Personalized experience' : 
+                  'Contextual understanding of your preferences'
+              };
+              
+              return (
+                <IndividualConnection
+                  key={key}
+                  active={true}
+                  title={product.type}
+                  id={product}
+                  number={index}
+                  descriptions={product.descriptions}
+                  rewards={product.reward}
+                  size={key}
+                  changeGranted={changeGranted}
+                  onSelectionChange={(isSelected) =>
+                    handleConnectionSelection(dataRequester, key, index, product.type, product.reward, isSelected)
+                  }
+                />
+              );
+            })}
+            
+            {/* User Connections Section */}
+            <div className="bg-white p-4 rounded-xl shadow-sm mt-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Your Connected Services</h3>
+              <div className="flex items-center space-x-3">
+                {userConnections.map((connection, index) => {
+                  const getConnectionIcon = (type) => {
+                    switch(type) {
+                      case 'instagram':
+                        return (
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center">
+                            <span className="text-white text-xs">IG</span>
+                          </div>
+                        );
+                      case 'youtube':
+                        return (
+                          <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
+                            <span className="text-white text-xs">YT</span>
+                          </div>
+                        );
+                      case 'email':
+                        return (
+                          <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                            <span className="text-white text-xs">@</span>
+                          </div>
+                        );
+                      default:
+                        return (
+                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <span className="text-gray-600 text-xs">{type.charAt(0).toUpperCase()}</span>
+                          </div>
+                        );
+                    }
+                  };
+                  
                   return (
-                    <IndividualConnection
-                      key={key}
-                      active={active}
-                      title={product.type}
-                      id={product}
-                      number={index}
-                      descriptions={product.descriptions}
-                      rewards={product.reward}
-                      size={key}
-                      changeGranted={changeGranted}
-                      onSelectionChange={(isSelected) =>
-                        handleConnectionSelection(dataRequester, key, index, product.type, product.reward, isSelected)
-                      }
-                    />
-                  )
-                })
-            )}
+                    <div key={index} className="flex flex-col items-center">
+                      {getConnectionIcon(connection)}
+                      <span className="text-xs text-gray-600 mt-1">{connection}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </div>)
+        </div>
       )}
     </div>
   );

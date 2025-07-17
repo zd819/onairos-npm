@@ -1,5 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { rsaEncrypt } from './RSA.jsx';
+import React, { useEffect, useState } from 'react';
 import EmailAuth from './components/EmailAuth.js';
 import UniversalOnboarding from './components/UniversalOnboarding.js';
 import PinSetup from './components/PinSetup.js';
@@ -19,12 +18,12 @@ export function OnairosButton({
   loginReturn = null,
   loginType = 'signIn',
   visualType = 'full',
+  appIcon = null,
 }) {
 
   const [showOverlay, setShowOverlay] = useState(false);
   const [currentFlow, setCurrentFlow] = useState('email'); // 'email' | 'onboarding' | 'pin' | 'dataRequest'
   const [userData, setUserData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Check for existing user session
@@ -55,9 +54,8 @@ export function OnairosButton({
 
   const openTerminal = async () => {
     try {
-      console.log('🔥 openTerminal called - showing overlay');
-      setShowOverlay(true);
-      console.log('🔥 setShowOverlay(true) called');
+      console.log('🔥 openTerminal called');
+        setShowOverlay(true);
     } catch (error) {
       console.error('Error in openTerminal:', error);
     }
@@ -66,6 +64,13 @@ export function OnairosButton({
   const handleCloseOverlay = () => {
     setShowOverlay(false);
     setError(null);
+  };
+
+  // Handle clicks on the backdrop to close modal
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      handleCloseOverlay();
+    }
   };
 
   const handleEmailAuthSuccess = (authData) => {
@@ -81,11 +86,12 @@ export function OnairosButton({
     setCurrentFlow('onboarding');
   };
 
-  const handleOnboardingComplete = () => {
-    console.log('Onboarding completed');
+  const handleOnboardingComplete = (onboardingData) => {
+    console.log('Onboarding completed:', onboardingData);
     const updatedUserData = {
       ...userData,
-      onboardingComplete: true
+      onboardingComplete: true,
+      connectedAccounts: onboardingData.connectedAccounts || []
     };
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
@@ -101,11 +107,13 @@ export function OnairosButton({
     };
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
+    
+    // Move to data request flow within the same overlay
     setCurrentFlow('dataRequest');
   };
 
   const handleDataRequestComplete = (requestResult) => {
-    console.log('Data request completed:', requestResult);
+    console.log('🔥 OnairosButton: Data request completed:', requestResult);
     
     // Update user data with request result
     const updatedUserData = {
@@ -119,8 +127,16 @@ export function OnairosButton({
     setShowOverlay(false);
 
     // Call onComplete callback if provided
+    console.log('🔥 Calling onComplete callback with:', requestResult);
     if (onComplete) {
-      onComplete(requestResult);
+      try {
+        onComplete(requestResult);
+        console.log('🔥 onComplete callback executed successfully');
+      } catch (error) {
+        console.error('🔥 Error in onComplete callback:', error);
+      }
+    } else {
+      console.log('🔥 No onComplete callback provided');
     }
   };
 
@@ -138,7 +154,9 @@ export function OnairosButton({
         return (
           <UniversalOnboarding 
             onComplete={handleOnboardingComplete}
-            appIcon="https://onairos.sirv.com/Images/OnairosBlack.png"
+            appIcon={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"}
+            appName={webpageName}
+            username={userData?.email || userData?.username}
           />
         );
       
@@ -156,6 +174,9 @@ export function OnairosButton({
             onComplete={handleDataRequestComplete}
             userEmail={userData?.email}
             requestData={requestData}
+            appName={webpageName}
+            autoFetch={autoFetch}
+            appIcon={appIcon}
           />
         );
       
@@ -201,7 +222,7 @@ export function OnairosButton({
   };
 
   return (
-    <div className="flex items-center justify-center">
+    <>
       <button
         className={buttonClass}
         onClick={openTerminal}
@@ -209,50 +230,46 @@ export function OnairosButton({
       >
         {(visualType === 'full' || visualType === 'icon') && (
           <img
-            src="https://onairos.sirv.com/Images/OnairosBlack.png"
+            src={login ? "https://onairos.sirv.com/Images/OnairosWhite.png" : "https://onairos.sirv.com/Images/OnairosBlack.png"}
             alt="Onairos Logo"
             style={logoStyle}
-            className={`${buttonType === 'pill' ? 'w-6 h-6' : 'w-8 h-8'} object-contain`}
           />
         )}
-
-        {(visualType === 'full' || visualType === 'textOnly') && (
+        {visualType !== 'icon' && (
           <span className={`${textColor === 'black' ? 'text-black' : 'text-white'} ${visualType === 'icon' ? 'sr-only' : ''} ${textLayout === 'right' ? 'ml-2' : textLayout === 'left' ? 'mr-2' : ''}`}>
             {getText()}
           </span>
         )}
       </button>
 
+      {/* Full-Screen Overlay (Plaid/SendPay Style) */}
       {showOverlay && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          {console.log('🔥 Rendering overlay!')}
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h2 className="text-lg font-semibold">
-                {currentFlow === 'email' && 'Connect with Onairos'}
-                {currentFlow === 'onboarding' && 'Account Setup'}
-                {currentFlow === 'pin' && 'Secure Your Account'}
-                {currentFlow === 'dataRequest' && 'Data Access Request'}
-              </h2>
-              <button 
-                onClick={handleCloseOverlay}
-                className="text-gray-500 hover:text-gray-700 text-xl font-bold"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-4">
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-700 text-sm">{error}</p>
-                </div>
-              )}
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={handleBackdropClick}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-hidden relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={handleCloseOverlay}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Content */}
+            <div className="overflow-y-auto max-h-[90vh]">
               {renderCurrentFlow()}
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
