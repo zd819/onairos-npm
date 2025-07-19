@@ -3,16 +3,23 @@ import React, { useState } from 'react';
 const dataTypes = [
   { 
     id: 'basic', 
-    name: 'Basic Information', 
-    description: 'Name, email, and essential account details', 
+    name: 'Basic Info', 
+    description: 'Essential profile information and account details', 
     icon: '👤',
-    required: true // Cannot be deselected
+    required: false
   },
   { 
-    id: 'memories', 
-    name: 'Memories', 
-    description: 'Preferences and interests', 
+    id: 'personality', 
+    name: 'Personality', 
+    description: 'Personality traits, behavioral patterns and insights', 
     icon: '🧠',
+    required: false
+  },
+  { 
+    id: 'preferences', 
+    name: 'Preferences', 
+    description: 'User preferences, settings and choices', 
+    icon: '⚙️',
     required: false
   }
 ];
@@ -21,11 +28,13 @@ export default function DataRequest({
   onComplete, 
   userEmail, 
   appName = 'App', 
-  autoFetch = true 
+  autoFetch = false,
+  testMode = false 
 }) {
   const [selectedData, setSelectedData] = useState({
-    basic: true, // Always selected by default
-    memories: false
+    basic: false, // User can choose
+    personality: false,
+    preferences: false
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
@@ -33,13 +42,15 @@ export default function DataRequest({
   const [apiError, setApiError] = useState(null);
 
   const handleDataToggle = (dataId) => {
-    // Don't allow toggling basic information (it's required)
-    if (dataId === 'basic') return;
-    
     setSelectedData(prev => ({
       ...prev,
       [dataId]: !prev[dataId]
     }));
+  };
+
+  const handleRowClick = (dataId) => {
+    // Make the entire row clickable for better UX
+    handleDataToggle(dataId);
   };
 
   const generateUserHash = (email) => {
@@ -54,112 +65,156 @@ export default function DataRequest({
     return `user_${Math.abs(hash).toString(36)}`;
   };
 
-  const makeApiCall = async (approvedData) => {
+  const fetchUserData = async () => {
+    setIsLoadingApi(true);
+    setApiError(null);
+    
     try {
-      setIsLoadingApi(true);
-      setApiError(null);
-      
+      // Create a unique user hash for this request
       const userHash = generateUserHash(userEmail);
       
-      const response = await fetch('https://api2.onairos.uk/inferenceTest', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          approvedData,
-          userEmail,
-          userHash, // Add user hash for backend LLM SDK
-          appName,
-          timestamp: new Date().toISOString()
-        })
-      });
+      // Get selected data types
+      const approvedData = Object.entries(selectedData)
+        .filter(([key, value]) => value)
+        .map(([key]) => key);
 
-      if (!response.ok) {
-        throw new Error(`API call failed with status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Ensure user hash is included in response
-      const responseWithHash = {
-        ...data,
-        userHash
+      // Map frontend data types to backend confirmation types
+      const mapDataTypesToConfirmations = (approvedData) => {
+        const confirmations = [];
+        const currentDate = new Date().toISOString();
+        
+        // Map frontend types to backend types according to API expectations
+        const dataTypeMapping = {
+          'basic': 'Medium',        // Basic info -> Medium data
+          'personality': 'Large',   // Personality -> Large analysis
+          'preferences': 'Traits'   // Preferences -> Traits data
+        };
+        
+        approvedData.forEach(dataType => {
+          if (dataTypeMapping[dataType]) {
+            confirmations.push({
+              data: dataTypeMapping[dataType],
+              date: currentDate
+            });
+          }
+        });
+        
+        return confirmations;
       };
+
+      // Determine API endpoint based on test mode
+      const apiEndpoint = testMode 
+        ? 'https://api2.onairos.uk/inferenceTest'
+        : 'https://api2.onairos.uk/getAPIurlMobile';
       
-      setApiResponse(responseWithHash);
-      return responseWithHash;
+      // Prepare the base result
+      const baseResult = {
+        userHash,
+        appName,
+        approvedData,
+        apiUrl: apiEndpoint,
+        testMode,
+        timestamp: new Date().toISOString()
+      };
+
+      if (autoFetch) {
+        // Auto mode true: make API request and return results
+        try {
+          const confirmations = mapDataTypesToConfirmations(approvedData);
+          
+          // Format request according to backend expectations
+          const requestBody = testMode ? {
+            // Test mode: simple format for testing
+            approvedData,
+            userEmail,
+            appName,
+            testMode,
+            timestamp: new Date().toISOString()
+          } : {
+            // Live mode: proper Info format for backend
+            Info: {
+              storage: "local",
+              appId: appName,
+              confirmations: confirmations,
+              EncryptedUserPin: "pending_pin_integration", // TODO: Get from user PIN setup
+              account: userEmail,
+              proofMode: false,
+              Domain: window.location.hostname,
+              web3Type: "standard", // or "Othent" if using Othent
+              OthentSub: null // Only if using Othent authentication
+            }
+          };
+
+          const response = await fetch(apiEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+          });
+
+          if (!response.ok) {
+            throw new Error(`API call failed with status: ${response.status}`);
+          }
+
+          const apiData = await response.json();
+          
+          // Format response according to test mode requirements
+          let formattedData = apiData;
+          if (testMode && apiData) {
+            formattedData = {
+              InferenceResult: {
+                output: apiData.croppedInference || apiData.output || apiData.inference,
+                traits: apiData.traitResult || apiData.traits || apiData.personalityData
+              }
+            };
+          }
+          
+          setApiResponse(formattedData);
+          return {
+            ...baseResult,
+            apiResponse: formattedData,
+            success: true
+          };
+        } catch (error) {
+          setApiError(error.message);
+          return {
+            ...baseResult,
+            apiError: error.message,
+            success: false
+          };
+        }
+      } else {
+        // Auto mode false (default): return API endpoint URL for manual calling
+        return {
+          ...baseResult,
+          success: true,
+          message: 'Data request approved. Use the provided API URL to fetch user data.'
+        };
+      }
     } catch (error) {
-      console.error('API call error:', error);
-      setApiError(error.message);
-      throw error;
+      setApiError(`Failed to process request: ${error.message}`);
+      return null;
     } finally {
       setIsLoadingApi(false);
     }
   };
 
-  const handleApprove = async () => {
-    if (isSubmitting) return;
-    
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setIsSubmitting(true);
     
     try {
-      const approved = Object.entries(selectedData)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([dataId]) => dataId);
-
-      const userHash = generateUserHash(userEmail);
-
-      const baseResult = {
-        approved: true,
-        dataTypes: approved,
-        timestamp: new Date().toISOString(),
-        userEmail: userEmail,
-        userHash: userHash, // Include user hash in response
-        appName: appName
-      };
-
-      let finalResult = baseResult;
-
-      // If autoFetch is enabled, make API call automatically
-      if (autoFetch) {
-        try {
-          const apiData = await makeApiCall(approved);
-          finalResult = {
-            ...baseResult,
-            apiResponse: apiData,
-            apiUrl: 'https://api2.onairos.uk/inferenceTest'
-          };
-        } catch (apiError) {
-          finalResult = {
-            ...baseResult,
-            apiError: apiError.message,
-            apiUrl: 'https://api2.onairos.uk/inferenceTest'
-          };
-        }
+      const result = await fetchUserData();
+      
+      if (result) {
+        onComplete(result);
       }
-
-      // Simulate a brief delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      onComplete(finalResult);
     } catch (error) {
-      console.error('Error in handleApprove:', error);
-      setApiError('Failed to process request');
+      setApiError(`Submission failed: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleReject = () => {
-    onComplete({
-      approved: false,
-      dataTypes: [],
-      timestamp: new Date().toISOString(),
-      userEmail: userEmail,
-      userHash: generateUserHash(userEmail),
-      appName: appName
-    });
   };
 
   const selectedCount = Object.values(selectedData).filter(Boolean).length;
@@ -167,16 +222,17 @@ export default function DataRequest({
   return (
     <div className="w-full max-w-md mx-auto bg-white rounded-lg shadow-xl overflow-hidden" style={{ maxHeight: '90vh', height: 'auto' }}>
       <div className="p-4 sm:p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 4rem)' }}>
-        {/* Header */}
         <div className="text-center mb-4 sm:mb-6">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Data Access Request</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Data Request</h2>
           <p className="text-gray-600 text-xs sm:text-sm">
-            <span className="font-medium">{appName}</span> would like to access some of your data.
+            Select the data types you'd like to share with <span className="font-medium">{appName}</span>
+          </p>
+        </div>
+
+        {/* Privacy Notice */}
+        <div className="mb-4 sm:mb-6 p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-blue-800 text-xs sm:text-sm">
+            🔒 Your selected data will be securely processed and used only for the intended purpose.
           </p>
         </div>
 
@@ -190,8 +246,11 @@ export default function DataRequest({
               <div 
                 key={dataType.id}
                 className={`flex items-center justify-between p-3 sm:p-4 border rounded-lg transition-colors ${
-                  isRequired ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
+                  isRequired 
+                    ? 'bg-blue-50 border-blue-200' 
+                    : 'hover:bg-gray-50 cursor-pointer'
                 }`}
+                onClick={() => handleRowClick(dataType.id)}
               >
                 <div className="flex items-center space-x-3">
                   <div className="text-xl sm:text-2xl">
@@ -213,7 +272,10 @@ export default function DataRequest({
                   </div>
                 ) : (
                   <button
-                    onClick={() => handleDataToggle(dataType.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDataToggle(dataType.id);
+                    }}
                     className={`relative inline-flex h-5 sm:h-6 w-9 sm:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                       isSelected ? 'bg-blue-600' : 'bg-gray-200'
                     }`}
@@ -251,22 +313,27 @@ export default function DataRequest({
         )}
 
         {/* Action Buttons */}
-        <div className="flex space-x-3">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <button
-            onClick={handleReject}
-            disabled={isSubmitting}
-            className="flex-1 py-2 sm:py-3 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 text-sm sm:text-base"
+            type="submit"
+            disabled={isSubmitting || selectedCount === 0}
+            className={`w-full py-2 sm:py-3 px-4 rounded-lg font-semibold transition-colors text-sm sm:text-base ${
+              selectedCount > 0 && !isSubmitting
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
-            Deny
+            {isSubmitting ? 'Processing...' : `Share ${selectedCount} data type${selectedCount > 1 ? 's' : ''}`}
           </button>
+          
           <button
-            onClick={handleApprove}
-            disabled={isSubmitting}
-            className="flex-1 py-2 sm:py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm sm:text-base"
+            type="button"
+            onClick={() => onComplete({ selectedData: {}, cancelled: true })}
+            className="w-full py-2 text-gray-500 hover:text-gray-700 text-xs sm:text-sm"
           >
-            {isSubmitting ? 'Processing...' : 'Approve'}
+            Cancel
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );

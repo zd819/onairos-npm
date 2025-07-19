@@ -61,11 +61,59 @@ const MobileDataRequestPage = ({
       return;
     }
     
-    // Create API response with the updated URL
+    // Determine API endpoint based on test mode (default to live)
+    const testMode = false; // Can be made configurable
+    const apiEndpoint = testMode 
+      ? 'https://api2.onairos.uk/inferenceTest'
+      : 'https://api2.onairos.uk/getAPIurlMobile';
+    
+    // Map approved connections to confirmations format
+    const mapConnectionsToConfirmations = (connections) => {
+      const confirmations = [];
+      const currentDate = new Date().toISOString();
+      
+      // Map connection types to backend data types
+      const connectionMapping = {
+        'basic': 'Medium',
+        'personality': 'Large', 
+        'preferences': 'Traits',
+        'social': 'Large',
+        'activity': 'Medium'
+      };
+      
+      connections.forEach(connection => {
+        if (connectionMapping[connection]) {
+          confirmations.push({
+            data: connectionMapping[connection],
+            date: currentDate
+          });
+        }
+      });
+      
+      return confirmations;
+    };
+    
+    const confirmations = mapConnectionsToConfirmations(selectedConnections.current);
+    
+    // Create API response with the updated format
     const apiResponse = {
       success: true,
-      apiUrl: "https://api2.onairos.uk/inferenceTest",
-      approvedRequests: selectedConnections.current
+      apiUrl: apiEndpoint,
+      testMode: testMode,
+      approvedRequests: selectedConnections.current,
+      confirmations: confirmations,
+      // Include Info format for backend compatibility
+      Info: {
+        storage: "local",
+        appId: "MobileApp",
+        confirmations: confirmations,
+        EncryptedUserPin: "pending_mobile_pin_integration",
+        account: "mobile_user",
+        proofMode: false,
+        Domain: window.location?.hostname || "mobile.app",
+        web3Type: "standard",
+        OthentSub: null
+      }
     };
     
     // Call onComplete with API response

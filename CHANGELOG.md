@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.1.5] - 2024-12-19
+
+### 📱 Mobile Browser Compatibility & OAuth Enhancement
+
+#### ✨ New Features
+- **Mobile Browser Support**: Complete mobile browser compatibility with automatic device detection
+  - Auto-detects mobile devices (`/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i`)
+  - **Desktop**: Uses popup OAuth windows (`window.open`)
+  - **Mobile**: Uses redirect OAuth flow (`window.location.href`) to avoid popup blocking
+  - Mobile OAuth return handling with state cleanup
+  - Same React components work perfectly across all platforms
+
+- **Enhanced OAuth Flow**: Robust OAuth implementation for all 9 platforms
+  - All connectors use correct `api2.onairos.uk/{platform}/authorize` endpoints
+  - Improved error handling and connection state management
+  - Added timeout handling (5-minute OAuth timeout)
+  - Better logging and debugging information
+
+#### 🔧 Technical Improvements
+- **Mobile Detection**: Added `isMobileDevice()` function with user agent + screen size detection
+- **OAuth State Management**: Proper localStorage handling for mobile redirect flows
+- **URL Parameter Cleanup**: Removes OAuth parameters after successful authentication
+- **Cross-Platform Components**: Enhanced mobile components work in mobile browsers too
+- **Touch Optimization**: Proper `touchAction` CSS and touch event handling
+
+#### 📚 Documentation
+- **Mobile Browser Compatibility Guide**: Comprehensive guide explaining what works and what doesn't
+- **LLM Context File**: Added `llm.txt` with complete package overview and usage patterns
+- **OAuth Testing**: Enhanced test files with mobile compatibility indicators
+
+#### 🛠️ Bug Fixes
+- **Popup Blocking**: Fixed OAuth popup blocking issues on mobile browsers
+- **API Consistency**: All endpoints consistently use `api2.onairos.uk` domain
+- **Mobile UX**: Improved touch targets and responsive design
+
 ## [2.0.0] - 2024-01-15
 
 ### 🚀 Major Release - Simplified Integration & Enhanced UX

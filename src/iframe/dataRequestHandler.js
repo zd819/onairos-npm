@@ -38,14 +38,12 @@ function getPopupUrl() {
  * Creates popup content dynamically as fallback
  */
 function createDynamicPopupContent(data) {
-  const { requestData = [], webpageName = 'App', userData = {}, autoFetch = true, appIcon = null } = data;
+  const { requestData = [], webpageName = 'App', userData = {}, autoFetch = false, testMode = false, appIcon = null } = data;
   
   const defaultDataTypes = [
-    { id: 'email', name: 'Email Address', description: 'Your email for account identification', icon: '📧' },
-    { id: 'profile', name: 'Profile Information', description: 'Basic profile data and preferences', icon: '👤' },
-    { id: 'social', name: 'Social Connections', description: 'Connected social media accounts', icon: '🌐' },
-    { id: 'activity', name: 'Activity Data', description: 'Usage patterns and interactions', icon: '📊' },
-    { id: 'preferences', name: 'User Preferences', description: 'Settings and customization choices', icon: '⚙️' }
+    { id: 'basic', name: 'Basic Info', description: 'Essential profile information and account details', icon: '👤' },
+    { id: 'personality', name: 'Personality', description: 'Personality traits, behavioral patterns and insights', icon: '🧠' },
+    { id: 'preferences', name: 'Preferences', description: 'User preferences, settings and choices', icon: '⚙️' }
   ];
 
   const dataTypes = Array.isArray(requestData) && requestData.length > 0
@@ -84,27 +82,44 @@ function createDynamicPopupContent(data) {
                     <p class="text-gray-600">${webpageName} is requesting access to your data</p>
                 </div>
                 
-                <div class="space-y-3 mb-6" id="dataTypes">
+                <div class="space-y-4 mb-6" id="dataTypes">
                     ${dataTypes.map(type => `
-                        <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                            <input type="checkbox" class="mr-3" data-id="${type.id}">
-                            <div class="flex-1">
-                                <div class="flex items-center">
-                                    <span class="text-xl mr-2">${type.icon}</span>
-                                    <span class="font-medium">${type.name}</span>
+                        <label class="group relative flex items-start p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 shadow-sm hover:shadow-md data-option">
+                            <div class="flex items-center h-5">
+                                <input type="checkbox" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2" data-id="${type.id}">
+                            </div>
+                            <div class="ml-4 flex-1">
+                                <div class="flex items-center mb-2">
+                                    <span class="text-2xl mr-3 group-hover:scale-110 transition-transform duration-200">${type.icon}</span>
+                                    <span class="font-semibold text-gray-900 text-lg">${type.name}</span>
                                 </div>
-                                <p class="text-sm text-gray-600 mt-1">${type.description}</p>
+                                <p class="text-sm text-gray-600 leading-relaxed">${type.description}</p>
+                            </div>
+                            <div class="absolute top-4 right-4 w-6 h-6 border-2 rounded-md transition-all duration-200 bg-white checkbox-visual" data-for="${type.id}">
+                                <svg class="w-4 h-4 text-white checkmark-icon" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
                             </div>
                         </label>
                     `).join('')}
                 </div>
                 
-                <div class="flex space-x-3">
-                    <button id="rejectBtn" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                        Reject
+                <div class="flex space-x-4">
+                    <button id="rejectBtn" class="flex-1 px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 focus:ring-2 focus:ring-gray-300">
+                        <span class="flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                            Decline
+                        </span>
                     </button>
-                    <button id="approveBtn" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                        Approve
+                    <button id="approveBtn" class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl focus:ring-2 focus:ring-blue-500">
+                        <span class="flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Allow Access
+                        </span>
                     </button>
                 </div>
                 
@@ -113,33 +128,143 @@ function createDynamicPopupContent(data) {
         </div>
     </div>
 
+    <style>
+        /* Enhanced checkbox styling */
+        .checkbox-visual {
+            border-color: #d1d5db;
+        }
+        .checkbox-visual.checked {
+            background-color: #2563eb;
+            border-color: #2563eb;
+        }
+        .checkbox-visual.checked .checkmark-icon {
+            opacity: 1;
+        }
+        .checkbox-visual:not(.checked) .checkmark-icon {
+            opacity: 0;
+        }
+        .data-option {
+            transition: all 0.2s ease;
+        }
+        .data-option.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+    </style>
+
     <script>
         const approveBtn = document.getElementById('approveBtn');
         const rejectBtn = document.getElementById('rejectBtn');
         const status = document.getElementById('status');
         const checkboxes = document.querySelectorAll('input[type="checkbox"]');
         
+        // Update visual feedback for checkboxes
+        function updateCheckboxVisual(checkbox) {
+            const checkboxId = checkbox.dataset.id;
+            const visualCheckbox = document.querySelector(\`[data-for="\${checkboxId}"]\`);
+            const parentLabel = checkbox.closest('label');
+            
+            if (checkbox.checked) {
+                visualCheckbox?.classList.add('checked');
+                parentLabel?.classList.add('selected');
+            } else {
+                visualCheckbox?.classList.remove('checked');
+                parentLabel?.classList.remove('selected');
+            }
+        }
+        
+        // Add event listeners to checkboxes
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => updateCheckboxVisual(checkbox));
+            // Initialize visual state
+            updateCheckboxVisual(checkbox);
+        });
+        
         const autoFetch = ${autoFetch};
+        const testMode = ${testMode};
         const userEmail = '${userData.email || ''}';
         const appName = '${webpageName}';
         
+        // Map frontend data types to backend confirmation types
+        function mapDataTypesToConfirmations(approvedData) {
+            const confirmations = [];
+            const currentDate = new Date().toISOString();
+            
+            // Map frontend types to backend types
+            const dataTypeMapping = {
+                'basic': 'Medium',        // Basic info -> Medium data
+                'personality': 'Large',   // Personality -> Large analysis
+                'preferences': 'Traits'   // Preferences -> Traits data
+            };
+            
+            approvedData.forEach(dataType => {
+                if (dataTypeMapping[dataType]) {
+                    confirmations.push({
+                        data: dataTypeMapping[dataType],
+                        date: currentDate
+                    });
+                }
+            });
+            
+            return confirmations;
+        }
+        
+        // Determine API endpoint based on test mode
+        const apiEndpoint = testMode 
+            ? 'https://api2.onairos.uk/inferenceTest'
+            : 'https://api2.onairos.uk/getAPIurlMobile';
+        
         async function makeApiCall(approvedData) {
-            const response = await fetch('https://api2.onairos.uk/inferenceTest', {
+            const confirmations = mapDataTypesToConfirmations(approvedData);
+            
+            // Format request according to backend expectations
+            const requestBody = testMode ? {
+                // Test mode: simple format for testing
+                approvedData,
+                userEmail,
+                appName,
+                timestamp: new Date().toISOString(),
+                testMode: testMode
+            } : {
+                // Live mode: proper Info format for backend
+                Info: {
+                    storage: "local",
+                    appId: appName,
+                    confirmations: confirmations,
+                    EncryptedUserPin: "pending_pin_integration", // TODO: Get from user PIN setup
+                    account: userEmail,
+                    proofMode: false,
+                    Domain: window.location.hostname,
+                    web3Type: "standard", // or "Othent" if using Othent
+                    OthentSub: null // Only if using Othent authentication
+                }
+            };
+            
+            const response = await fetch(apiEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    approvedData,
-                    userEmail,
-                    appName,
-                    timestamp: new Date().toISOString()
-                })
+                body: JSON.stringify(requestBody)
             });
             
             if (!response.ok) {
                 throw new Error(\`API call failed with status: \${response.status}\`);
             }
             
-            return await response.json();
+            const data = await response.json();
+            
+            // Format response according to test mode requirements
+            if (testMode && data) {
+                return {
+                    InferenceResult: {
+                        output: data.croppedInference || data.output || data.inference,
+                        traits: data.traitResult || data.traits || data.personalityData
+                    }
+                };
+            }
+            
+            return data;
         }
         
         approveBtn.addEventListener('click', async () => {
@@ -161,27 +286,39 @@ function createDynamicPopupContent(data) {
                 approved: approved,
                 timestamp: new Date().toISOString(),
                 userEmail: userEmail,
-                appName: appName
+                appName: appName,
+                testMode: testMode
             };
             
             let finalResult = baseResult;
             
             if (autoFetch) {
+                // Auto mode true: make API request and return results
                 try {
                     status.textContent = 'Making API call...';
                     const apiData = await makeApiCall(approved);
                     finalResult = {
                         ...baseResult,
                         apiResponse: apiData,
-                        apiUrl: 'https://api2.onairos.uk/inferenceTest'
+                        apiUrl: apiEndpoint,
+                        success: true
                     };
                 } catch (error) {
                     finalResult = {
                         ...baseResult,
                         apiError: error.message,
-                        apiUrl: 'https://api2.onairos.uk/inferenceTest'
+                        apiUrl: apiEndpoint,
+                        success: false
                     };
                 }
+            } else {
+                // Auto mode false (default): return API endpoint URL for manual calling
+                finalResult = {
+                    ...baseResult,
+                    apiUrl: apiEndpoint,
+                    success: true,
+                    message: 'Data request approved. Use the provided API URL to fetch user data.'
+                };
             }
             
             window.opener.postMessage(finalResult, '*');
@@ -399,20 +536,81 @@ export function listenForPopupMessages(callback, options = {}) {
 /**
  * Make API call with user's approved data
  * @param {Array} approvedData - Array of approved data types
- * @param {string} apiUrl - API endpoint URL
+ * @param {Object} options - API call options
+ * @param {string} options.apiUrl - API endpoint URL
+ * @param {boolean} options.testMode - Whether to use test mode
+ * @param {string} options.userEmail - User email
+ * @param {string} options.appName - App name
  * @returns {Promise} Promise resolving to API response
  */
-async function makeApiCall(approvedData, apiUrl = 'https://api2.onairos.uk/inferenceTest') {
+async function makeApiCall(approvedData, options = {}) {
+  const { 
+    apiUrl = 'https://api2.onairos.uk/getAPIurlMobile', 
+    testMode = false, 
+    userEmail = '', 
+    appName = 'App' 
+  } = options;
+
   try {
-    const response = await fetch(apiUrl, {
+    // Map frontend data types to backend confirmation types
+    const mapDataTypesToConfirmations = (approvedData) => {
+      const confirmations = [];
+      const currentDate = new Date().toISOString();
+      
+      // Map frontend types to backend types according to API expectations
+      const dataTypeMapping = {
+        'basic': 'Medium',        // Basic info -> Medium data
+        'personality': 'Large',   // Personality -> Large analysis
+        'preferences': 'Traits'   // Preferences -> Traits data
+      };
+      
+      approvedData.forEach(dataType => {
+        if (dataTypeMapping[dataType]) {
+          confirmations.push({
+            data: dataTypeMapping[dataType],
+            date: currentDate
+          });
+        }
+      });
+      
+      return confirmations;
+    };
+
+    const endpoint = testMode 
+      ? 'https://api2.onairos.uk/inferenceTest'
+      : apiUrl;
+
+    const confirmations = mapDataTypesToConfirmations(approvedData);
+
+    // Format request according to backend expectations
+    const requestBody = testMode ? {
+      // Test mode: simple format for testing
+      approvedData,
+      userEmail,
+      appName,
+      testMode,
+      timestamp: new Date().toISOString()
+    } : {
+      // Live mode: proper Info format for backend
+      Info: {
+        storage: "local",
+        appId: appName,
+        confirmations: confirmations,
+        EncryptedUserPin: "pending_pin_integration", // TODO: Get from user PIN setup
+        account: userEmail,
+        proofMode: false,
+        Domain: window.location.hostname,
+        web3Type: "standard", // or "Othent" if using Othent
+        OthentSub: null // Only if using Othent authentication
+      }
+    };
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        approvedData,
-        timestamp: new Date().toISOString()
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -420,6 +618,17 @@ async function makeApiCall(approvedData, apiUrl = 'https://api2.onairos.uk/infer
     }
 
     const data = await response.json();
+    
+    // Format response according to test mode requirements
+    if (testMode && data) {
+      return {
+        InferenceResult: {
+          output: data.croppedInference || data.output || data.inference,
+          traits: data.traitResult || data.traits || data.personalityData
+        }
+      };
+    }
+    
     return data;
   } catch (error) {
     console.error('API call error:', error);

@@ -2,29 +2,23 @@ import React, { useState, useEffect } from 'react';
 
 export default function PinSetup({ onComplete, userEmail }) {
   const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
   const [requirements, setRequirements] = useState({
     length: false,
-    uppercase: false,
-    lowercase: false,
     number: false,
     special: false
   });
 
-  // Check PIN requirements
+  // Check PIN requirements (simplified)
   useEffect(() => {
     setRequirements({
-      length: pin.length >= 6,
-      uppercase: /[A-Z]/.test(pin),
-      lowercase: /[a-z]/.test(pin),
+      length: pin.length >= 8,
       number: /[0-9]/.test(pin),
       special: /[!@#$%^&*(),.?":{}|<>]/.test(pin)
     });
   }, [pin]);
 
   const allRequirementsMet = Object.values(requirements).every(req => req);
-  const pinsMatch = pin === confirmPin && pin.length > 0;
-  const canSubmit = allRequirementsMet && pinsMatch;
+  const canSubmit = allRequirementsMet && pin.length > 0;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -54,7 +48,7 @@ export default function PinSetup({ onComplete, userEmail }) {
         {/* PIN Input */}
         <div>
           <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
-            Enter PIN
+            Create PIN
           </label>
           <input
             type="password"
@@ -66,35 +60,12 @@ export default function PinSetup({ onComplete, userEmail }) {
           />
         </div>
 
-        {/* Confirm PIN Input */}
-        <div>
-          <label htmlFor="confirmPin" className="block text-sm font-medium text-gray-700 mb-2">
-            Confirm PIN
-          </label>
-          <input
-            type="password"
-            id="confirmPin"
-            value={confirmPin}
-            onChange={(e) => setConfirmPin(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Confirm your PIN"
-          />
-          {confirmPin && !pinsMatch && (
-            <p className="text-red-500 text-sm mt-1">PINs do not match</p>
-          )}
-          {confirmPin && pinsMatch && (
-            <p className="text-green-500 text-sm mt-1">✅ PINs match</p>
-          )}
-        </div>
-
         {/* Requirements */}
         <div className="bg-gray-50 p-4 rounded-lg">
           <h4 className="text-sm font-medium text-gray-700 mb-3">PIN Requirements:</h4>
           <div className="space-y-2">
             {Object.entries({
-              length: 'At least 6 characters',
-              uppercase: 'One uppercase letter (A-Z)',
-              lowercase: 'One lowercase letter (a-z)',
+              length: 'At least 8 characters',
               number: 'One number (0-9)',
               special: 'One special character (!@#$%^&*)'
             }).map(([key, label]) => (

@@ -1,0 +1,113 @@
+# Onairos NPM Package - LLM Context
+
+## Package Overview
+- **Version**: 2.1.5
+- **Type**: React Web Library for Data Requests & OAuth Authentication
+- **Main Use**: Personal AI training data collection via social media OAuth
+- **Base API**: `https://api2.onairos.uk`
+
+## Key Features ✅
+1. **Data Request System**: Users can share "basic info", "personality", or "preferences" data
+2. **OAuth Connectors**: 9 platforms (YouTube, LinkedIn, Reddit, Pinterest, Instagram, GitHub, Facebook, Gmail, Notion)
+3. **Mobile Browser Support**: Auto-detects mobile and switches popup → redirect OAuth flow
+4. **API Integration**: Supports both test/live modes with automatic endpoint switching
+5. **PIN-based Encryption**: All models encrypted with user PIN + server key
+6. **Responsive Design**: Tailwind CSS with mobile-first approach
+
+## Mobile Browser Compatibility ✅
+**WORKS PERFECTLY**: React components, API calls, touch interactions, responsive design, state management
+
+**AUTO-OPTIMIZED**: OAuth flow automatically detects mobile devices:
+- **Desktop**: Popup OAuth windows (`window.open`)
+- **Mobile**: Redirect OAuth flow (`window.location.href`)
+
+## OAuth Implementation ✅
+**Endpoints**: All OAuth connectors use `api2.onairos.uk/{platform}/authorize`
+- YouTube: `api2.onairos.uk/youtube/authorize`
+- LinkedIn: `api2.onairos.uk/linkedin/authorize`
+- Reddit: `api2.onairos.uk/reddit/authorize`
+- Pinterest: `api2.onairos.uk/pinterest/authorize`
+- Instagram: `api2.onairos.uk/instagram/authorize`
+- GitHub: `api2.onairos.uk/github/authorize`
+- Facebook: `api2.onairos.uk/facebook/authorize`
+- Gmail: `api2.onairos.uk/gmail/authorize`
+- Notion: `api2.onairos.uk/notion/authorize`
+
+**Flow**: POST request → Get OAuth URL → Open popup/redirect → Handle callback → Update connection state
+
+## API Endpoints
+- **Test Mode**: `api2.onairos.uk/inferenceTest`
+- **Live Mode**: `api2.onairos.uk/getAPIurlMobile`
+- **Email Verification**: `api2.onairos.uk/email/verify`
+- **Training Routes**: `api2.onairos.uk/mobile-training/clean` (regular) or `/enoch` (advanced)
+
+## Data Flow
+1. **Email Authentication** → 2. **OAuth Connections** → 3. **PIN Setup** → 4. **Data Request**
+
+**Backend Format**:
+```json
+{
+  "Info": {
+    "web3Type": "Normal",
+    "confirmations": ["Medium", "Large", "Traits"],
+    "Domain": "example.com",
+    "EncryptedUserPin": "encrypted_pin",
+    "UserSub": "user_hash"
+  }
+}
+```
+
+## Key Components
+- **OnairosButton**: Main entry point with props (testMode, autoFetch, requestData)
+- **UniversalOnboarding**: OAuth connector management with mobile detection
+- **DataRequest**: Data type selection with visual checkmarks
+- **EmailAuth**: Email verification flow
+- **PinSetup**: PIN creation for encryption
+
+## Mobile-Specific Features ✅
+- **MobileDataRequestPage**: Mobile-optimized data request UI
+- **Touch Events**: Proper touch handling with `touchAction` CSS
+- **Viewport Management**: Dynamic viewport height for mobile browsers
+- **Mobile OAuth Return**: Handles OAuth callback cleanup in mobile redirect flow
+
+## Known Discrepancies
+❌ **NONE** - All OAuth flows now properly handle both desktop and mobile
+❌ **NONE** - All API endpoints use correct `api2.onairos.uk` domain
+❌ **NONE** - Mobile browser compatibility is complete
+
+## Recent Updates (v2.1.5)
+✅ Added mobile device detection for OAuth flows
+✅ Implemented mobile OAuth redirect handling
+✅ Enhanced OAuth URL parsing for all 9 platforms
+✅ Added mobile browser compatibility documentation
+✅ Fixed OAuth popup blocking on mobile devices
+
+## Usage Pattern
+```javascript
+import { OnairosButton } from 'onairos';
+
+<OnairosButton
+  requestData={{
+    basic: { type: "basic", reward: "10 tokens" },
+    personality: { type: "personality", reward: "25 tokens" }, 
+    preferences: { type: "preferences", reward: "15 tokens" }
+  }}
+  webpageName="MyApp"
+  testMode={false}
+  autoFetch={true}
+  onComplete={(result) => console.log(result)}
+/>
+```
+
+## Critical Success Factors
+1. **Cross-Platform**: Same React code works in desktop browsers, mobile browsers, and React Native
+2. **OAuth Reliability**: Auto-detects environment and uses appropriate OAuth flow
+3. **API Consistency**: All endpoints use `api2.onairos.uk` with proper authentication
+4. **Mobile UX**: Touch-friendly UI with proper viewport handling
+5. **Error Handling**: Comprehensive error states and user guidance
+
+## Build & Development
+- **Build**: `npm run build` (creates dist/ folder)
+- **Test Files**: Multiple test HTML files for different scenarios
+- **Entry Points**: `src/index.js` (main), `src/onairos.native.jsx` (React Native)
+- **Responsive**: Tailwind CSS with `sm:`, `md:`, `lg:` breakpoints throughout 

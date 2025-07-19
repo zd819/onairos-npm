@@ -33,7 +33,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         }, 1000);
       } else {
         // In production, send actual email
-        const response = await fetch('https://api2.onairos.uk/auth/send-code', {
+        const response = await fetch('https://api2.onairos.uk/email/verify', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -71,7 +71,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
       setIsLoading(true);
 
       try {
-        const response = await fetch('https://api2.onairos.uk/auth/verify-code', {
+        const response = await fetch('https://api2.onairos.uk/email/verify/confirm', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

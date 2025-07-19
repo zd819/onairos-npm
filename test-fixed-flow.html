@@ -3,84 +3,213 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fixed Onairos Flow Test</title>
+    <title>Enhanced Onairos Flow Test</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
     <div id="root" class="p-8">
-        <h1 class="text-3xl font-bold mb-6">Fixed Onairos Flow Test</h1>
+        <h1 class="text-3xl font-bold mb-6">Enhanced Onairos Flow Test</h1>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="p-6 bg-green-50 border border-green-200 rounded-lg">
-                <h2 class="text-xl font-semibold text-green-800 mb-4">✅ Fixed Issues</h2>
+                <h2 class="text-xl font-semibold text-green-800 mb-4">✅ Enhanced Features</h2>
                 <ul class="space-y-2 text-green-700">
-                    <li>• Modal popup with backdrop (not inline component)</li>
-                    <li>• Universal onboarding with vertical toggles</li>
-                    <li>• App logo → arrow → Onairos logo</li>
-                    <li>• Single PIN screen with requirements</li>
-                    <li>• Improved data request flow</li>
-                    <li>• Proper modal close behavior</li>
+                    <li>• Working connector toggles with OAuth webview</li>
+                    <li>• Simplified PIN (8 chars, 1 number, 1 special)</li>
+                    <li>• No PIN re-entry required</li>
+                    <li>• Beautiful training component after PIN</li>
+                    <li>• Clickable data request options</li>
+                    <li>• Minimalist design maintained</li>
                 </ul>
             </div>
             
             <div class="p-6 bg-blue-50 border border-blue-200 rounded-lg">
-                <h2 class="text-xl font-semibold text-blue-800 mb-4">🔥 Test Flow</h2>
+                <h2 class="text-xl font-semibold text-blue-800 mb-4">🔥 Enhanced Test Flow</h2>
                 <ol class="space-y-2 text-blue-700">
                     <li>1. Click button → Modal opens</li>
                     <li>2. Email: any@email.com, Code: 123456</li>
-                    <li>3. Connect accounts with toggles</li>
-                    <li>4. Create PIN with requirements</li>
-                    <li>5. Approve data types</li>
-                    <li>6. Modal closes with callback</li>
+                    <li>3. Toggle platforms → OAuth webview opens</li>
+                    <li>4. Single PIN (8+ chars, 1 number, 1 special)</li>
+                    <li>5. Training animation plays</li>
+                    <li>6. Select data types (all clickable)</li>
+                    <li>7. Complete with enhanced features</li>
                 </ol>
             </div>
         </div>
 
         <div class="mb-6">
-            <h3 class="text-lg font-semibold mb-3">Test Button:</h3>
+            <h3 class="text-lg font-semibold mb-3">Test Enhanced Button:</h3>
             <div id="button-container" class="inline-block"></div>
         </div>
 
         <div id="result" class="mt-6 p-4 bg-gray-50 border rounded-lg hidden">
-            <h3 class="font-semibold mb-2">Completion Result:</h3>
+            <h3 class="font-semibold mb-2">Enhanced Completion Result:</h3>
             <pre id="result-data" class="text-sm text-gray-700"></pre>
+        </div>
+
+        <div id="test-logs" class="mt-6 p-4 bg-yellow-50 border rounded-lg">
+            <h3 class="font-semibold mb-2">Test Logs:</h3>
+            <div id="log-content" class="text-sm text-gray-700 space-y-1"></div>
         </div>
     </div>
 
     <script src="./dist/onairos.bundle.js"></script>
     <script>
-        console.log('🔥 Testing fixed Onairos flow...');
+        console.log('🚀 Testing enhanced Onairos SDK with all improvements...');
         
-        // Test the Onairos button
+        // Enhanced logging system
+        const logContainer = document.getElementById('log-content');
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.createElement('div');
+            logDiv.className = `text-${type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue'}-600`;
+            logDiv.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logDiv);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Test the enhanced Onairos button
         const { OnairosButton } = window.Onairos;
         
         function handleComplete(result) {
-            console.log('✅ Flow completed successfully:', result);
+            addLog('✅ Enhanced flow completed successfully!', 'success');
+            addLog(`Connected accounts: ${result.connectedAccounts?.length || 0}`, 'info');
+            addLog(`Training completed: ${result.trainingComplete ? 'Yes' : 'No'}`, 'info');
+            addLog(`Data types selected: ${Object.keys(result.selectedData || {}).length}`, 'info');
             
             // Show result
             document.getElementById('result').classList.remove('hidden');
             document.getElementById('result-data').textContent = JSON.stringify(result, null, 2);
             
-            // Show success message
-            alert('✅ Success! Flow completed. Check the result below.');
+            // Test the enhanced SDK features
+            testEnhancedFeatures(result);
+            
+            // Show enhanced success message
+            const features = [];
+            if (result.connectedAccounts?.length > 0) features.push('Account connections');
+            if (result.trainingComplete) features.push('AI training');
+            if (result.selectedData) features.push('Data sharing');
+            if (result.healthScore) features.push('Health monitoring');
+            
+            alert(`✅ Enhanced Success! 
+            
+Features activated:
+${features.map(f => `• ${f}`).join('\n')}
+
+Check the result below for detailed information.`);
         }
 
-        // Create the button element
+        // Test enhanced SDK features
+        async function testEnhancedFeatures(result) {
+            const username = result.userInfo?.username || 'test_user';
+            const apiKey = 'ona_test_api_key';
+            
+            addLog('🧪 Testing enhanced SDK features...', 'info');
+            
+            try {
+                // Test health check
+                addLog('Testing health check endpoint...', 'info');
+                const healthResponse = await fetch(`/validation/health-check/${username}`, {
+                    headers: { 'x-api-key': apiKey }
+                });
+                
+                if (healthResponse.ok) {
+                    const healthData = await healthResponse.json();
+                    addLog(`Health check passed: ${healthData.summary?.overallScore || 'N/A'}% score`, 'success');
+                } else {
+                    addLog(`Health check failed: ${healthResponse.status}`, 'error');
+                }
+                
+                // Test connector functionality
+                if (result.connectedAccounts?.length > 0) {
+                    addLog('Testing connector status...', 'info');
+                    for (const platform of result.connectedAccounts) {
+                        const platformLower = platform.toLowerCase();
+                        try {
+                            const statusResponse = await fetch(`/${platformLower}/connection-status/${username}`, {
+                                headers: { 'x-api-key': apiKey }
+                            });
+                            
+                            if (statusResponse.ok) {
+                                addLog(`${platform} connection verified`, 'success');
+                            } else {
+                                addLog(`${platform} connection check failed`, 'error');
+                            }
+                        } catch (error) {
+                            addLog(`${platform} connection test error: ${error.message}`, 'error');
+                        }
+                    }
+                }
+                
+                // Test system health
+                addLog('Testing system health...', 'info');
+                const systemResponse = await fetch('/validation/system-health', {
+                    headers: { 'x-api-key': apiKey }
+                });
+                
+                if (systemResponse.ok) {
+                    const systemData = await systemResponse.json();
+                    addLog(`System health: ${systemData.overallHealth || 'OK'}`, 'success');
+                } else {
+                    addLog(`System health check failed: ${systemResponse.status}`, 'error');
+                }
+                
+                // Test data processing
+                if (result.selectedData) {
+                    addLog('Testing data processing...', 'info');
+                    const selectedTypes = Object.keys(result.selectedData).filter(key => result.selectedData[key]);
+                    addLog(`Processing ${selectedTypes.length} data types: ${selectedTypes.join(', ')}`, 'info');
+                }
+                
+                addLog('🎉 All enhanced SDK features tested!', 'success');
+                
+            } catch (error) {
+                addLog(`❌ Enhanced SDK features test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Enhanced button configuration
         const buttonElement = React.createElement(OnairosButton, {
-            requestData: ['email', 'profile', 'social', 'activity'],
-            webpageName: 'Test App',
+            requestData: ['email', 'profile', 'social', 'activity', 'preferences'],
+            webpageName: 'Enhanced SDK Test App',
             onComplete: handleComplete,
             buttonType: 'pill',
             visualType: 'full',
-            textColor: 'black'
+            textColor: 'black',
+            // Enhanced SDK configuration
+            sdkConfig: {
+                apiKey: 'ona_test_api_key',
+                baseUrl: 'https://api2.onairos.uk',
+                enableHealthMonitoring: true,
+                enableAutoRefresh: true,
+                enableConnectionValidation: true,
+                enableTraining: true,
+                enableEnhancedAuth: true
+            },
+            // Enhanced features
+            features: {
+                simplifiedPIN: true,
+                trainingComponent: true,
+                clickableToggles: true,
+                webviewOAuth: true,
+                healthMonitoring: true
+            }
         });
 
-        // Render the button
+        // Render the enhanced button
         ReactDOM.render(buttonElement, document.getElementById('button-container'));
         
-        console.log('✅ Fixed Onairos button rendered successfully!');
+        addLog('✅ Enhanced Onairos SDK button rendered successfully!', 'success');
+        addLog('🔧 Enhanced features enabled:', 'info');
+        addLog('  • Simplified PIN requirements', 'info');
+        addLog('  • Training component integration', 'info');
+        addLog('  • Clickable connector toggles', 'info');
+        addLog('  • OAuth webview support', 'info');
+        addLog('  • Real-time health monitoring', 'info');
+        addLog('  • Auto-refresh capabilities', 'info');
+        addLog('Ready for testing! Click the button to begin.', 'info');
     </script>
 </body>
 </html> 

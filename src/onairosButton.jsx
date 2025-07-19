@@ -9,7 +9,8 @@ export function OnairosButton({
   webpageName, 
   inferenceData = null, 
   onComplete = null, 
-  autoFetch = true,
+  autoFetch = false,
+  testMode = false,
   proofMode = false, 
   textLayout = 'below', 
   textColor = 'white',
@@ -146,7 +147,7 @@ export function OnairosButton({
         return (
           <EmailAuth 
             onSuccess={handleEmailAuthSuccess}
-            testMode={true} // Set to false in production
+            testMode={testMode} // Use the testMode prop from initialization
           />
         );
       
@@ -176,6 +177,7 @@ export function OnairosButton({
             requestData={requestData}
             appName={webpageName}
             autoFetch={autoFetch}
+            testMode={testMode}
             appIcon={appIcon}
           />
         );
