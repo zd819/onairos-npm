@@ -75,7 +75,7 @@ export default function TrainingComponent({ onComplete, userEmail, appName = 'Ap
   return (
     <div className="max-w-md mx-auto bg-white p-6 min-h-[400px] flex flex-col justify-center">
       <div className="text-center mb-8">
-        <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="w-20 h-20 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
           <div className="text-3xl">
             {isComplete ? '🎉' : steps[currentStep]?.icon}
           </div>
@@ -99,7 +99,7 @@ export default function TrainingComponent({ onComplete, userEmail, appName = 'Ap
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div 
-            className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300 ease-out"
+                          className="bg-linear-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>

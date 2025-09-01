@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  /* Custom theme variables for Onairos SDK */
+  --font-display: "Inter", "system-ui", "sans-serif";
+  --font-mono: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", "monospace";
+  
+  /* Custom breakpoints */
+  --breakpoint-3xl: 1920px;
+  
+  /* Onairos brand colors */
+  --color-onairos-primary: #3B82F6;
+  --color-onairos-secondary: #1E40AF;
+  --color-onairos-accent: #06B6D4;
+  
+  /* Enhanced spacing scale for component spacing */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+  
+  /* Custom easing functions */
+  --ease-fluid: cubic-bezier(0.3, 0, 0, 1);
+  --ease-snappy: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Custom utilities for Onairos SDK */
+@utility btn-onairos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
+  background-color: var(--color-onairos-primary);
+  color: white;
+}
+
+@utility btn-onairos:hover {
+  background-color: var(--color-onairos-secondary);
+  transform: translateY(-1px);
+}
+
+@utility card-onairos {
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  padding: 1.5rem;
+  border: 1px solid rgb(229 231 235);
+}
+
+@utility loading-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+} 

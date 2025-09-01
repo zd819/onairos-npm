@@ -8,35 +8,28 @@ const platforms = [
   { name: 'Instagram', icon: '📷', color: 'bg-pink-500', connector: 'instagram' },
   { name: 'GitHub', icon: '⚡', color: 'bg-gray-800', connector: 'github' },
   { name: 'Facebook', icon: '👥', color: 'bg-blue-600', connector: 'facebook' },
-  { name: 'Gmail', icon: '✉️', color: 'bg-red-400', connector: 'gmail' },
-  { name: 'Notion', icon: '📝', color: 'bg-gray-700', connector: 'notion' }
+  { name: 'Gmail', icon: '✉️', color: 'bg-red-400', connector: 'gmail' }
 ];
 
 // Enhanced SDK configuration
 const sdkConfig = {
   apiKey: process.env.REACT_APP_ONAIROS_API_KEY || 'onairos_web_sdk_live_key_2024',
   baseUrl: process.env.REACT_APP_ONAIROS_BASE_URL || 'https://api2.onairos.uk',
+  sdkType: 'web', // web, mobile, desktop
   enableHealthMonitoring: true,
   enableAutoRefresh: true,
   enableConnectionValidation: true
 };
 
-// Debug SDK config on load
-console.log(`🔧 SDK Config loaded:`, {
-  apiKey: sdkConfig.apiKey,
-  baseUrl: sdkConfig.baseUrl,
-  env_api_key: process.env.REACT_APP_ONAIROS_API_KEY,
-  env_base_url: process.env.REACT_APP_ONAIROS_BASE_URL
-});
-
 /**
- * UniversalOnboarding Component
- * Displays an onboarding screen for applications requesting Onairos data
+ * UniversalOnboarding Component - Compact & Enhanced
+ * Displays a streamlined onboarding screen for data connections
  */
 export default function UniversalOnboarding({ onComplete, appIcon, appName = 'App' }) {
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState(null);
+  const [connectionErrors, setConnectionErrors] = useState({});
   const [connectionHealth, setConnectionHealth] = useState({});
   const [healthScore, setHealthScore] = useState(0);
 
@@ -48,87 +41,60 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
 
   // Handle mobile OAuth return
   useEffect(() => {
-    const handleMobileOAuthReturn = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const oauthPlatform = localStorage.getItem('onairos_oauth_platform');
-      const returnUrl = localStorage.getItem('onairos_oauth_return');
-      
-      if (urlParams.get('oauth_success') && oauthPlatform) {
-        console.log(`✅ Mobile OAuth return successful for ${oauthPlatform}`);
+    const handleOAuthReturn = () => {
+      const platform = localStorage.getItem('onairos_oauth_platform');
+      if (platform) {
+        console.log(`📱 OAuth return detected for: ${platform}`);
         
-        // Mark platform as connected
-        setConnectedAccounts(prev => ({
-          ...prev,
-          [oauthPlatform]: true
-        }));
-        
-        // Clean up stored OAuth state
+        // Clear OAuth state
         localStorage.removeItem('onairos_oauth_platform');
         localStorage.removeItem('onairos_oauth_return');
         
-        // Clean up URL parameters
-        if (window.history.replaceState) {
-          const cleanUrl = window.location.pathname + window.location.hash;
-          window.history.replaceState({}, document.title, cleanUrl);
-        }
+        // Mark as connected
+        setConnectedAccounts(prev => ({
+          ...prev,
+          [platform]: true
+        }));
         
-        console.log(`🔗 ${oauthPlatform} mobile OAuth completed successfully`);
+        // Clear any errors
+        setConnectionErrors(prev => ({
+          ...prev,
+          [platform]: null
+        }));
+        
+        console.log(`✅ ${platform} marked as connected from OAuth return`);
       }
     };
 
-    handleMobileOAuthReturn();
+    handleOAuthReturn();
   }, []);
-
-  // Enhanced SDK functions
-  const checkConnectionHealth = async (username) => {
-    try {
-      const response = await fetch(`${sdkConfig.baseUrl}/validation/health-check/${username}`, {
-        headers: {
-          'x-api-key': sdkConfig.apiKey,
-          'content-type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const healthData = await response.json();
-        setConnectionHealth(healthData.platforms);
-        setHealthScore(healthData.summary.overallScore);
-        return healthData;
-      }
-    } catch (error) {
-      console.error('Health check failed:', error);
-    }
-    return null;
-  };
 
   const connectToPlatform = async (platformName) => {
     console.log(`🚀 connectToPlatform called for: ${platformName}`);
     
     const platform = platforms.find(p => p.name === platformName);
-    console.log(`🔍 Platform found:`, platform);
-    
     if (!platform?.connector) {
       console.error(`❌ No connector found for platform: ${platformName}`);
-      console.error(`Available platforms:`, platforms.map(p => p.name));
       return false;
     }
 
     try {
       setIsConnecting(true);
       setConnectingPlatform(platformName);
+      
+      // Clear any previous errors
+      setConnectionErrors(prev => ({
+        ...prev,
+        [platformName]: null
+      }));
+      
       console.log(`🔗 Starting OAuth connection for ${platformName}...`);
       
-      // Get username from localStorage or use default
       const username = localStorage.getItem('username') || localStorage.getItem('onairosUser')?.email || 'user@example.com';
-      console.log(`👤 Using username: ${username}`);
       
-      // Construct OAuth authorize endpoint
+      // Enhanced authorize endpoint with SDK type
       const authorizeUrl = `${sdkConfig.baseUrl}/${platform.connector}/authorize`;
-      console.log(`📡 Making request to: ${authorizeUrl}`);
-      console.log(`🔑 Using API key: ${sdkConfig.apiKey}`);
-      console.log(`📝 Request body:`, { session: { username: username } });
       
-      // Make request to get OAuth URL
       const response = await fetch(authorizeUrl, {
         method: 'POST',
         headers: {
@@ -141,159 +107,234 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
           }
         })
       });
-      
-      console.log(`📋 Response status: ${response.status} ${response.statusText}`);
-      console.log(`📋 Response headers:`, [...response.headers.entries()]);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      console.log(`📋 ${platformName} OAuth response:`, result);
-      
-      // Check for platform-specific URL keys based on OAuth overview
-      const platformUrlKeys = {
-        'youtube': 'youtubeURL',
-        'linkedin': 'linkedinURL', 
-        'reddit': 'redditURL',
-        'pinterest': 'pinterestURL',
-        'instagram': 'instagramURL',
-        'github': 'githubURL',
-        'facebook': 'facebookURL',
-        'gmail': 'gmailURL',
-        'notion': 'notionURL'
-      };
-      
-      const expectedUrlKey = platformUrlKeys[platform.connector];
-      const oauthUrl = result[expectedUrlKey] || 
-                      result[`${platform.connector}URL`] || 
-                      result.platformURL || 
-                      result.authUrl || 
-                      result.url;
-      
-                    if (oauthUrl) {
-        console.log(`🔗 Opening OAuth for ${platformName}:`, oauthUrl);
-        console.log(`✅ Found OAuth URL using key: ${expectedUrlKey}`);
-        console.log(`📱 Mobile device: ${isMobileDevice()}`);
+             const responseData = await response.json();
+       console.log(`📋 ${platformName} OAuth response:`, responseData);
+       
+       // Check for platform-specific URL keys with multiple fallbacks
+       const platformUrlKeys = {
+         'youtube': ['youtubeURL', 'youtubeUrl', 'youtube_url'],
+         'linkedin': ['linkedinURL', 'linkedinUrl', 'linkedin_url'], 
+         'reddit': ['redditURL', 'redditUrl', 'reddit_url'],
+         'pinterest': ['pinterestURL', 'pinterestUrl', 'pinterest_url'],
+         'instagram': ['instagramURL', 'instagramUrl', 'instagram_url'],
+         'github': ['githubURL', 'githubUrl', 'github_url'],
+         'facebook': ['facebookURL', 'facebookUrl', 'facebook_url'],
+         'gmail': ['gmailURL', 'gmailUrl', 'gmail_url']
+       };
+       
+       const possibleKeys = platformUrlKeys[platform.connector] || [
+         `${platform.connector}URL`,
+         `${platform.connector}Url`, 
+         `${platform.connector}_url`,
+         'platformURL',
+         'authUrl', 
+         'url'
+       ];
+       
+       let oauthUrl = null;
+       let usedKey = null;
+       
+       // Try each possible key
+       for (const key of possibleKeys) {
+         if (responseData[key]) {
+           oauthUrl = responseData[key];
+           usedKey = key;
+           break;
+         }
+       }
+       
+       if (!oauthUrl) {
+         console.error(`❌ No OAuth URL found for ${platformName}:`);
+         console.error(`Expected one of:`, possibleKeys);
+         console.error(`Response keys:`, Object.keys(responseData));
+         console.error(`Full response:`, responseData);
+         throw new Error(`No OAuth URL found. Backend should return one of: ${possibleKeys.join(', ')}`);
+       }
+       
+       console.log(`✅ Found OAuth URL for ${platformName} using key: ${usedKey}`);
         
-        if (isMobileDevice()) {
-          // Mobile: Use redirect flow instead of popup
-          console.log(`📱 Using mobile redirect OAuth for ${platformName}`);
-          
-          // Store OAuth state for return handling
-          localStorage.setItem('onairos_oauth_platform', platformName);
-          localStorage.setItem('onairos_oauth_return', window.location.href);
-          
-          // Redirect to OAuth URL (mobile-friendly)
-          window.location.href = oauthUrl;
-          
-          // Don't continue with popup logic
-          return true;
-        } else {
-          // Desktop: Use popup flow
-          console.log(`🖥️ Using desktop popup OAuth for ${platformName}`);
-          
-          const popup = window.open(
-            oauthUrl,
-            `${platform.connector}_oauth`,
-            'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
-          );
-          
-          if (!popup) {
-            throw new Error('Popup blocked by browser. Please allow popups for this site.');
-          }
-
-          // Enhanced popup monitoring with timeout
-          let timeoutId;
-          const checkClosed = setInterval(() => {
-            if (popup.closed) {
-              clearInterval(checkClosed);
-              clearTimeout(timeoutId);
-              
-              // Update connection state
-              setConnectedAccounts(prev => ({
-                ...prev,
-                [platformName]: true
-              }));
-              
-              console.log(`✅ ${platformName} OAuth completed successfully`);
-              setIsConnecting(false);
-              setConnectingPlatform(null);
-            }
-          }, 1000);
-
-          // Set timeout for OAuth process (5 minutes)
-          timeoutId = setTimeout(() => {
-            if (!popup.closed) {
-              popup.close();
-            }
-            clearInterval(checkClosed);
-            setIsConnecting(false);
-            setConnectingPlatform(null);
-            console.warn(`⚠️ ${platformName} OAuth timeout after 5 minutes`);
-          }, 300000);
-          
-          return true;
+      if (isMobileDevice()) {
+        // Mobile: Use redirect flow
+        localStorage.setItem('onairos_oauth_platform', platformName);
+        localStorage.setItem('onairos_oauth_return', window.location.href);
+        window.location.href = oauthUrl;
+        return true;
+      } else {
+        // Desktop: Use popup flow with enhanced monitoring
+        const popup = window.open(
+          oauthUrl,
+          `${platform.connector}_oauth`,
+          'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
+        );
+        
+        if (!popup) {
+          throw new Error('Popup blocked. Please allow popups and try again.');
         }
-              } else {
-          console.error(`❌ No OAuth URL received for ${platformName}:`);
-          console.error(`Expected URL key: ${expectedUrlKey}`);
-          console.error(`Response keys:`, Object.keys(result));
-          console.error(`Full response:`, result);
-          throw new Error(`No OAuth URL found. Expected '${expectedUrlKey}' in response. Check API configuration for ${platformName}.`);
-        }
-      
+
+                 // Enhanced popup monitoring with onairos.uk detection
+         let hasNavigatedToOnairos = false;
+         const checkInterval = setInterval(() => {
+           try {
+             // Try to detect if popup has navigated to onairos.uk (indicates success)
+             if (popup.location && popup.location.hostname === 'onairos.uk') {
+               hasNavigatedToOnairos = true;
+               console.log(`🔄 ${platformName} popup navigated to onairos.uk - treating as success`);
+               
+               // Close the popup since it shows "not found"
+               popup.close();
+               return; // Let the popup.closed check handle the rest
+             }
+           } catch (e) {
+             // Cross-origin error is expected when popup navigates to onairos.uk
+             // This actually indicates the OAuth likely succeeded
+             if (!hasNavigatedToOnairos) {
+               hasNavigatedToOnairos = true;
+               console.log(`🔄 ${platformName} popup navigated (cross-origin) - likely to onairos.uk`);
+             }
+           }
+           
+           try {
+             // Check if popup is closed
+             if (popup.closed) {
+               clearInterval(checkInterval);
+               
+               // Check for success or error signals from callback page
+               const successFlag = localStorage.getItem(`onairos_${platformName}_success`);
+               const errorFlag = localStorage.getItem(`onairos_${platformName}_error`);
+               const timestamp = localStorage.getItem(`onairos_${platformName}_timestamp`);
+               
+               // Only process recent signals (within 30 seconds)
+               const isRecentSignal = timestamp && (Date.now() - parseInt(timestamp) < 30000);
+               
+               if (successFlag && isRecentSignal) {
+                 // Success flow from callback page
+                 console.log(`✅ ${platformName} OAuth completed successfully (callback page)`);
+                 localStorage.removeItem(`onairos_${platformName}_success`);
+                 localStorage.removeItem(`onairos_${platformName}_timestamp`);
+                 
+                 setConnectedAccounts(prev => ({
+                   ...prev,
+                   [platformName]: true
+                 }));
+                 setConnectionErrors(prev => ({
+                   ...prev,
+                   [platformName]: null
+                 }));
+                 
+               } else if (errorFlag && isRecentSignal) {
+                 // Error flow from callback page
+                 console.log(`❌ ${platformName} OAuth failed:`, errorFlag);
+                 localStorage.removeItem(`onairos_${platformName}_error`);
+                 localStorage.removeItem(`onairos_${platformName}_timestamp`);
+                 
+                 setConnectionErrors(prev => ({
+                   ...prev,
+                   [platformName]: errorFlag
+                 }));
+                 
+               } else if (hasNavigatedToOnairos) {
+                 // Popup navigated to onairos.uk - assume success
+                 console.log(`✅ ${platformName} OAuth likely successful (navigated to onairos.uk)`);
+                 setConnectedAccounts(prev => ({
+                   ...prev,
+                   [platformName]: true
+                 }));
+                 setConnectionErrors(prev => ({
+                   ...prev,
+                   [platformName]: null
+                 }));
+                 
+               } else {
+                 // No signal and no onairos navigation - assume user cancelled
+                 console.log(`⚠️ ${platformName} OAuth cancelled or no response`);
+                 setConnectionErrors(prev => ({
+                   ...prev,
+                   [platformName]: 'Connection was cancelled'
+                 }));
+               }
+               
+               setIsConnecting(false);
+               setConnectingPlatform(null);
+             }
+           } catch (error) {
+             // Cross-origin error when popup navigates away - this is normal
+             // console.log(`🔄 Popup navigated away for ${platformName}`);
+           }
+         }, 1000);
+
+                 // Auto-close popup if it shows onairos.uk "not found" page after 10 seconds
+         setTimeout(() => {
+           try {
+             if (!popup.closed && popup.location && popup.location.hostname === 'onairos.uk') {
+               console.log(`🚪 Auto-closing ${platformName} popup showing onairos.uk (not found)`);
+               popup.close();
+             }
+           } catch (e) {
+             // Cross-origin error is expected - try to close anyway if it's been 10 seconds
+             if (!popup.closed && hasNavigatedToOnairos) {
+               console.log(`🚪 Auto-closing ${platformName} popup (cross-origin, likely onairos.uk)`);
+               popup.close();
+             }
+           }
+         }, 10000);
+
+         // Final timeout after 5 minutes
+         setTimeout(() => {
+           if (!popup.closed) {
+             popup.close();
+             clearInterval(checkInterval);
+             setConnectionErrors(prev => ({
+               ...prev,
+               [platformName]: 'Connection timeout'
+             }));
+             setIsConnecting(false);
+             setConnectingPlatform(null);
+           }
+         }, 300000);
+
+        return true;
+      }
     } catch (error) {
-      console.error(`❌ ${platformName} OAuth connection failed:`, error);
+      console.error(`❌ Error connecting to ${platformName}:`, error);
+      setConnectionErrors(prev => ({
+        ...prev,
+        [platformName]: error.message
+      }));
       setIsConnecting(false);
       setConnectingPlatform(null);
-      
-      // Show user-friendly error
-      alert(`Failed to connect to ${platformName}: ${error.message}`);
       return false;
     }
   };
 
   const handleToggle = async (platformName) => {
-    console.log(`🔥 CLICK DETECTED: ${platformName} toggle clicked!`);
-    console.log(`🔧 isConnecting: ${isConnecting}`);
-    console.log(`🔧 Current connection state:`, connectedAccounts[platformName]);
+    console.log(`🔥 TOGGLE CLICKED: ${platformName}`);
     
-    if (isConnecting) {
+    if (isConnecting && connectingPlatform !== platformName) {
       console.log(`⚠️ Already connecting to ${connectingPlatform}, ignoring click on ${platformName}`);
       return;
     }
     
-    try {
-      if (connectedAccounts[platformName]) {
-        // Disconnect platform
-        console.log(`🔌 Disconnecting from ${platformName}...`);
-        setConnectedAccounts(prev => ({
-          ...prev,
-          [platformName]: false
-        }));
-        console.log(`✅ Disconnected from ${platformName}`);
-      } else {
-        // Connect platform using OAuth
-        console.log(`🚀 Starting OAuth connection for ${platformName}...`);
-        const success = await connectToPlatform(platformName);
-        
-        if (!success) {
-          console.warn(`⚠️ Failed to connect to ${platformName}`);
-        } else {
-          console.log(`✅ Successfully initiated OAuth for ${platformName}`);
-        }
-      }
-      
-      // Check connection health after any change
-      const username = localStorage.getItem('username');
-      if (username && sdkConfig.enableHealthMonitoring) {
-        await checkConnectionHealth(username);
-      }
-    } catch (error) {
-      console.error(`❌ Connection toggle failed for ${platformName}:`, error);
-      alert(`Connection failed: ${error.message}`);
+    const isConnected = connectedAccounts[platformName];
+    
+    if (isConnected) {
+      // Disconnect
+      console.log(`🔌 Disconnecting from ${platformName}...`);
+      setConnectedAccounts(prev => ({
+        ...prev,
+        [platformName]: false
+      }));
+      setConnectionErrors(prev => ({
+        ...prev,
+        [platformName]: null
+      }));
+    } else {
+      // Connect
+      await connectToPlatform(platformName);
     }
   };
 
@@ -307,7 +348,7 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
       totalConnections: connected.length,
       healthScore: healthScore,
       connectionHealth: connectionHealth,
-      sdkVersion: '1.0.0',
+      sdkVersion: '2.1.7',
       enhancedFeatures: {
         healthMonitoring: sdkConfig.enableHealthMonitoring,
         autoRefresh: sdkConfig.enableAutoRefresh,
@@ -319,119 +360,115 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
   const connectedCount = Object.values(connectedAccounts).filter(Boolean).length;
 
   return (
-    <div className="max-w-md mx-auto bg-white p-6 min-h-[500px]">
-      {/* Header with App Logo and Arrow to Onairos */}
-      <div className="flex items-center justify-center mb-6">
-        <div className="flex items-center space-x-3">
+    <div className="max-w-sm mx-auto bg-white p-4 rounded-lg shadow-lg">
+      {/* Compact Header */}
+      <div className="flex items-center justify-center mb-4">
+        <div className="flex items-center space-x-2">
           <img 
             src={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"} 
             alt={appName} 
-            className="w-10 h-10 rounded-lg"
+            className="w-8 h-8 rounded-lg"
           />
           <div className="flex items-center text-gray-400">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
           </div>
           <img 
             src="https://onairos.sirv.com/Images/OnairosBlack.png" 
             alt="Onairos" 
-            className="w-10 h-10 rounded-lg"
+            className="w-8 h-8 rounded-lg"
           />
         </div>
       </div>
 
-      <div className="text-center mb-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Connect Your Accounts</h2>
+      {/* Simple Clear Title */}
+      <div className="text-center mb-4">
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Connect Data</h2>
         <p className="text-gray-600 text-sm">
-          Choose which accounts to connect for a personalized experience
+          Connect data here to enhance your {appName} experience
         </p>
       </div>
 
-      {/* Privacy Notice */}
-      <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-blue-800 text-sm">
-          🔒 Your data is never shared with anyone. It's only used to train your personal model and is stored securely.
-        </p>
-      </div>
-
-      {/* Platform List - Vertical Layout with Toggles */}
-      <div className="space-y-3 mb-6">
+      {/* Compact Platform Grid */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
         {platforms.map((platform) => {
           const isConnected = connectedAccounts[platform.name] || false;
           const isCurrentlyConnecting = connectingPlatform === platform.name;
+          const hasError = connectionErrors[platform.name];
           const isDisabled = isConnecting && !isCurrentlyConnecting;
           
           return (
             <div 
               key={platform.name}
-              className={`flex items-center justify-between p-4 border rounded-lg transition-all duration-200 ${
-                isDisabled ? 'opacity-50' : 'hover:bg-gray-50 cursor-pointer'
-              } ${isConnected ? 'border-green-300 bg-green-50' : 'border-gray-200'} ${
-                isCurrentlyConnecting ? 'border-blue-300 bg-blue-50' : ''
+              className={`relative p-3 border-2 rounded-lg transition-all duration-200 cursor-pointer ${
+                isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'
+              } ${
+                isConnected ? 'border-green-400 bg-green-50' : 
+                hasError ? 'border-red-400 bg-red-50' :
+                isCurrentlyConnecting ? 'border-blue-400 bg-blue-50' : 
+                'border-gray-200 bg-white hover:border-gray-300'
               }`}
               onClick={() => !isDisabled && handleToggle(platform.name)}
             >
-              <div className="flex items-center space-x-3">
-                <div className={`w-10 h-10 rounded-lg ${platform.color} flex items-center justify-center text-white text-lg relative`}>
-                  {isCurrentlyConnecting ? (
-                    <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
-                  ) : (
-                    platform.icon
-                  )}
-                  {isConnected && !isCurrentlyConnecting && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">{platform.name}</h3>
-                  <p className={`text-sm transition-colors ${
-                    isCurrentlyConnecting ? 'text-blue-600' : 
-                    isConnected ? 'text-green-600' : 'text-gray-500'
-                  }`}>
-                    {isCurrentlyConnecting ? 'Connecting...' : 
-                     isConnected ? 'Connected' : 'Not connected'}
-                  </p>
-                </div>
+              {/* Platform Icon */}
+              <div className={`w-8 h-8 rounded-lg ${platform.color} flex items-center justify-center text-white text-lg mb-2 mx-auto relative`}>
+                {isCurrentlyConnecting ? (
+                  <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></div>
+                ) : (
+                  platform.icon
+                )}
+                
+                {/* Connection Status Indicator */}
+                {isConnected && !isCurrentlyConnecting && (
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+                
+                {hasError && !isCurrentlyConnecting && (
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
               </div>
               
-              {/* Enhanced Toggle Switch */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!isDisabled) handleToggle(platform.name);
-                }}
-                disabled={isDisabled}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                  isConnected ? 'bg-green-500' : 'bg-gray-200'
-                } ${isCurrentlyConnecting ? 'bg-blue-500' : ''} ${
-                  isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
-                    isConnected || isCurrentlyConnecting ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                >
-                  {isCurrentlyConnecting && (
-                    <div className="w-full h-full rounded-full bg-blue-500 animate-pulse"></div>
-                  )}
-                </span>
-              </button>
+              {/* Platform Name */}
+              <div className="text-center">
+                <h3 className="font-medium text-gray-900 text-xs">{platform.name}</h3>
+                <p className={`text-xs mt-1 ${
+                  isCurrentlyConnecting ? 'text-blue-600' : 
+                  isConnected ? 'text-green-600' : 
+                  hasError ? 'text-red-600' :
+                  'text-gray-500'
+                }`}>
+                  {isCurrentlyConnecting ? 'Connecting...' : 
+                   isConnected ? 'Connected' : 
+                   hasError ? 'Failed' :
+                   'Tap to connect'}
+                </p>
+                
+                {/* Error Message */}
+                {hasError && (
+                  <p className="text-xs text-red-600 mt-1 break-words">
+                    {hasError}
+                  </p>
+                )}
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* Connection Status */}
+      {/* Connection Status Summary */}
       {connectedCount > 0 && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 text-sm">
-            ✅ {connectedCount} account{connectedCount > 1 ? 's' : ''} connected
+        <div className="mb-4 p-2 bg-green-50 border border-green-200 rounded-lg">
+          <p className="text-green-800 text-sm text-center">
+            ✅ {connectedCount} connection{connectedCount > 1 ? 's' : ''} active
           </p>
         </div>
       )}
@@ -446,7 +483,7 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
         }`}
       >
-        Continue {connectedCount > 0 ? `with ${connectedCount} account${connectedCount > 1 ? 's' : ''}` : ''}
+        {connectedCount > 0 ? `Continue with ${connectedCount} connection${connectedCount > 1 ? 's' : ''}` : 'Connect at least one platform'}
       </button>
 
       {/* Skip Option */}

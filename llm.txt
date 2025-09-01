@@ -1,10 +1,11 @@
 # Onairos NPM Package - LLM Context
 
 ## Package Overview
-- **Version**: 2.1.5
+- **Version**: 3.1.8
 - **Type**: React Web Library for Data Requests & OAuth Authentication
 - **Main Use**: Personal AI training data collection via social media OAuth
-- **Base API**: `https://api2.onairos.uk`
+- **Base API**: `https://api2.onairos.uk` (production), `staging-api.onairos.uk` (staging), `dev-api.onairos.uk` (development)
+- **Authentication**: Two-tier system (Developer API Keys + JWT User Tokens)
 
 ## Key Features ✅
 1. **Data Request System**: Users can share "basic info", "personality", or "preferences" data
@@ -13,6 +14,7 @@
 4. **API Integration**: Supports both test/live modes with automatic endpoint switching
 5. **PIN-based Encryption**: All models encrypted with user PIN + server key
 6. **Responsive Design**: Tailwind CSS with mobile-first approach
+7. **API Key Initialization**: Developer API key setup for authentication and environment configuration
 
 ## Mobile Browser Compatibility ✅
 **WORKS PERFECTLY**: React components, API calls, touch interactions, responsive design, state management
@@ -35,14 +37,57 @@
 
 **Flow**: POST request → Get OAuth URL → Open popup/redirect → Handle callback → Update connection state
 
-## API Endpoints
-- **Test Mode**: `api2.onairos.uk/inferenceTest`
-- **Live Mode**: `api2.onairos.uk/getAPIurlMobile`
-- **Email Verification**: `api2.onairos.uk/email/verify`
-- **Training Routes**: `api2.onairos.uk/mobile-training/clean` (regular) or `/enoch` (advanced)
+## API Endpoints & Environment Configuration
+
+### Environment URLs
+```typescript
+const API_ENDPOINTS = {
+  production: 'https://api2.onairos.uk',
+  staging: 'https://staging-api.onairos.uk', 
+  development: 'https://dev-api.onairos.uk',
+};
+```
+
+### Developer API Key Endpoints (Tier 1)
+- **API Key Validation**: `POST /auth/validate-key`
+- **Email Verification**: `POST /email/verification`
+- **App Registration**: `POST /app/register`
+- **OAuth Setup**: `POST /oauth/{platform}/setup`
+
+### JWT User Token Endpoints (Tier 2)
+- **User Profile**: `GET /user/profile`
+- **PIN Operations**: `POST /user/pin`
+- **Data Requests**: `POST /user/data-request`
+- **Training Routes**: `POST /mobile-training/clean` (regular) or `/enoch` (advanced)
+
+### Authentication Headers
+
+**Developer API Key Headers:**
+```typescript
+{
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${apiKey}`,
+  'User-Agent': 'OnairosSDK/1.0.0',
+  'X-SDK-Version': '3.0.72',
+  'X-SDK-Environment': 'production',
+  'X-API-Key-Type': 'developer',
+  'X-Timestamp': new Date().toISOString(),
+}
+```
+
+**JWT User Token Headers:**
+```typescript
+{
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${jwtToken}`,
+  'User-Agent': 'OnairosSDK/1.0.0',
+  'X-SDK-Version': '3.0.72',
+  'X-SDK-Environment': 'production',
+}
+```
 
 ## Data Flow
-1. **Email Authentication** → 2. **OAuth Connections** → 3. **PIN Setup** → 4. **Data Request**
+1. **API Key Initialization** → 2. **Email Authentication** → 3. **OAuth Connections** → 4. **PIN Setup** → 5. **Data Request**
 
 **Backend Format**:
 ```json
@@ -57,12 +102,62 @@
 }
 ```
 
-## Key Components
+## API Key Setup ✅
+**CRITICAL**: Must initialize API key before using any Onairos components
+
+### Two-Tier Authentication System 🔐
+1. **Developer API Keys**: For app-level operations (email verification, app registration)
+2. **JWT User Tokens**: For user-level operations (PIN storage, user profile)
+
+### Complete Initialization
+```typescript
+import { initializeApiKey } from '@onairos/react-native';
+
+// Initialize with developer key
+await initializeApiKey({
+  apiKey: 'ona_TzRKKgXPRsXj9nkAmBdvjPkOjhplAeFCkAycpXG6RAxvIH4yBZpPYQl4Z9Ja1n98',
+  environment: 'production', // 'production' | 'staging' | 'development'
+  enableLogging: true,
+  timeout: 30000,      // Optional: Request timeout (default: 30000ms)
+  retryAttempts: 3     // Optional: Retry attempts (default: 3)
+});
+```
+
+### Supported API Key Formats
+- **Developer Keys**: `dev_`, `pk_`, `ona_` prefixes + 32+ characters
+- **Admin Key**: `'OnairosIsAUnicorn2025'` (testing only)
+- **Validation**: Backend validation with 5-minute cache
+
+### Configuration Interface
+```typescript
+interface OnairosConfig {
+  apiKey: string;                    // Required: Your API key
+  environment?: 'production' | 'staging' | 'development';  // Default: 'production'
+  enableLogging?: boolean;           // Default: true
+  timeout?: number;                  // Default: 30000ms
+  retryAttempts?: number;            // Default: 3
+}
+```
+
+## Key Components & Functions
+
+### Exposed SDK Functions
+- **initializeApiKey**: Primary SDK initialization with developer API key validation (REQUIRED)
+
+### UI Components
 - **OnairosButton**: Main entry point with props (testMode, autoFetch, requestData)
 - **UniversalOnboarding**: OAuth connector management with mobile detection
 - **DataRequest**: Data type selection with visual checkmarks
 - **EmailAuth**: Email verification flow
 - **PinSetup**: PIN creation for encryption
+
+### Internal Functions (Not Exposed)
+The SDK internally handles:
+- JWT token management (store/load/clear)
+- Developer vs user request authentication
+- API key validation and caching
+- OAuth flow management
+- Error handling and retry logic
 
 ## Mobile-Specific Features ✅
 - **MobileDataRequestPage**: Mobile-optimized data request UI
@@ -75,17 +170,52 @@
 ❌ **NONE** - All API endpoints use correct `api2.onairos.uk` domain
 ❌ **NONE** - Mobile browser compatibility is complete
 
-## Recent Updates (v2.1.5)
-✅ Added mobile device detection for OAuth flows
-✅ Implemented mobile OAuth redirect handling
-✅ Enhanced OAuth URL parsing for all 9 platforms
-✅ Added mobile browser compatibility documentation
-✅ Fixed OAuth popup blocking on mobile devices
+## Recent Updates (v2.1.5 → v3.1.8)
+✅ **Two-Tier Authentication System**: Developer API keys + JWT user tokens
+✅ **Comprehensive SDK Initialization**: `initializeApiKey()` with full validation
+✅ **JWT Token Management**: Automatic storage, loading, and cleanup
+✅ **Multi-Environment Support**: Production, staging, development endpoints
+✅ **Advanced Error Handling**: Retry logic, exponential backoff, auto-recovery
+✅ **API Key Validation**: Backend validation with 5-minute caching
+✅ **Request Authentication**: Separate headers for developer vs user requests
+✅ **Mobile device detection for OAuth flows**
+✅ **Mobile OAuth redirect handling**
+✅ **Enhanced OAuth URL parsing for all 9 platforms**
+✅ **Mobile browser compatibility documentation**
+✅ **Fixed OAuth popup blocking on mobile devices**
+✅ **Fixed TypeScript declaration file resolution issue in package.json exports**
+✅ **React Native AsyncStorage integration for JWT persistence**
+✅ **Comprehensive logging system with configurable levels**
+✅ **Admin key support for testing and development**
+✅ **HTTP client abstraction with automatic authentication headers**
 
-## Usage Pattern
-```javascript
+## Complete Usage Flow 🚀
+
+### Step 1: Initialize SDK (Required)
+```typescript
+import { initializeApiKey } from 'onairos';
+
+// Initialize SDK with developer API key
+try {
+  await initializeApiKey({
+    apiKey: 'ona_TzRKKgXPRsXj9nkAmBdvjPkOjhplAeFCkAycpXG6RAxvIH4yBZpPYQl4Z9Ja1n98',
+    environment: 'production',
+    enableLogging: true,
+    timeout: 30000,
+    retryAttempts: 3
+  });
+  
+  console.log('SDK initialized successfully!');
+} catch (error) {
+  console.error('SDK initialization failed:', error.message);
+}
+```
+
+### Step 2: Use Onairos Components
+```typescript
 import { OnairosButton } from 'onairos';
 
+// Components automatically handle all authentication internally
 <OnairosButton
   requestData={{
     basic: { type: "basic", reward: "10 tokens" },
@@ -99,15 +229,100 @@ import { OnairosButton } from 'onairos';
 />
 ```
 
+## Error Handling & Retry Logic 🛡️
+
+### API Key Validation Errors
+```typescript
+// Invalid format
+throw new Error('Invalid API key format. Developer keys must be at least 32 characters and start with "dev_", "pk_", or "ona_"');
+
+// Backend validation failure
+throw new Error(`API key validation failed: ${validation.error}`);
+
+// Rate limiting
+throw new Error('API rate limit exceeded. Please try again later.');
+```
+
+### HTTP Request Errors
+- **401 Unauthorized**: Invalid/expired API key or JWT token
+- **403 Forbidden**: Insufficient permissions
+- **429 Too Many Requests**: Rate limit exceeded
+- **500 Server Error**: Backend service unavailable
+
+### Automatic Retry Logic
+- **Retry Attempts**: Configurable (default: 3)
+- **Timeout**: Configurable (default: 30000ms)
+- **Exponential Backoff**: For 429 and 5xx errors
+- **JWT Auto-Clear**: Clears expired JWT tokens on 401
+
 ## Critical Success Factors
-1. **Cross-Platform**: Same React code works in desktop browsers, mobile browsers, and React Native
-2. **OAuth Reliability**: Auto-detects environment and uses appropriate OAuth flow
-3. **API Consistency**: All endpoints use `api2.onairos.uk` with proper authentication
-4. **Mobile UX**: Touch-friendly UI with proper viewport handling
-5. **Error Handling**: Comprehensive error states and user guidance
+1. **Two-Tier Authentication**: Developer API keys → JWT tokens → User operations
+2. **SDK Initialization**: Must call `initializeApiKey()` before using any components
+3. **Environment Configuration**: Proper staging/production endpoint management
+4. **Cross-Platform**: Same React code works in desktop browsers, mobile browsers, and React Native
+5. **OAuth Reliability**: Auto-detects environment and uses appropriate OAuth flow
+6. **JWT Token Management**: Automatic storage, loading, and cleanup of user sessions
+7. **Mobile UX**: Touch-friendly UI with proper viewport handling
+8. **Error Handling**: Comprehensive error states, retry logic, and user guidance
+
+## TypeScript Support ✅
+**Full TypeScript Support**: Complete type definitions provided in `onairos.d.ts`
+
+**Usage with TypeScript**:
+```typescript
+import { OnairosButton } from 'onairos';
+import type { OnairosProps } from 'onairos';
+
+// Component usage with full type safety
+const MyComponent: React.FC = () => {
+  return (
+    <OnairosButton
+      requestData={{
+        basic: { type: "basic", reward: "10 tokens" },
+        personality: { type: "personality", reward: "25 tokens" }, 
+        preferences: { type: "preferences", reward: "15 tokens" }
+      }}
+      webpageName="MyApp"
+      testMode={false}
+      autoFetch={true}
+      onComplete={(result) => console.log(result)}
+    />
+  );
+};
+```
+
+**Common TypeScript Issues & Solutions**:
+- **"Could not find declaration file"**: Fixed in v2.1.5 by adding `types` field to package.json exports
+- **Import errors**: Always import from `'onairos'` (not specific paths)
+- **Type inference**: All components have full TypeScript support with IntelliSense
+
+## SDK Consistency Across Platforms 🔄
+
+### For Other SDK Implementations
+To ensure consistency across all Onairos SDKs, implement:
+
+1. **Same API Key Formats**: `dev_`, `pk_`, `ona_` prefixes + 32+ character length
+2. **Same Validation Endpoint**: `POST /auth/validate-key`  
+3. **Same Headers Structure**: Authorization, X-API-Key-Type, X-SDK-Version, etc.
+4. **Same Two-Tier Auth**: Developer keys → JWT tokens → User operations
+5. **Same Error Handling**: 401, 403, 429 status codes with retry logic
+6. **Same Caching**: 5-minute validation cache for API keys
+7. **Same Admin Key**: `'OnairosIsAUnicorn2025'` for testing
+
+### Environment Consistency
+```typescript
+// All SDKs should use the same endpoint structure
+const endpoints = {
+  production: 'https://api2.onairos.uk',
+  staging: 'https://staging-api.onairos.uk',
+  development: 'https://dev-api.onairos.uk'
+};
+```
 
 ## Build & Development
 - **Build**: `npm run build` (creates dist/ folder)
 - **Test Files**: Multiple test HTML files for different scenarios
 - **Entry Points**: `src/index.js` (main), `src/onairos.native.jsx` (React Native)
-- **Responsive**: Tailwind CSS with `sm:`, `md:`, `lg:` breakpoints throughout 
+- **Responsive**: Tailwind CSS with `sm:`, `md:`, `lg:` breakpoints throughout
+- **TypeScript**: Full type definitions with proper package.json exports configuration
+- **Authentication**: Two-tier system ensures secure and scalable API access 

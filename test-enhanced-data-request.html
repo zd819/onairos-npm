@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Data Request Test - Onairos v2.2.0</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .feature-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #10b981;
+            color: white;
+            font-size: 10px;
+            border-radius: 12px;
+            margin: 2px;
+        }
+        .version-banner {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+        .features-list {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+        }
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="version-banner">
+            <h1 class="text-2xl font-bold mb-2">🎉 Onairos SDK v2.2.0 - Enhanced Data Request</h1>
+            <p class="opacity-90">Complete overhaul of the DataRequest component with platform connectors and enhanced UX</p>
+        </div>
+
+        <div class="demo-grid">
+            <!-- Live Demo -->
+            <div>
+                <h2 class="text-xl font-bold mb-4 text-center">📊 Live Demo</h2>
+                <div id="data-request-demo" class="flex justify-center"></div>
+            </div>
+
+            <!-- Features Overview -->
+            <div class="features-list">
+                <h3 class="text-lg font-bold mb-4">✨ New Features Implemented</h3>
+                
+                <div class="mb-4">
+                    <h4 class="font-semibold text-green-700 mb-2">🔌 Platform Connectors</h4>
+                    <div class="text-sm text-gray-700 mb-2">
+                        ✅ Correct icons (📺 YouTube, 💼 LinkedIn, 🔥 Reddit, etc.)<br>
+                        ✅ Visual connection status (connected/not connected)<br>
+                        ✅ Selection feedback (green checkmark when selected)<br>
+                        ✅ Click to select/deselect connected platforms
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="font-semibold text-blue-700 mb-2">🔒 Auto-Selected Basic Profile</h4>
+                    <div class="text-sm text-gray-700 mb-2">
+                        ✅ Basic Info is automatically selected<br>
+                        ✅ Cannot be deselected (grayed out)<br>
+                        ✅ Marked as "Required" with visual indicator<br>
+                        ✅ Essential for all data requests
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="font-semibold text-purple-700 mb-2">💡 Enhanced Tooltips</h4>
+                    <div class="text-sm text-gray-700 mb-2">
+                        ✅ Underlined titles with hover tooltips<br>
+                        ✅ Detailed explanations for each data type<br>
+                        ✅ Privacy links for transparency<br>
+                        ✅ "Learn more about privacy →" links
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="font-semibold text-orange-700 mb-2">🎨 Visual Feedback</h4>
+                    <div class="text-sm text-gray-700 mb-2">
+                        ✅ Green borders for selected connectors<br>
+                        ✅ Checkmarks for selected platforms<br>
+                        ✅ Status messages ("Selected", "Tap to select")<br>
+                        ✅ Warning when no platforms connected
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="font-semibold text-indigo-700 mb-2">🔄 Smart Flow Integration</h4>
+                    <div class="text-sm text-gray-700">
+                        ✅ Receives connected accounts from onboarding<br>
+                        ✅ Shows only platforms connected in previous steps<br>
+                        ✅ Passes selection to backend for processing<br>
+                        ✅ Enhanced data request payload
+                    </div>
+                </div>
+
+                <div class="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p class="text-blue-800 text-sm font-medium">
+                        💡 Hover over underlined titles in the demo to see tooltips!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage Instructions -->
+        <div class="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <h3 class="font-bold mb-3">📋 What to Test</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <h4 class="font-semibold text-gray-900 mb-2">Data Types Section:</h4>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700">
+                        <li>Hover over underlined titles to see tooltips</li>
+                        <li>Notice "Basic Info" is auto-selected and grayed out</li>
+                        <li>Toggle "Personality" and "Preferences"</li>
+                        <li>Click privacy links in tooltips</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-gray-900 mb-2">Data Connectors Section:</h4>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700">
+                        <li>Click connected platforms to select them</li>
+                        <li>See visual feedback (green borders, checkmarks)</li>
+                        <li>Notice disabled state for unconnected platforms</li>
+                        <li>Check selection count in summary</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the enhanced Onairos SDK -->
+    <script src="./dist/onairos.bundle.js"></script>
+    
+    <script>
+        // Simulate connected accounts for demo
+        const mockConnectedAccounts = {
+            'YouTube': true,
+            'LinkedIn': true,
+            'Reddit': true,
+            'Instagram': false,
+            'Pinterest': false,
+            'GitHub': false,
+            'Facebook': false,
+            'Gmail': true
+        };
+
+        if (typeof window.Onairos !== 'undefined' && window.Onairos.OnairosButton) {
+            console.log('🎯 Onairos SDK v2.2.0 loaded successfully');
+            
+            // Access DataRequest component directly for testing
+            // In real usage, this would be accessed through the OnairosButton flow
+            
+            // For this demo, we'll simulate the full OnairosButton with skipToDataRequest
+            const { OnairosButton, initializeApiKey } = window.Onairos;
+            
+            function handleComplete(result) {
+                console.log('✅ Data request completed:', result);
+                
+                const summary = [
+                    `Data types: ${result.approvedData?.join(', ') || 'None'}`,
+                    `Connectors: ${result.selectedConnectors?.join(', ') || 'None'}`,
+                    `Total selections: ${(result.approvedData?.length || 0) + (result.selectedConnectors?.length || 0)}`
+                ];
+                
+                alert(`Data Request Completed!\n\n${summary.join('\n')}\n\nCheck console for full details.`);
+            }
+            
+            // Initialize SDK
+            initializeApiKey({
+                apiKey: 'onairos_web_sdk_live_key_2024',
+                environment: 'development',
+                enableLogging: true
+            }).then(() => {
+                console.log('🔧 SDK initialized');
+                
+                // For demo purposes, we'll create a custom component that shows DataRequest directly
+                const DataRequestDemo = () => {
+                    // Mock user data with connected accounts
+                    const mockUserData = {
+                        email: 'demo@onairos.uk',
+                        connectedAccounts: mockConnectedAccounts,
+                        verified: true
+                    };
+                    
+                    // Get DataRequest component (we'll need to import it directly)
+                    // For now, let's use the OnairosButton but force it to show DataRequest
+                    return React.createElement('div', {
+                        className: 'bg-white p-4 rounded-lg shadow-lg',
+                        style: { minHeight: '500px' }
+                    }, [
+                        React.createElement('div', {
+                            key: 'header',
+                            className: 'text-center mb-4'
+                        }, [
+                            React.createElement('h3', {
+                                key: 'title',
+                                className: 'font-bold text-gray-900'
+                            }, 'Enhanced DataRequest Component'),
+                            React.createElement('p', {
+                                key: 'subtitle', 
+                                className: 'text-sm text-gray-600'
+                            }, 'Simulated with connected platforms: YouTube, LinkedIn, Reddit, Gmail')
+                        ]),
+                        React.createElement('div', {
+                            key: 'notice',
+                            className: 'p-3 bg-blue-50 border border-blue-200 rounded-lg text-center'
+                        }, [
+                            React.createElement('p', {
+                                key: 'text',
+                                className: 'text-blue-800 text-sm'
+                            }, '🚧 Direct DataRequest demo would require component extraction.'),
+                            React.createElement('p', {
+                                key: 'instruction',
+                                className: 'text-blue-700 text-xs mt-1'
+                            }, 'Use the full OnairosButton flow to see the enhanced DataRequest in action.')
+                        ])
+                    ]);
+                };
+
+                ReactDOM.render(React.createElement(DataRequestDemo), document.getElementById('data-request-demo'));
+                
+                console.log('🚀 Enhanced DataRequest demo ready');
+                console.log('📊 Mock connected accounts:', mockConnectedAccounts);
+                
+            }).catch(error => {
+                console.error('❌ SDK initialization failed:', error);
+                document.getElementById('data-request-demo').innerHTML = 
+                    `<div class="text-red-600 text-center p-4">SDK initialization failed: ${error.message}</div>`;
+            });
+            
+        } else {
+            console.error('❌ Onairos SDK not found');
+            document.getElementById('data-request-demo').innerHTML = 
+                '<div class="text-red-600 text-center p-4">Onairos SDK not found</div>';
+        }
+    </script>
+</body>
+</html> 

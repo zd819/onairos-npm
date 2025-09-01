@@ -2,6 +2,7 @@ const path = require('path');
 const TerserPlugin = require('terser-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const baseConfig = {
   externals: {
@@ -58,6 +59,23 @@ const baseConfig = {
         }
       },
       {
+        test: /\.css$/,
+        use: [
+          process.env.NODE_ENV === 'production' ? MiniCssExtractPlugin.loader : 'style-loader',
+          'css-loader',
+          {
+            loader: 'postcss-loader',
+            options: {
+              postcssOptions: {
+                plugins: [
+                  ['@tailwindcss/postcss', {}],
+                ],
+              },
+            },
+          },
+        ],
+      },
+      {
         test: /\.(png|jpg|gif|svg)$/i,
         type: 'asset/resource',
         generator: {
@@ -82,12 +100,28 @@ const baseConfig = {
       "zlib": require.resolve("browserify-zlib"),
       "path": require.resolve("path-browserify"),
       "vm": require.resolve("vm-browserify"),
+      "process": require.resolve("process/browser"),
       "fs": false,
       "net": false,
       "tls": false,
       "child_process": false
     }
   }
+};
+
+// ES Module specific externals configuration
+const esmExternals = {
+  react: 'react',
+  'react-dom': 'react-dom',
+  'ajv': 'ajv',
+  'ajv/dist/runtime/validation_error': 'ajv/dist/runtime/validation_error',
+  'ajv/dist/runtime/equal': 'ajv/dist/runtime/equal',
+  'ajv/dist/runtime/ucs2length': 'ajv/dist/runtime/ucs2length',
+  'ajv/dist/runtime/uri': 'ajv/dist/runtime/uri',
+  '@anthropic-ai/sdk': '@anthropic-ai/sdk',
+  '@google/generative-ai': '@google/generative-ai',
+  '@pinecone-database/pinecone': '@pinecone-database/pinecone',
+  'openai': 'openai'
 };
 
 module.exports = [
@@ -121,17 +155,57 @@ module.exports = [
           {
             from: path.resolve(__dirname, 'public', 'data_request_popup.html'),
             to: path.resolve(__dirname, 'dist', 'data_request_popup.html')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'oauth-callback.html'),
+            to: path.resolve(__dirname, 'dist', 'oauth-callback.html')
           }
         ]
-      })
+      }),
+      ...(process.env.NODE_ENV === 'production' ? [
+        new MiniCssExtractPlugin({
+          filename: '[name].css',
+          chunkFilename: '[id].css'
+        })
+      ] : [])
     ]
   },
-  // ESM build
+
+  // Laravel-specific build
+  {
+    ...baseConfig,
+    entry: {
+      'onairos-laravel': path.resolve(__dirname, 'src', 'laravel', 'blade-helpers.js')
+    },
+    output: {
+      path: path.resolve(__dirname, 'dist'),
+      filename: '[name].js',
+      libraryTarget: 'umd',
+      library: 'OnairosLaravel',
+      globalObject: 'this',
+      umdNamedDefine: true,
+    },
+    externals: {
+      // Laravel build shouldn't externalize React since blade-helpers.js doesn't use React
+      'ajv': 'ajv',
+      'ajv/dist/runtime/validation_error': 'ajv/dist/runtime/validation_error',
+      'ajv/dist/runtime/equal': 'ajv/dist/runtime/equal',
+      'ajv/dist/runtime/ucs2length': 'ajv/dist/runtime/ucs2length',
+      'ajv/dist/runtime/uri': 'ajv/dist/runtime/uri',
+      '@anthropic-ai/sdk': '@anthropic-ai/sdk',
+      '@google/generative-ai': '@google/generative-ai',
+      '@pinecone-database/pinecone': '@pinecone-database/pinecone',
+      'openai': 'openai'
+    }
+  },
+
+  // ES Module build
   {
     ...baseConfig,
     entry: path.resolve(__dirname, 'src', 'onairos.jsx'),
+    externals: esmExternals,
     experiments: {
-      outputModule: true
+      outputModule: true,
     },
     output: {
       path: path.resolve(__dirname, 'dist'),
@@ -143,18 +217,6 @@ module.exports = [
         module: true
       }
     },
-    externals: {
-      react: 'react',
-      'react-dom': 'react-dom',
-      'ajv': 'ajv',
-      'ajv/dist/runtime/validation_error': 'ajv/dist/runtime/validation_error',
-      'ajv/dist/runtime/equal': 'ajv/dist/runtime/equal',
-      'ajv/dist/runtime/ucs2length': 'ajv/dist/runtime/ucs2length',
-      'ajv/dist/runtime/uri': 'ajv/dist/runtime/uri',
-      '@anthropic-ai/sdk': '@anthropic-ai/sdk',
-      '@google/generative-ai': '@google/generative-ai',
-      '@pinecone-database/pinecone': '@pinecone-database/pinecone',
-      'openai': 'openai'
-    }
+    target: 'es2020'
   }
 ];

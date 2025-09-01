@@ -20,6 +20,13 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeConnector, setActiveConnector] = useState(null);
 
+  // Debug log on component mount
+  useEffect(() => {
+    console.log('🎯 UniversalOnboarding.js component mounted');
+    console.log('🔧 Props:', { onComplete, appIcon, appName, username });
+    console.log('🔧 Platforms loaded:', platforms.length);
+  }, []);
+
   const handleConnectionChange = (platformName, isConnected) => {
     setConnectedAccounts(prev => ({
       ...prev,
@@ -29,19 +36,30 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
   };
 
   const handleToggle = async (platformName, connectorType) => {
-    if (isConnecting) return;
+    console.log(`🔥 TOGGLE CLICKED: ${platformName} (${connectorType})`);
+    console.log(`🔧 isConnecting: ${isConnecting}`);
+    console.log(`🔧 Current connection state:`, connectedAccounts[platformName]);
+    
+    if (isConnecting) {
+      console.log(`⚠️ Already connecting, ignoring click`);
+      return;
+    }
     
     const isCurrentlyConnected = connectedAccounts[platformName];
     
     if (isCurrentlyConnected) {
       // Disconnect - call the connector's disconnect method
+      console.log(`🔌 Disconnecting from ${platformName}...`);
       setConnectedAccounts(prev => ({
         ...prev,
         [platformName]: false
       }));
+      console.log(`✅ Disconnected from ${platformName}`);
     } else {
       // Connect - open the OAuth dialog
+      console.log(`🚀 Opening OAuth for ${platformName}...`);
       setActiveConnector(connectorType);
+      console.log(`🔧 Set activeConnector to: ${connectorType}`);
     }
   };
 

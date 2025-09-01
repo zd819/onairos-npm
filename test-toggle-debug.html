@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toggle Debug Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div class="p-8">
+        <h1 class="text-2xl font-bold mb-4">🔍 Toggle Debug Test</h1>
+        
+        <div class="bg-yellow-100 border border-yellow-400 p-4 rounded mb-4">
+            <h2 class="font-bold">Instructions:</h2>
+            <ol class="list-decimal list-inside">
+                <li>Open browser console (F12)</li>
+                <li>Click any toggle button below</li>
+                <li>Check console for debug messages</li>
+                <li>If you see "🔥 TOGGLE CLICKED" - the component is working</li>
+                <li>If you see nothing - there's a rendering issue</li>
+            </ol>
+        </div>
+
+        <div id="test-container"></div>
+        
+        <div class="mt-4 p-4 bg-gray-100 rounded">
+            <h3 class="font-bold mb-2">Debug Info:</h3>
+            <div id="debug-info">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Load the built Onairos bundle -->
+    <script src="./dist/onairos.bundle.js"></script>
+    
+    <script>
+        // Debug information
+        const debugInfo = document.getElementById('debug-info');
+        
+        function updateDebugInfo() {
+            const info = [
+                `✅ React: ${typeof React !== 'undefined' ? 'Loaded' : 'Missing'}`,
+                `✅ ReactDOM: ${typeof ReactDOM !== 'undefined' ? 'Loaded' : 'Missing'}`,
+                `✅ Onairos: ${typeof window.Onairos !== 'undefined' ? 'Loaded' : 'Missing'}`,
+                `✅ OnairosButton: ${typeof window.Onairos?.OnairosButton !== 'undefined' ? 'Available' : 'Missing'}`
+            ];
+            debugInfo.innerHTML = info.join('<br>');
+        }
+
+        // Test the actual Onairos button component
+        if (typeof window.Onairos !== 'undefined' && window.Onairos.OnairosButton) {
+            console.log('🎯 Using actual Onairos SDK');
+            
+            const { OnairosButton } = window.Onairos;
+            
+            function handleComplete(result) {
+                console.log('✅ Onboarding completed:', result);
+                alert('Onboarding completed! Check console for details.');
+            }
+            
+            // Initialize the SDK first
+            window.Onairos.initializeApiKey({
+                apiKey: 'onairos_web_sdk_live_key_2024',
+                environment: 'development',
+                enableLogging: true
+            }).then(() => {
+                console.log('🔧 SDK initialized successfully');
+                
+                // Create the button element
+                const buttonElement = React.createElement(OnairosButton, {
+                    requestData: ['email', 'profile'],
+                    webpageName: 'Toggle Debug Test',
+                    onComplete: handleComplete,
+                    buttonType: 'pill',
+                    visualType: 'full',
+                    textColor: 'black',
+                    appIcon: 'https://onairos.sirv.com/Images/OnairosBlack.png'
+                });
+
+                // Render the button
+                ReactDOM.render(buttonElement, document.getElementById('test-container'));
+                updateDebugInfo();
+                
+            }).catch(error => {
+                console.error('❌ SDK initialization failed:', error);
+                debugInfo.innerHTML = `❌ SDK initialization failed: ${error.message}`;
+            });
+            
+        } else {
+            console.error('❌ Onairos SDK not found');
+            debugInfo.innerHTML = '❌ Onairos SDK not found in window.Onairos';
+        }
+
+        // Update debug info initially
+        updateDebugInfo();
+        
+        // Listen for console messages
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            
+            // Check for our debug messages
+            const message = args.join(' ');
+            if (message.includes('🔥 TOGGLE CLICKED') || message.includes('🎯 UniversalOnboarding')) {
+                const logDiv = document.createElement('div');
+                logDiv.className = 'text-green-600 font-mono text-sm';
+                logDiv.textContent = new Date().toLocaleTimeString() + ': ' + message;
+                debugInfo.appendChild(logDiv);
+            }
+        };
+    </script>
+</body>
+</html> 

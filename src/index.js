@@ -1,5 +1,8 @@
 // src/index.js
 
+// Import Tailwind CSS first
+import './styles/tailwind.css';
+
 import { Onairos } from "./onairos.jsx";
 
 // Export the original Onairos component

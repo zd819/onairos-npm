@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import AuthButtons from '../components/AuthButtons.jsx';
 import IndividualConnection from './IndividualConnection.js';
 import SecuritySetup from '../components/SecuritySetup.js';
-import UniversalOnboarding from '../components/UniversalOnboarding.js';
+import UniversalOnboarding from '../components/UniversalOnboarding.jsx';
 import SignUp from '../components/SignUp.js';
 
 

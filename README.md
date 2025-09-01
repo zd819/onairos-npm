@@ -6,6 +6,7 @@
 - **AutoFetch by Default**: Automatic API calls after user approval - no manual handling required
 - **Simplified Integration**: Much cleaner and easier to use
 - **Enhanced UX**: Better positioning, loading states, and error handling
+- **Laravel Vite Support**: First-class integration with Laravel Vite applications
 
 ### 1. Create a Developer Account
 
@@ -15,11 +16,23 @@ https://Onairos.uk/dev-board
 
 ### 2. Installation
 
+#### Standard Installation
 ```bash
 npm install onairos
 ```
 
+#### Laravel Vite Installation
+```bash
+npm install onairos
+# For Vue.js integration
+npm install --save-dev @vitejs/plugin-vue
+# For React integration  
+npm install --save-dev @vitejs/plugin-react
+```
+
 ### 3. Basic Usage
+
+#### React/Standard Integration
 
 Import and use the OnairosButton component:
 
@@ -46,6 +59,100 @@ function MyApp() {
 }
 ```
 
+#### Laravel Blade Integration
+
+For Laravel applications using Blade templates:
+
+```js
+// vite.config.js
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import { onairosLaravelPlugin } from 'onairos/vite-plugin';
+
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: ['resources/css/app.css', 'resources/js/app.js'],
+            refresh: true,
+        }),
+        onairosLaravelPlugin({
+            bladeSupport: true
+        })
+    ],
+});
+```
+
+```js
+// resources/js/app.js
+import { initializeOnairosForBlade } from 'onairos/blade';
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeOnairosForBlade({
+        testMode: import.meta.env.DEV,
+        autoDetectMobile: true
+    });
+});
+```
+
+```blade
+{{-- resources/views/dashboard.blade.php --}}
+<div id="onairos-button"></div>
+
+<script>
+createOnairosButton('onairos-button', {
+    requestData: ['email', 'profile'],
+    webpageName: 'My Laravel App',
+    onComplete: function(result) {
+        console.log('Connection successful!', result);
+    }
+});
+</script>
+```
+
+#### Laravel Vue Integration
+
+For Laravel applications using Vue.js:
+
+```js
+// vite.config.js
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import vue from '@vitejs/plugin-vue';
+import { onairosVuePlugin } from 'onairos/vite-plugin';
+
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: ['resources/css/app.css', 'resources/js/app.js'],
+            refresh: true,
+        }),
+        vue(),
+        onairosVuePlugin()
+    ],
+});
+```
+
+```js
+// resources/js/app.js
+import { createApp } from 'vue';
+import OnairosVue from 'onairos/src/laravel/OnairosVue.vue';
+
+const app = createApp({});
+app.component('onairos-button', OnairosVue);
+app.mount('#app');
+```
+
+```blade
+{{-- In your Blade template --}}
+<div id="app">
+    <onairos-button 
+        :request-data="['email', 'profile']"
+        webpage-name="Laravel Vue App"
+        @complete="handleComplete"
+    ></onairos-button>
+</div>
+```
+
 ### 4. Configuration Options
 
 #### OnairosButton Props
@@ -56,54 +163,26 @@ function MyApp() {
 - **`autoFetch`** (Boolean, default: `true`): Enable automatic API calls after approval
 - **`onComplete`** (Function): Callback when data request completes
 - **`proofMode`** (Boolean, default: `false`): Enable proof mode for verification
+- **`testMode`** (Boolean, default: `false`): Enable test mode for development
 
-#### Response Format
+#### Laravel-Specific Props
 
-When `autoFetch` is enabled (default), the `onComplete` callback receives:
+- **`buttonType`** (String): `'pill'`, `'icon'`, or `'rounded'`
+- **`size`** (String): `'small'`, `'medium'`, or `'large'`  
+- **`textColor`** (String): Button text color
+- **`disabled`** (Boolean): Disable the button
 
-```javascript
-{
-  approved: ['email', 'profile'], // Array of approved data types
-  timestamp: "2024-01-15T10:30:00.000Z",
-  userEmail: "user@example.com",
-  appName: "My Application",
-  apiResponse: { /* Your data here */ }, // API response (on success)
-  apiError: "Error message", // Error message (on failure)
-  apiUrl: "https://api2.onairos.uk/inferenceTest"
-}
-```
+### 5. Laravel Integration Guide
 
-### 5. Advanced Usage Examples
+For complete Laravel integration examples and advanced configuration, see our [Laravel Integration Guide](./LARAVEL_INTEGRATION_GUIDE.md).
 
-#### Manual API Handling (AutoFetch Disabled)
-
-```jsx
-<OnairosButton
-  requestData={['email', 'profile']}
-  webpageName="My Application"
-  autoFetch={false}
-  onComplete={(result) => {
-    if (result.approved) {
-      // Handle approved data manually
-      makeCustomApiCall(result.dataTypes);
-    }
-  }}
-/>
-```
-
-#### With Custom Styling
-
-```jsx
-<OnairosButton
-  requestData={['profile', 'social']}
-  webpageName="Social Analytics App"
-  textColor="black"
-  textLayout="right"
-  visualType="full"
-  buttonType="pill"
-  onComplete={handleDataResponse}
-/>
-```
+The guide covers:
+- ✅ **Blade Templates**: Direct integration with PHP templates
+- ✅ **Vue.js Components**: Reactive Vue components
+- ✅ **React Components**: React integration patterns
+- ✅ **Vite Plugins**: Custom Vite plugins for Laravel
+- ✅ **Mobile Optimization**: Automatic mobile detection
+- ✅ **Production Deployment**: Build and deployment strategies
 
 ### 6. Migration from v1.x
 

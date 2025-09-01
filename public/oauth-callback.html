@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Callback - Onairos</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: bounce 0.6s ease-in-out;
+        }
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #ef4444;
+        }
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                transform: translate3d(0,0,0);
+            }
+            40%, 43% {
+                transform: translate3d(0, -30px, 0);
+            }
+            70% {
+                transform: translate3d(0, -15px, 0);
+            }
+            90% {
+                transform: translate3d(0, -4px, 0);
+            }
+        }
+        .message {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        .details {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        .spinner {
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading-state">
+            <div class="spinner"></div>
+            <div class="message">Processing your connection...</div>
+            <div class="details">Please wait while we complete the setup.</div>
+        </div>
+        
+        <div id="success-state" style="display: none;">
+            <div class="success-icon">✅</div>
+            <div class="message">Successfully Connected!</div>
+            <div class="details">This window will close automatically.</div>
+        </div>
+        
+        <div id="error-state" style="display: none;">
+            <div class="error-icon">❌</div>
+            <div class="message">Connection Failed</div>
+            <div class="details" id="error-details">Please try again.</div>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const success = urlParams.get('success');
+        const error = urlParams.get('error');
+        const platform = urlParams.get('platform');
+        const details = urlParams.get('details');
+
+        // Get elements
+        const loadingState = document.getElementById('loading-state');
+        const successState = document.getElementById('success-state');
+        const errorState = document.getElementById('error-state');
+        const errorDetails = document.getElementById('error-details');
+
+        console.log('🔄 OAuth callback received:', { success, error, platform, details });
+
+        if (success === 'true' && platform) {
+            // Success flow
+            console.log(`✅ OAuth success for platform: ${platform}`);
+            
+            // Signal success to parent window
+            localStorage.setItem(`onairos_${platform}_success`, 'true');
+            localStorage.setItem(`onairos_${platform}_timestamp`, Date.now().toString());
+            
+            // Update UI
+            loadingState.style.display = 'none';
+            successState.style.display = 'block';
+            
+            // Close window after delay
+            setTimeout(() => {
+                console.log('🚪 Closing OAuth popup window');
+                window.close();
+            }, 2000);
+            
+        } else if (error || success === 'false') {
+            // Error flow
+            console.log(`❌ OAuth error for platform: ${platform}`, error);
+            
+            // Signal error to parent window
+            localStorage.setItem(`onairos_${platform}_error`, error || 'Unknown error');
+            localStorage.setItem(`onairos_${platform}_timestamp`, Date.now().toString());
+            
+            // Update UI
+            loadingState.style.display = 'none';
+            errorState.style.display = 'block';
+            
+            if (details) {
+                errorDetails.textContent = details;
+            } else if (error) {
+                errorDetails.textContent = error;
+            }
+            
+            // Close window after longer delay for error
+            setTimeout(() => {
+                console.log('🚪 Closing OAuth popup window (error)');
+                window.close();
+            }, 5000);
+            
+        } else {
+            // No clear success or error - treat as potential success
+            console.log('🤔 Ambiguous OAuth callback, treating as success');
+            
+            if (platform) {
+                localStorage.setItem(`onairos_${platform}_success`, 'true');
+                localStorage.setItem(`onairos_${platform}_timestamp`, Date.now().toString());
+            }
+            
+            loadingState.style.display = 'none';
+            successState.style.display = 'block';
+            
+            setTimeout(() => {
+                window.close();
+            }, 2000);
+        }
+
+        // Fallback: close window if no action taken after 10 seconds
+        setTimeout(() => {
+            console.log('🚪 Fallback: Closing OAuth popup window');
+            window.close();
+        }, 10000);
+
+        // Handle cases where window.close() might not work
+        window.addEventListener('beforeunload', () => {
+            console.log('🚪 OAuth popup window closing');
+        });
+    </script>
+</body>
+</html> 

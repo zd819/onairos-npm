@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import UniversalOnboarding from '../components/UniversalOnboarding.js';
+import UniversalOnboarding from '../components/UniversalOnboarding.jsx';
 import IndividualConnection from './components/IndividualConnection';
 import onairosLogo from './icons/onairos_logo.png';
 
@@ -241,7 +241,7 @@ const DataRequestPage = ({ requestData = {}, dataRequester = 'App', proofMode = 
                     switch(type) {
                       case 'instagram':
                         return (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-linear-to-tr from-purple-500 via-pink-500 to-yellow-500 flex items-center justify-center">
                             <span className="text-white text-xs">IG</span>
                           </div>
                         );

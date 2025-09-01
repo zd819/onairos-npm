@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import EmailAuth from './components/EmailAuth.js';
-import UniversalOnboarding from './components/UniversalOnboarding.js';
+import UniversalOnboarding from './components/UniversalOnboarding.jsx';
 import PinSetup from './components/PinSetup.js';
 import DataRequest from './components/DataRequest.js';
+import TrainingComponent from './components/TrainingComponent.jsx';
+import { formatOnairosResponse } from './utils/responseFormatter.js';
 
 export function OnairosButton({
   requestData, 
@@ -20,10 +22,13 @@ export function OnairosButton({
   loginType = 'signIn',
   visualType = 'full',
   appIcon = null,
+  enableTraining = true,
+  formatResponse = true,
+  responseFormat = { includeDictionary: true, includeArray: true }
 }) {
 
   const [showOverlay, setShowOverlay] = useState(false);
-  const [currentFlow, setCurrentFlow] = useState('email'); // 'email' | 'onboarding' | 'pin' | 'dataRequest'
+  const [currentFlow, setCurrentFlow] = useState('email'); // 'email' | 'onboarding' | 'pin' | 'dataRequest' (training is within onboarding)
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
 
@@ -75,16 +80,35 @@ export function OnairosButton({
   };
 
   const handleEmailAuthSuccess = (authData) => {
-    console.log('Email auth successful:', authData);
+    console.log('🔥 Email auth successful:', authData);
+    console.log('🔧 User State:', {
+      isNewUser: authData.isNewUser,
+      userState: authData.userState,
+      flowType: authData.flowType,
+      existingUser: authData.existingUser
+    });
+    
+    // Determine flow based on verification response
+    const isNewUser = authData.isNewUser === true || authData.flowType === 'onboarding' || authData.userState === 'new';
+    
     const newUserData = {
       ...authData,
       verified: true,
-      onboardingComplete: false,
-      pinCreated: false
+      onboardingComplete: !isNewUser, // New users need onboarding, returning users have completed it
+      pinCreated: !isNewUser // Assume returning users have PIN, new users need to create it
     };
+    
     setUserData(newUserData);
     localStorage.setItem('onairosUser', JSON.stringify(newUserData));
-    setCurrentFlow('onboarding');
+    
+    // Flow decision logic
+    if (isNewUser) {
+      console.log('🚀 New user detected → Starting onboarding flow (includes training)');
+      setCurrentFlow('onboarding');
+    } else {
+      console.log('👋 Existing user detected → Going directly to data request');
+      setCurrentFlow('dataRequest');
+    }
   };
 
   const handleOnboardingComplete = (onboardingData) => {
@@ -113,6 +137,20 @@ export function OnairosButton({
     setCurrentFlow('dataRequest');
   };
 
+  const handleTrainingComplete = (trainingResult) => {
+    console.log('🎓 Training completed:', trainingResult);
+    const updatedUserData = {
+      ...userData,
+      trainingCompleted: true,
+      ...trainingResult
+    };
+    setUserData(updatedUserData);
+    localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
+    
+    // Move to data request after training
+    setCurrentFlow('dataRequest');
+  };
+
   const handleDataRequestComplete = (requestResult) => {
     console.log('🔥 OnairosButton: Data request completed:', requestResult);
     
@@ -127,11 +165,26 @@ export function OnairosButton({
     // Close overlay
     setShowOverlay(false);
 
+    // Format response if requested and API response is present
+    let formattedResult = requestResult;
+    if (formatResponse && requestResult?.apiResponse) {
+      try {
+        formattedResult = {
+          ...requestResult,
+          apiResponse: formatOnairosResponse(requestResult.apiResponse, responseFormat)
+        };
+        console.log('🔥 Response formatted with dictionary:', formattedResult.apiResponse?.personalityDict || 'No personality data');
+      } catch (error) {
+        console.warn('🔥 Error formatting response:', error);
+        // Continue with original result if formatting fails
+      }
+    }
+
     // Call onComplete callback if provided
-    console.log('🔥 Calling onComplete callback with:', requestResult);
+    console.log('🔥 Calling onComplete callback with:', formattedResult);
     if (onComplete) {
       try {
-        onComplete(requestResult);
+        onComplete(formattedResult);
         console.log('🔥 onComplete callback executed successfully');
       } catch (error) {
         console.error('🔥 Error in onComplete callback:', error);
@@ -169,6 +222,16 @@ export function OnairosButton({
           />
         );
       
+      case 'training':
+        return (
+          <TrainingComponent 
+            onComplete={handleTrainingComplete}
+            userEmail={userData?.email}
+            appName={webpageName}
+            connectedAccounts={userData?.connectedAccounts || []}
+          />
+        );
+      
       case 'dataRequest':
         return (
           <DataRequest 
@@ -179,6 +242,7 @@ export function OnairosButton({
             autoFetch={autoFetch}
             testMode={testMode}
             appIcon={appIcon}
+            connectedAccounts={userData?.connectedAccounts || {}}
           />
         );
       

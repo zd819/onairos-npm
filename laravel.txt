@@ -1,0 +1,186 @@
+# Onairos NPM Package - Laravel Integration Context
+
+## Laravel Integration Overview
+- **Package Version**: 3.1.9+
+- **Laravel Support**: Laravel 9+ with Vite
+- **Integration Types**: Blade Templates, Vue.js, React, Mixed Approaches
+- **Build System**: Vite with custom plugins
+- **Mobile Support**: Auto-detection; same React overlay UX across desktop/mobile
+
+## What Changed (Important)
+- The Blade helper now mounts the React `OnairosButton` under the hood and opens the same in-page overlay used by the normal JS SDK.
+- No calls to `/auth/laravel` are required or used.
+- This ensures identical UX and flow between standard React apps and Laravel Blade apps.
+
+## Entry Points
+- **Main Package**: `onairos` (standard React components)
+- **Laravel Blade**: `onairos/blade` (helpers that mount React overlay)
+- **Vite Plugin**: `onairos/vite-plugin` (build-time optimization; optional)
+- **Vue Component**: `onairos/src/laravel/OnairosVue.vue` (Vue 3 SFC)
+
+## Build Targets
+- **UMD Bundle**: `dist/onairos.bundle.js` (browser globals)
+- **ES Module**: `dist/onairos.esm.js` (modern imports)
+- **Laravel Specific**: `dist/onairos-laravel.js` (Blade helpers)
+
+## Minimal Laravel Vite Setup (Recommended)
+
+### 1) Install
+```bash
+npm install onairos react react-dom
+```
+
+### 2) .env
+```env
+VITE_ONAIROS_BASE_URL=https://api2.onairos.uk
+VITE_ONAIROS_TEST_MODE=true
+VITE_ONAIROS_API_KEY=your_api_key_here
+```
+
+### 3) resources/js/app.js
+```javascript
+import './bootstrap';
+import { initializeOnairosForBlade, createOnairosButton } from 'onairos/blade';
+
+document.addEventListener('DOMContentLoaded', () => {
+  initializeOnairosForBlade({
+    baseUrl: import.meta.env.VITE_ONAIROS_BASE_URL || 'https://api2.onairos.uk',
+    testMode: (import.meta.env.VITE_ONAIROS_TEST_MODE === 'true'),
+    apiKey: import.meta.env.VITE_ONAIROS_API_KEY,
+    autoDetectMobile: true,
+    globalStyles: true
+  });
+
+  // Optional: create buttons here, or inline in Blade
+  // createOnairosButton('onairos-button', {
+  //   requestData: ['email', 'profile'],
+  //   webpageName: 'My Laravel App'
+  // });
+});
+```
+
+### 4) Blade layout (resources/views/layouts/app.blade.php)
+```blade
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ config('app.name') }}</title>
+  @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body>
+  @yield('content')
+</body>
+</html>
+```
+
+### 5) Use in a Blade view
+```blade
+@extends('layouts.app')
+
+@section('content')
+<div class="container">
+  <h1>Dashboard</h1>
+  <div id="onairos-button"></div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.createOnairosButton) {
+      window.createOnairosButton('onairos-button', {
+        requestData: ['email', 'profile', 'social'],
+        webpageName: 'Distill Profile Enhancement',
+        buttonType: 'pill',
+        textColor: 'white',
+        autoFetch: true
+      });
+    }
+  });
+  </script>
+</div>
+@endsection
+```
+
+### Notes
+- The Blade helper dynamically imports `react` and `react-dom` and mounts the React overlay. No custom routes or `/auth/laravel` are needed.
+- On mobile, the same overlay UX is used. No redirect-based auth URL is required.
+
+## Optional Vite Plugins
+```javascript
+// vite.config.js
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import { onairosLaravelPlugin } from 'onairos/vite-plugin';
+
+export default defineConfig({
+  plugins: [
+    laravel({ input: ['resources/css/app.css', 'resources/js/app.js'], refresh: true }),
+    onairosLaravelPlugin({ bladeSupport: true, injectGlobals: true })
+  ]
+});
+```
+
+## Vue and React Options (Laravel)
+- Vue: register `onairos/src/laravel/OnairosVue.vue` and place the component in Blade; it will internally reuse the Blade helper to open the overlay.
+- React: directly render `OnairosButton` via Vite React; identical overlay behavior.
+
+## Testing
+
+### Local test commands
+```bash
+# Install deps (use legacy peer option if necessary)
+npm install --legacy-peer-deps
+
+# Run Laravel-specific tests
+npm run test:laravel
+
+# Full suite (if you also want CRA tests)
+npm run test:all
+```
+
+### Expected
+- The Laravel tests exercise Blade helpers, Vue SFC, and Vite plugin wiring.
+- If your CI environment lacks `import.meta.env` in specific tests, set them before running or in the test setup.
+
+## Build
+```bash
+npm run build
+```
+Outputs:
+- `dist/onairos.bundle.js`
+- `dist/onairos.esm.js`
+- `dist/onairos-laravel.js`
+- `dist/data_request_popup.html`
+
+## Publish to npm
+
+### Bump version
+```bash
+# choose one
+npm version patch
+# or
+npm version minor
+# or
+npm version major
+```
+
+### Login and publish
+```bash
+npm login
+# optional dry run
+npm publish --dry-run
+# publish
+npm publish --access public
+```
+
+### Verify
+- Check `npm info onairos version` shows the new version
+- Update consuming Laravel app: `npm update onairos`
+
+## Troubleshooting
+- Ensure `react` and `react-dom` are installed in the Laravel app (the Blade helper mounts React overlay).
+- If tests fail due to environment variables, define `VITE_ONAIROS_*` in `.env` or mock `import.meta.env` in test setup.
+- If you previously wired redirects to `/auth/laravel`, remove that logic; it is no longer needed.
+
+## Summary
+- Laravel Blade integration now reuses the React overlay for a unified experience.
+- Minimal setup: initialize, create a button in Blade, and you’re done.
+- Standard build and publish steps apply. 
