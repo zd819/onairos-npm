@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { COLORS } from '../theme/colors.js';
 
-export default function TrainingComponent({ onComplete, userEmail, appName = 'App' }) {
+export default function TrainingComponent({ onComplete, userEmail, appName = 'App', testMode = true }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
@@ -11,25 +11,25 @@ export default function TrainingComponent({ onComplete, userEmail, appName = 'Ap
       title: 'Setting up your personal AI',
       description: 'Initializing your secure data model',
       icon: '🤖',
-      duration: 2000
+      duration: testMode ? 800 : 2000 // Much faster in test mode
     },
     {
       title: 'Processing your connections',
       description: 'Analyzing your social media patterns',
       icon: '🔗',
-      duration: 2500
+      duration: testMode ? 600 : 2500
     },
     {
       title: 'Training your model',
       description: 'Building your personalized insights',
       icon: '🧠',
-      duration: 3000
+      duration: testMode ? 700 : 3000
     },
     {
       title: 'Finalizing setup',
       description: 'Preparing your Onairos experience',
       icon: '✨',
-      duration: 2000
+      duration: testMode ? 500 : 2000
     }
   ];
 
@@ -55,14 +55,22 @@ export default function TrainingComponent({ onComplete, userEmail, appName = 'Ap
           setCurrentStep(prev => prev + 1);
         } else {
           setIsComplete(true);
+          const completionDelay = testMode ? 400 : 1000; // Faster completion in test mode
+          
+          if (testMode) {
+            console.log('🧪 Test mode: Training simulation completed');
+          }
+          
           setTimeout(() => {
             onComplete({
               trainingComplete: true,
               timestamp: new Date().toISOString(),
               userEmail: userEmail,
-              appName: appName
+              appName: appName,
+              testMode: testMode,
+              simulatedTraining: testMode
             });
-          }, 1000);
+          }, completionDelay);
         }
       }, stepDuration);
     }

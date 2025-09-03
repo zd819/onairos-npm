@@ -17,7 +17,7 @@ const platforms = [
   { name: 'Gmail', icon: '📧', color: 'bg-red-500', connector: 'gmail' }
 ];
 
-export default function UniversalOnboarding({ onComplete, appIcon, appName = 'App', username }) {
+export default function UniversalOnboarding({ onComplete, appIcon, appName = 'App', username, testMode = true }) {
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeConnector, setActiveConnector] = useState(null);
@@ -58,10 +58,25 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
       }));
       console.log(`✅ Disconnected from ${platformName}`);
     } else {
-      // Connect - open the OAuth dialog
-      console.log(`🚀 Opening OAuth for ${platformName}...`);
-      setActiveConnector(connectorType);
-      console.log(`🔧 Set activeConnector to: ${connectorType}`);
+      // Connect
+      if (testMode) {
+        // Test mode: Simulate instant connection without OAuth dialog
+        console.log(`🧪 Test mode: Simulating instant connection to ${platformName}...`);
+        setIsConnecting(true);
+        setTimeout(() => {
+          setConnectedAccounts(prev => ({
+            ...prev,
+            [platformName]: true
+          }));
+          setIsConnecting(false);
+          console.log(`🧪 Test mode: Simulated connection to ${platformName} successful`);
+        }, 300); // Quick simulation delay
+      } else {
+        // Production mode: Open the OAuth dialog
+        console.log(`🚀 Opening OAuth for ${platformName}...`);
+        setActiveConnector(connectorType);
+        console.log(`🔧 Set activeConnector to: ${connectorType}`);
+      }
     }
   };
 
@@ -80,6 +95,22 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
 
   return (
     <div className="w-full space-y-6">
+      {/* Test Mode Notice */}
+      {testMode && (
+        <div 
+          className="p-3 rounded-lg border mb-4"
+          style={{ 
+            backgroundColor: '#FEF3C7', 
+            borderColor: '#F59E0B',
+            color: '#D97706'
+          }}
+        >
+          <p className="text-sm">
+            🧪 <strong>Test Mode:</strong> Connections are simulated for design testing. Toggle any platform to simulate instant connection.
+          </p>
+        </div>
+      )}
+
       {/* Privacy Notice */}
       <div 
         className="p-3 rounded-lg border"

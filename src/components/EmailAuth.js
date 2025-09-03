@@ -28,14 +28,16 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
 
     try {
       if (testMode) {
-        // In test mode, still call API but use admin key for instant verification
+        // Test mode: Skip API call completely, simulate instant success
+        console.log('🧪 Test mode: Simulating email verification request for:', email);
         setTimeout(() => {
           setStep('code');
           setIsLoading(false);
-        }, 1000);
+          console.log('🧪 Test mode: Email verification simulated successfully');
+        }, 800); // Shorter delay for faster testing
       } else {
-        // Use proper email verification API from schema
-        const apiKey = testMode ? 'OnairosIsAUnicorn2025' : (window.onairosApiKey || 'test-key');
+        // Production mode: Use proper email verification API from schema
+        const apiKey = window.onairosApiKey || 'test-key';
         
         const response = await fetch('https://api2.onairos.uk/email/verification', {
           method: 'POST',
@@ -76,73 +78,89 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     setIsLoading(true);
 
     try {
-      // Use real email verification API from schema
-      const apiKey = testMode ? 'OnairosIsAUnicorn2025' : (window.onairosApiKey || 'test-key');
-      
-      const response = await fetch('https://api2.onairos.uk/email/verification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({ 
-          email, 
-          action: 'verify',
-          code 
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Invalid verification code');
-      }
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Verification failed');
-      }
-
-      console.log('📧 Email verification response:', data);
-
-      setStep('success');
-      setTimeout(() => {
-        // Pass complete API response for flow determination
-        onSuccess({ 
-          email, 
-          verified: true, 
-          token: data.token || data.jwtToken,
-          userName: data.userName,
-          existingUser: data.existingUser,
-          accountInfo: data.accountInfo,
-          isNewUser: !data.existingUser, // Set based on API response
-          flowType: data.existingUser ? 'dataRequest' : 'onboarding',
-          adminMode: data.adminMode,
-          userCreated: data.userCreated,
-          accountDetails: data.accountDetails
+      if (testMode) {
+        // Test mode: Skip API call completely, simulate verification
+        console.log('🧪 Test mode: Simulating code verification for:', email, 'with code:', code);
+        
+        if (code === '123456' || code.length === 6) {
+          setStep('success');
+          setTimeout(() => {
+            // Simulate new user for design testing
+            const simulatedResponse = { 
+              email, 
+              verified: true, 
+              token: 'test-token-' + Date.now(),
+              userName: email.split('@')[0],
+              existingUser: false, // Always simulate new user for full flow testing
+              accountInfo: null,
+              isNewUser: true,
+              flowType: 'onboarding',
+              adminMode: false,
+              userCreated: true,
+              accountDetails: {
+                email: email,
+                createdAt: new Date().toISOString(),
+                testAccount: true
+              }
+            };
+            console.log('🧪 Test mode: Simulated verification successful, user data:', simulatedResponse);
+            onSuccess(simulatedResponse);
+          }, 600); // Faster for design testing
+        } else {
+          setError('Invalid code. Use any 6-digit code (e.g., 123456) for testing.');
+          setIsLoading(false);
+        }
+      } else {
+        // Production mode: Use real email verification API from schema
+        const apiKey = window.onairosApiKey || 'test-key';
+        
+        const response = await fetch('https://api2.onairos.uk/email/verification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({ 
+            email, 
+            action: 'verify',
+            code 
+          }),
         });
-      }, 1000);
-    } catch (error) {
-      console.error('Email verification error:', error);
-      
-      // Fallback for test mode
-      if (testMode && code === '123456') {
+
+        if (!response.ok) {
+          throw new Error('Invalid verification code');
+        }
+
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Verification failed');
+        }
+
+        console.log('📧 Email verification response:', data);
+
         setStep('success');
         setTimeout(() => {
+          // Pass complete API response for flow determination
           onSuccess({ 
             email, 
             verified: true, 
-            token: 'test-token',
-            userName: email.split('@')[0],
-            existingUser: false,
-            accountInfo: null,
-            isNewUser: true,
-            flowType: 'onboarding'
+            token: data.token || data.jwtToken,
+            userName: data.userName,
+            existingUser: data.existingUser,
+            accountInfo: data.accountInfo,
+            isNewUser: !data.existingUser, // Set based on API response
+            flowType: data.existingUser ? 'dataRequest' : 'onboarding',
+            adminMode: data.adminMode,
+            userCreated: data.userCreated,
+            accountDetails: data.accountDetails
           });
         }, 1000);
-      } else {
-        setError(error.message || 'Invalid code. Use 123456 for testing.');
-        setIsLoading(false);
       }
+    } catch (error) {
+      console.error('Email verification error:', error);
+      setError(error.message || 'Invalid code. Please try again.');
+      setIsLoading(false);
     }
   };
 

@@ -13,7 +13,7 @@ export function OnairosButton({
   inferenceData = null, 
   onComplete = null, 
   autoFetch = false,
-  testMode = false,
+  testMode = true, // Auto-enabled for design testing - set to false for production
   proofMode = false, 
   textLayout = 'below', 
   textColor = 'white',
@@ -286,6 +286,7 @@ export function OnairosButton({
             appIcon={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"}
             appName={webpageName}
             username={userData?.email || userData?.username}
+            testMode={testMode}
           />
         );
       
@@ -304,6 +305,7 @@ export function OnairosButton({
             userEmail={userData?.email}
             appName={webpageName}
             connectedAccounts={userData?.connectedAccounts || []}
+            testMode={testMode}
           />
         );
       
