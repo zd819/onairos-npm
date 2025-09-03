@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import AuthButtons from '../components/AuthButtons.jsx';
 import IndividualConnection from './IndividualConnection.js';
 import SecuritySetup from '../components/SecuritySetup.js';
-import UniversalOnboarding from '../components/UniversalOnboarding.js';
+import UniversalOnboarding from '../components/UniversalOnboarding.jsx';
 import SignUp from '../components/SignUp.js';
+import { ModalPageLayout } from '../components/ui/PageLayout.jsx';
+import PrimaryButton from '../components/ui/PrimaryButton.jsx';
 
 
 export default function Overlay({ 
@@ -291,7 +293,7 @@ export default function Overlay({
           />
         );
       case 'onboarding':
-        return <UniversalOnboarding onComplete={handleOnboardingComplete} />;
+        return <UniversalOnboarding onComplete={handleOnboardingComplete} username={accountInfo?.username || formData.username} />;
       case 'security':
         return <SecuritySetup onComplete={handleSecurityComplete} />;
       case 'datarequests':
@@ -405,30 +407,30 @@ export default function Overlay({
   // }
 
   return (
-    <>
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50" 
-        onClick={handleClose}
-        style={{ touchAction: 'none' }}
-      />
-      <div 
-        ref={overlayRef} 
-        className="fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out flex flex-col"
-        style={{ 
-          maxHeight: '60vh',
-          minHeight: '45vh',
-          height: 'auto',
-          touchAction: 'none'
-        }}
-      >
-        <div className="sticky top-0 bg-white z-10 px-6 pt-3 pb-2">
-          <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto"></div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 pb-8" style={{ touchAction: 'pan-y' }}>
-          {renderContent()}
-        </div>
-      </div>
-    </>
+    <ModalPageLayout
+      visible={true}
+      onClose={handleClose}
+      showBackButton={currentView === 'signup' || currentView === 'onboarding'}
+      onBack={() => {
+        if (currentView === 'signup') setCurrentView('login');
+        if (currentView === 'onboarding') setCurrentView('login');
+      }}
+      title={
+        currentView === 'login' ? 'Welcome to Onairos' :
+        currentView === 'signup' ? 'Create Account' :
+        currentView === 'onboarding' ? 'Connect Your Data' :
+        currentView === 'datarequests' ? 'Data Request' : ''
+      }
+      subtitle={
+        currentView === 'login' ? 'OnairOS personalizes your digital experience on every app so you can just enjoy being you' :
+        currentView === 'signup' ? 'Create your Onairos account to get started' :
+        currentView === 'onboarding' ? 'Choose which accounts to connect for a personalized experience' :
+        currentView === 'datarequests' ? `Select the data you want to share with ${dataRequester}` : ''
+      }
+      icon="🧠"
+      centerContent={true}
+    >
+      {renderContent()}
+    </ModalPageLayout>
   );
 }

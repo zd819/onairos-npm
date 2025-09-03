@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Email Flow - New UI</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        // Try to load the Onairos SDK
+        try {
+            const { OnairosButton } = await import('./dist/onairos.esm.js');
+            window.Onairos = { OnairosButton };
+            console.log('✅ Onairos SDK loaded successfully');
+        } catch (error) {
+            console.error('❌ Failed to load Onairos SDK:', error);
+            window.OnairosLoadError = error;
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div id="root" class="p-8 max-w-4xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                🧠 Test Email Flow - New UI
+            </h1>
+            <p class="text-gray-600 text-lg">Testing the updated email and verification code flow</p>
+        </div>
+        
+        <div class="mb-8 p-6 bg-white border border-gray-200 rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Expected Flow:</h2>
+            <ol class="space-y-2 text-gray-700">
+                <li class="flex items-start">
+                    <span class="mr-2 text-blue-500 font-bold">1.</span>
+                    <span><strong>"Your AI persona is getting closer"</strong> - Email entry page</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="mr-2 text-blue-500 font-bold">2.</span>
+                    <span><strong>"Enter verification code"</strong> - 6-digit code entry</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="mr-2 text-blue-500 font-bold">3.</span>
+                    <span><strong>Onboarding</strong> (new users) or <strong>Data Request</strong> (existing users)</span>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Test Mode Notice -->
+        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h3 class="font-semibold mb-2 text-yellow-800">🧪 Test Mode Active:</h3>
+            <ul class="text-yellow-700 text-sm space-y-1">
+                <li>• Any valid email format will work</li>
+                <li>• Use verification code: <strong>123456</strong></li>
+                <li>• Flow will proceed through email → code → onboarding/data request</li>
+            </ul>
+        </div>
+
+        <!-- Current Configuration -->
+        <div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <h3 class="font-semibold mb-2">Current Configuration:</h3>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="font-medium">Test Mode:</span>
+                    <span class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">true</span>
+                </div>
+                <div>
+                    <span class="font-medium">Auto Fetch:</span>
+                    <span class="ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-xs">false</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onairos Button -->
+        <div class="text-center mb-6">
+            <h3 class="text-lg font-semibold mb-4">Click to Test New Email Flow:</h3>
+            <div id="button-container" class="inline-block"></div>
+        </div>
+
+        <!-- Results -->
+        <div id="result" class="mt-6 p-6 bg-white border border-gray-200 rounded-xl shadow-lg hidden">
+            <h3 class="font-semibold mb-4 text-lg text-gray-800">
+                📊 Flow Completion Result:
+            </h3>
+            <pre id="result-data" class="text-sm text-gray-700 bg-gray-50 p-4 rounded-lg overflow-auto max-h-96"></pre>
+        </div>
+
+        <!-- Logs -->
+        <div class="mt-8">
+            <h3 class="text-lg font-semibold mb-4 text-gray-800">📋 Flow Logs:</h3>
+            <div id="logs" class="bg-black text-green-400 p-4 rounded-lg font-mono text-sm max-h-64 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <script>
+        function addLog(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: 'text-blue-400',
+                success: 'text-green-400',
+                error: 'text-red-400',
+                warning: 'text-yellow-400'
+            };
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = colors[type] || colors.info;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function renderButton() {
+            const { OnairosButton } = window.Onairos || {};
+            
+            if (!OnairosButton) {
+                addLog('❌ OnairosButton not found. Make sure dist/onairos.esm.js is built', 'error');
+                return;
+            }
+
+            addLog('✅ OnairosButton found, rendering...', 'success');
+
+            const buttonElement = React.createElement(OnairosButton, {
+                requestData: ['basic', 'personality', 'preferences'],
+                webpageName: 'Email Flow Test',
+                onComplete: handleComplete,
+                autoFetch: false,
+                testMode: true, // Enable test mode
+                buttonType: 'pill',
+                visualType: 'full',
+                textColor: 'black',
+                appIcon: 'https://onairos.sirv.com/Images/OnairosBlack.png'
+            });
+
+            ReactDOM.render(buttonElement, document.getElementById('button-container'));
+            addLog('🚀 Button rendered with test mode enabled', 'success');
+        }
+
+        function handleComplete(result) {
+            addLog('🎉 Flow completed!', 'success');
+            
+            // Show results
+            document.getElementById('result').classList.remove('hidden');
+            document.getElementById('result-data').textContent = JSON.stringify(result, null, 2);
+            
+            addLog(`📋 Result: ${result.success ? 'Success' : 'Failed'}`, result.success ? 'success' : 'error');
+            
+            if (result.selectedData) {
+                addLog(`📊 Selected data: ${Object.keys(result.selectedData).join(', ')}`, 'info');
+            }
+            
+            if (result.connectedAccounts) {
+                addLog(`🔗 Connected accounts: ${result.connectedAccounts.length}`, 'info');
+            }
+        }
+
+        // Wait for Onairos to load
+        let checkCount = 0;
+        const checkOnairos = setInterval(() => {
+            checkCount++;
+            if (window.Onairos) {
+                clearInterval(checkOnairos);
+                addLog('🚀 Onairos SDK loaded successfully', 'success');
+                renderButton();
+            } else if (window.OnairosLoadError) {
+                clearInterval(checkOnairos);
+                addLog('❌ Failed to load Onairos SDK', 'error');
+                addLog(`💡 Error: ${window.OnairosLoadError.message}`, 'error');
+                addLog('🔧 Try using a proper HTTP server (not file://) or check browser console', 'warning');
+            } else if (checkCount > 50) { // 5 seconds timeout
+                clearInterval(checkOnairos);
+                addLog('❌ Timeout waiting for Onairos SDK', 'error');
+                addLog('💡 Make sure to build the project: npm run build', 'warning');
+                addLog('🌐 Make sure you\'re using Live Server extension in VS Code', 'warning');
+            }
+        }, 100);
+
+        // Initial log
+        addLog('🔄 Loading Onairos SDK...', 'info');
+        addLog('📋 Expected flow: Email → Code → Onboarding/Data Request', 'info');
+    </script>
+</body>
+</html> 

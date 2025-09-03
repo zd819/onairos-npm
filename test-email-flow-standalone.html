@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Email Flow - Standalone</title>
+    <!-- Load React first as globals -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div id="root" class="p-8 max-w-4xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                🧠 Test Email Flow - Standalone
+            </h1>
+            <p class="text-gray-600 text-lg">Testing the new email/verification flow with proper React loading</p>
+        </div>
+        
+        <div class="mb-8 p-6 bg-white border border-gray-200 rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Expected Flow:</h2>
+            <ol class="space-y-2 text-gray-700">
+                <li class="flex items-start">
+                    <span class="mr-2 text-blue-500 font-bold">1.</span>
+                    <span><strong>"Your AI persona is getting closer"</strong> - Email entry page</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="mr-2 text-blue-500 font-bold">2.</span>
+                    <span><strong>"Enter verification code"</strong> - 6-digit code entry with individual boxes</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="mr-2 text-blue-500 font-bold">3.</span>
+                    <span><strong>Connect Your Data</strong> (onboarding) or <strong>Data Request</strong> (existing users)</span>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Test Mode Notice -->
+        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h3 class="font-semibold mb-2 text-yellow-800">🧪 Test Mode Instructions:</h3>
+            <ul class="text-yellow-700 text-sm space-y-1">
+                <li>• Enter any valid email (e.g., test@example.com)</li>
+                <li>• Use verification code: <strong>123456</strong></li>
+                <li>• Flow will show new UI design throughout</li>
+            </ul>
+        </div>
+
+        <!-- Environment Check -->
+        <div id="env-check" class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <h3 class="font-semibold mb-2">Environment Check:</h3>
+            <div id="env-status">Checking...</div>
+        </div>
+
+        <!-- Onairos Button Container -->
+        <div class="text-center mb-6">
+            <h3 class="text-lg font-semibold mb-4">Click to Test New Email Flow:</h3>
+            <div id="button-container" class="inline-block"></div>
+        </div>
+
+        <!-- Results -->
+        <div id="result" class="mt-6 p-6 bg-white border border-gray-200 rounded-xl shadow-lg hidden">
+            <h3 class="font-semibold mb-4 text-lg text-gray-800">
+                📊 Flow Completion Result:
+            </h3>
+            <pre id="result-data" class="text-sm text-gray-700 bg-gray-50 p-4 rounded-lg overflow-auto max-h-96"></pre>
+        </div>
+
+        <!-- Debug Info -->
+        <div id="debug" class="mt-8 p-4 bg-black text-green-400 rounded-lg font-mono text-sm max-h-64 overflow-y-auto">
+            <div class="text-white mb-2">Debug Log:</div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const debug = document.getElementById('debug');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: 'text-blue-400',
+                success: 'text-green-400',
+                error: 'text-red-400',
+                warning: 'text-yellow-400'
+            };
+            
+            const entry = document.createElement('div');
+            entry.className = colors[type] || colors.info;
+            entry.textContent = `[${timestamp}] ${message}`;
+            debug.appendChild(entry);
+            debug.scrollTop = debug.scrollHeight;
+            console.log(message);
+        }
+
+        function updateEnvStatus(status, type = 'info') {
+            const envStatus = document.getElementById('env-status');
+            const colors = {
+                info: 'text-blue-600',
+                success: 'text-green-600',
+                error: 'text-red-600',
+                warning: 'text-yellow-600'
+            };
+            
+            envStatus.className = colors[type] || colors.info;
+            envStatus.textContent = status;
+        }
+
+        // Check environment
+        function checkEnvironment() {
+            log('🔍 Checking environment...', 'info');
+            
+            // Check React
+            if (window.React) {
+                log('✅ React loaded successfully', 'success');
+            } else {
+                log('❌ React not found', 'error');
+                updateEnvStatus('❌ React not loaded', 'error');
+                return false;
+            }
+
+            // Check ReactDOM
+            if (window.ReactDOM) {
+                log('✅ ReactDOM loaded successfully', 'success');
+            } else {
+                log('❌ ReactDOM not found', 'error');
+                updateEnvStatus('❌ ReactDOM not loaded', 'error');
+                return false;
+            }
+
+            updateEnvStatus('✅ React environment ready', 'success');
+            return true;
+        }
+
+        // Load Onairos
+        async function loadOnairos() {
+            if (!checkEnvironment()) {
+                return;
+            }
+
+            log('📦 Loading Onairos bundle...', 'info');
+            updateEnvStatus('📦 Loading Onairos SDK...', 'info');
+
+            try {
+                // Create script element to load the bundle
+                const script = document.createElement('script');
+                script.src = './dist/onairos.bundle.js';
+                script.onload = () => {
+                    log('✅ Onairos bundle loaded', 'success');
+                    checkOnairosAndRender();
+                };
+                script.onerror = (error) => {
+                    log('❌ Failed to load Onairos bundle', 'error');
+                    updateEnvStatus('❌ Failed to load Onairos bundle', 'error');
+                };
+                document.head.appendChild(script);
+
+            } catch (error) {
+                log(`❌ Error loading Onairos: ${error.message}`, 'error');
+                updateEnvStatus(`❌ Load error: ${error.message}`, 'error');
+            }
+        }
+
+        function checkOnairosAndRender() {
+            let attempts = 0;
+            const checkInterval = setInterval(() => {
+                attempts++;
+                
+                if (window.Onairos && window.Onairos.OnairosButton) {
+                    clearInterval(checkInterval);
+                    log('✅ Onairos.OnairosButton found', 'success');
+                    updateEnvStatus('✅ Ready to test!', 'success');
+                    renderButton();
+                } else if (attempts > 30) {
+                    clearInterval(checkInterval);
+                    log('❌ Timeout waiting for Onairos.OnairosButton', 'error');
+                    updateEnvStatus('❌ Onairos components not found', 'error');
+                    
+                    // Debug info
+                    log(`Available window properties: ${Object.keys(window).filter(k => k.toLowerCase().includes('onairos')).join(', ') || 'none'}`, 'warning');
+                    if (window.Onairos) {
+                        log(`Onairos properties: ${Object.keys(window.Onairos).join(', ')}`, 'warning');
+                    }
+                }
+            }, 100);
+        }
+
+        function renderButton() {
+            const OnairosButton = window.Onairos?.OnairosButton;
+            
+            if (!OnairosButton) {
+                log('❌ OnairosButton component not found', 'error');
+                return;
+            }
+
+            log('🎨 Rendering Onairos button...', 'info');
+
+            try {
+                const buttonElement = React.createElement(OnairosButton, {
+                    requestData: ['basic', 'personality', 'preferences'],
+                    webpageName: 'Email Flow Test',
+                    onComplete: handleComplete,
+                    autoFetch: false,
+                    testMode: true,
+                    buttonType: 'pill',
+                    visualType: 'full',
+                    textColor: 'black',
+                    appIcon: 'https://onairos.sirv.com/Images/OnairosBlack.png'
+                });
+
+                ReactDOM.render(buttonElement, document.getElementById('button-container'));
+                log('🚀 Button rendered successfully!', 'success');
+                updateEnvStatus('🚀 Click the button to test the new email flow!', 'success');
+
+            } catch (error) {
+                log(`❌ Error rendering button: ${error.message}`, 'error');
+                updateEnvStatus(`❌ Render error: ${error.message}`, 'error');
+            }
+        }
+
+        function handleComplete(result) {
+            log('🎉 Flow completed!', 'success');
+            
+            document.getElementById('result').classList.remove('hidden');
+            document.getElementById('result-data').textContent = JSON.stringify(result, null, 2);
+            
+            updateEnvStatus('🎉 Flow completed successfully!', 'success');
+        }
+
+        // Initialize
+        log('🚀 Initializing Email Flow Test...', 'info');
+        updateEnvStatus('🔄 Initializing...', 'info');
+        
+        // Start loading process
+        setTimeout(loadOnairos, 100);
+    </script>
+</body>
+</html> 

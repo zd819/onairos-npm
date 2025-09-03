@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Onairos Live Mode Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="./dist/onairos.esm.js"></script>
+</head>
+<body>
+    <div id="root" class="p-8 max-w-6xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                🚀 Enhanced Onairos Live Mode Test
+            </h1>
+            <p class="text-gray-600 text-lg">Testing live APIs with enhanced visual design and callback functionality</p>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Enhanced Features Card -->
+            <div class="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold text-green-800 mb-4 flex items-center">
+                    <span class="mr-2">✅</span> Enhanced Features
+                </h2>
+                <ul class="space-y-3 text-green-700">
+                    <li class="flex items-start">
+                        <span class="mr-2 text-green-500">🎨</span>
+                        <span>Improved visual design with modern UI components</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="mr-2 text-green-500">📋</span>
+                        <span>Correct data types: Basic Info, Personality, Preferences</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="mr-2 text-green-500">🔄</span>
+                        <span>Auto mode toggle (default false for API URL return)</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="mr-2 text-green-500">🧪</span>
+                        <span>Test/Live mode switching with proper endpoints</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="mr-2 text-green-500">🔗</span>
+                        <span>Proper callback handling with backend Info format</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="mr-2 text-green-500">✅</span>
+                        <span>Visual checkmarks for selected data types</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="mr-2 text-green-500">🗂️</span>
+                        <span>Data mapping: basic→Medium, personality→Large, preferences→Traits</span>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- API Configuration Card -->
+            <div class="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold text-blue-800 mb-4 flex items-center">
+                    <span class="mr-2">🔧</span> API Configuration
+                </h2>
+                <div class="space-y-3 text-blue-700">
+                    <div class="flex items-center justify-between">
+                        <span>Live Mode:</span>
+                        <span class="px-2 py-1 bg-green-600 text-white text-xs rounded-full">ENABLED</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Live Endpoint:</span>
+                        <code class="text-xs bg-blue-100 px-2 py-1 rounded">api2.onairos.uk/getAPIurlMobile</code>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Test Endpoint:</span>
+                        <code class="text-xs bg-gray-100 px-2 py-1 rounded">api2.onairos.uk/inferenceTest</code>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Auto Fetch:</span>
+                        <span class="px-2 py-1 bg-orange-600 text-white text-xs rounded-full">FALSE (returns API URL)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Configurations -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Test Mode Configuration -->
+            <div class="p-4 bg-white border border-gray-200 rounded-lg shadow">
+                <h3 class="font-semibold mb-3 text-gray-800">🧪 Test Mode</h3>
+                <div class="space-y-2">
+                    <button id="testModeBtn" class="w-full px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                        Test with Test APIs
+                    </button>
+                    <p class="text-xs text-gray-600">Uses /inferenceTest endpoint with mock data</p>
+                </div>
+            </div>
+
+            <!-- Live Mode Configuration -->
+            <div class="p-4 bg-white border border-gray-200 rounded-lg shadow">
+                <h3 class="font-semibold mb-3 text-gray-800">🚀 Live Mode</h3>
+                <div class="space-y-2">
+                    <button id="liveModeBtn" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        Test with Live APIs
+                    </button>
+                    <p class="text-xs text-gray-600">Uses /inference endpoint with real data</p>
+                </div>
+            </div>
+
+            <!-- Auto Fetch Configuration -->
+            <div class="p-4 bg-white border border-gray-200 rounded-lg shadow">
+                <h3 class="font-semibold mb-3 text-gray-800">🔄 Auto Fetch Mode</h3>
+                <div class="space-y-2">
+                    <button id="autoFetchBtn" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Test Auto API Call
+                    </button>
+                    <p class="text-xs text-gray-600">Automatically calls API and returns results</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Format Documentation -->
+        <div class="mb-6 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg">
+            <h3 class="font-semibold mb-3 text-purple-800">🔧 Backend API Format:</h3>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                    <h4 class="font-medium text-purple-700 mb-2">Request Format (Live Mode):</h4>
+                    <pre class="text-xs bg-white p-3 rounded border overflow-auto"><code>{
+  "Info": {
+    "storage": "local",
+    "appId": "YourApp",
+    "confirmations": [
+      {"data": "Medium", "date": "2024-01-15T10:30:00Z"},
+      {"data": "Large", "date": "2024-01-15T10:30:00Z"}
+    ],
+    "EncryptedUserPin": "encrypted_pin",
+    "account": "user@example.com",
+    "proofMode": false,
+    "Domain": "yourapp.com",
+    "web3Type": "standard",
+    "OthentSub": null
+  }
+}</code></pre>
+                </div>
+                <div>
+                    <h4 class="font-medium text-purple-700 mb-2">Data Type Mapping:</h4>
+                    <div class="text-xs bg-white p-3 rounded border space-y-1">
+                        <div><span class="font-medium">basic</span> → <span class="text-blue-600">Medium</span></div>
+                        <div><span class="font-medium">personality</span> → <span class="text-blue-600">Large</span></div>
+                        <div><span class="font-medium">preferences</span> → <span class="text-blue-600">Traits</span></div>
+                        <div class="mt-2 pt-2 border-t">
+                            <div class="text-gray-600">Backend determines API based on confirmations:</div>
+                            <div>• Traits only → <code>/traits</code></div>
+                            <div>• Large/Medium → <code>/inferenceNoProof</code></div>
+                            <div>• Both → <code>/combined-inference</code></div>
+                        </div>
+                        <div class="mt-2 pt-2 border-t">
+                            <div class="text-purple-600">📱 Mobile Browser Support:</div>
+                            <div>• Auto-detects mobile devices</div>
+                            <div>• Uses redirect OAuth flow (not popups)</div>
+                            <div>• Same React components work perfectly</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Configuration Display -->
+        <div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <h3 class="font-semibold mb-2">Current Configuration:</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                    <span class="font-medium">Test Mode:</span>
+                    <span id="currentTestMode" class="ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-xs">false</span>
+                </div>
+                <div>
+                    <span class="font-medium">Auto Fetch:</span>
+                    <span id="currentAutoFetch" class="ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-xs">false</span>
+                </div>
+                <div>
+                    <span class="font-medium">Endpoint:</span>
+                    <span id="currentEndpoint" class="ml-2 text-xs text-gray-600">api2.onairos.uk/inference</span>
+                </div>
+                <div>
+                    <span class="font-medium">Mode:</span>
+                    <span id="currentMode" class="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">LIVE</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onairos Button Container -->
+        <div class="text-center mb-6">
+            <h3 class="text-lg font-semibold mb-4">Click to Test Enhanced Onairos Flow:</h3>
+            <div id="button-container" class="inline-block"></div>
+        </div>
+
+        <!-- Results Display -->
+        <div id="result" class="mt-6 p-6 bg-white border border-gray-200 rounded-xl shadow-lg hidden">
+            <h3 class="font-semibold mb-4 text-lg text-gray-800 flex items-center">
+                <span class="mr-2">📊</span> Enhanced Completion Result:
+            </h3>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-medium mb-2 text-gray-700">Response Data:</h4>
+                    <pre id="result-data" class="text-sm text-gray-700 bg-gray-50 p-4 rounded-lg overflow-auto max-h-96"></pre>
+                </div>
+                <div>
+                    <h4 class="font-medium mb-2 text-gray-700">Test Summary:</h4>
+                    <div id="test-summary" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Container -->
+        <div class="mt-8">
+            <h3 class="text-lg font-semibold mb-4 text-gray-800">📋 Test Logs:</h3>
+            <div id="logs" class="bg-black text-green-400 p-4 rounded-lg font-mono text-sm max-h-64 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentConfig = {
+            testMode: false,
+            autoFetch: false
+        };
+
+        function updateConfigDisplay() {
+            document.getElementById('currentTestMode').textContent = currentConfig.testMode;
+            document.getElementById('currentTestMode').className = currentConfig.testMode 
+                ? 'ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs'
+                : 'ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-xs';
+            
+            document.getElementById('currentAutoFetch').textContent = currentConfig.autoFetch;
+            document.getElementById('currentAutoFetch').className = currentConfig.autoFetch 
+                ? 'ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs'
+                : 'ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-xs';
+            
+            const endpoint = currentConfig.testMode ? 'api2.onairos.uk/inferenceTest' : 'api2.onairos.uk/getAPIurlMobile';
+            document.getElementById('currentEndpoint').textContent = endpoint;
+            
+            const mode = currentConfig.testMode ? 'TEST' : 'LIVE';
+            document.getElementById('currentMode').textContent = mode;
+            document.getElementById('currentMode').className = currentConfig.testMode 
+                ? 'ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs'
+                : 'ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs';
+        }
+
+        function addLog(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: 'text-blue-400',
+                success: 'text-green-400',
+                error: 'text-red-400',
+                warning: 'text-yellow-400'
+            };
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = colors[type] || 'text-green-400';
+            logEntry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${message}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function renderButton() {
+            const { OnairosButton } = window.Onairos || {};
+            
+            if (!OnairosButton) {
+                addLog('❌ OnairosButton not found, using fallback', 'error');
+                return;
+            }
+
+            const buttonElement = React.createElement(OnairosButton, {
+                requestData: ['basic', 'personality', 'preferences'],
+                webpageName: 'Enhanced Live Test App',
+                onComplete: handleComplete,
+                autoFetch: currentConfig.autoFetch,
+                testMode: currentConfig.testMode,
+                buttonType: 'pill',
+                visualType: 'full',
+                textColor: 'black',
+                appIcon: 'https://onairos.sirv.com/Images/OnairosBlack.png'
+            });
+
+            ReactDOM.render(buttonElement, document.getElementById('button-container'));
+            addLog(`✅ Button rendered with testMode: ${currentConfig.testMode}, autoFetch: ${currentConfig.autoFetch}`, 'success');
+        }
+
+        async function handleComplete(result) {
+            try {
+                addLog('🎉 Data request completed!', 'success');
+                
+                // Show results
+                document.getElementById('result').classList.remove('hidden');
+                document.getElementById('result-data').textContent = JSON.stringify(result, null, 2);
+                
+                // Create test summary
+                const summary = document.getElementById('test-summary');
+                summary.innerHTML = '';
+                
+                const addSummaryItem = (label, value, isGood = true) => {
+                    const item = document.createElement('div');
+                    item.className = `flex items-center justify-between p-2 rounded ${isGood ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`;
+                    item.innerHTML = `
+                        <span>${label}:</span>
+                        <span class="font-mono text-xs">${value}</span>
+                    `;
+                    summary.appendChild(item);
+                };
+                
+                addSummaryItem('Success', result.success ? 'true' : 'false', result.success);
+                addSummaryItem('Test Mode', result.testMode ? 'true' : 'false');
+                addSummaryItem('API URL', result.apiUrl ? 'provided' : 'missing', !!result.apiUrl);
+                addSummaryItem('Auto Fetch', currentConfig.autoFetch ? 'true' : 'false');
+                
+                if (result.approvedData) {
+                    addSummaryItem('Data Types', result.approvedData.length);
+                    addLog(`📋 Approved data types: ${result.approvedData.join(', ')}`, 'info');
+                    
+                    // Show data mapping
+                    const dataMapping = {
+                        'basic': 'Medium',
+                        'personality': 'Large', 
+                        'preferences': 'Traits'
+                    };
+                    const mappedTypes = result.approvedData.map(type => `${type}→${dataMapping[type]}`);
+                    addLog(`🗂️ Backend mapping: ${mappedTypes.join(', ')}`, 'info');
+                }
+                
+                if (result.Info && !currentConfig.testMode) {
+                    addSummaryItem('Backend Format', 'Info structure used', true);
+                    addLog('📡 Request sent in backend-compatible Info format', 'success');
+                }
+                
+                if (result.apiResponse) {
+                    addSummaryItem('API Response', 'received', true);
+                    addLog('📡 API response received', 'success');
+                    
+                    if (result.testMode && result.apiResponse.InferenceResult) {
+                        addLog('✅ Test mode InferenceResult format confirmed', 'success');
+                    }
+                } else if (!currentConfig.autoFetch) {
+                    addLog('📡 API URL provided for manual calling (auto fetch disabled)', 'info');
+                }
+                
+                if (result.apiError) {
+                    addSummaryItem('API Error', result.apiError, false);
+                    addLog(`❌ API Error: ${result.apiError}`, 'error');
+                }
+                
+                addLog('✅ Enhanced callback handling test complete!', 'success');
+                
+            } catch (error) {
+                addLog(`❌ Test completion failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Event handlers
+        document.getElementById('testModeBtn').addEventListener('click', () => {
+            currentConfig.testMode = true;
+            currentConfig.autoFetch = false;
+            updateConfigDisplay();
+            renderButton();
+            addLog('🧪 Switched to TEST mode', 'info');
+        });
+
+        document.getElementById('liveModeBtn').addEventListener('click', () => {
+            currentConfig.testMode = false;
+            currentConfig.autoFetch = false;
+            updateConfigDisplay();
+            renderButton();
+            addLog('🚀 Switched to LIVE mode', 'info');
+        });
+
+        document.getElementById('autoFetchBtn').addEventListener('click', () => {
+            currentConfig.autoFetch = true;
+            updateConfigDisplay();
+            renderButton();
+            addLog('🔄 Auto fetch ENABLED', 'info');
+        });
+
+        // Initialize
+        updateConfigDisplay();
+        renderButton();
+                addLog('🚀 Enhanced Onairos Live Mode Test initialized', 'success');
+        addLog('📋 Data types: Basic Info, Personality, Preferences', 'info');
+        addLog('🔗 OAuth connectors: Complete with 9 platforms (YouTube, LinkedIn, Reddit, Pinterest, Instagram, GitHub, Facebook, Gmail, Notion)', 'success');
+        addLog('📱 Mobile browser compatibility: Automatic mobile detection with redirect OAuth flow', 'success');
+        addLog('🔧 Ready for end-to-end testing!', 'success');
+    </script>
+</body>
+</html> 

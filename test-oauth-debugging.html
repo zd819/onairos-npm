@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Connector Debugging Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .debug-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            max-height: 400px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+        }
+        .debug-log {
+            margin-bottom: 5px;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .debug-log.info { background: #e3f2fd; color: #1976d2; }
+        .debug-log.success { background: #e8f5e8; color: #2e7d32; }
+        .debug-log.warning { background: #fff3e0; color: #f57c00; }
+        .debug-log.error { background: #ffebee; color: #d32f2f; }
+    </style>
+</head>
+<body>
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8">OAuth Connector Debugging Test</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">Debug Information</h2>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <strong>Environment:</strong> <span id="environment">Loading...</span>
+                </div>
+                <div>
+                    <strong>User Agent:</strong> <span id="userAgent">Loading...</span>
+                </div>
+                <div>
+                    <strong>Mobile Device:</strong> <span id="mobileDetection">Loading...</span>
+                </div>
+                <div>
+                    <strong>API Base:</strong> https://api2.onairos.uk
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold mb-4">OAuth Connector Test</h2>
+            <p class="text-gray-600 mb-6">
+                Click on any platform below to test OAuth connectivity. Check the debug panel for detailed logs.
+            </p>
+            
+            <div id="onboarding-container"></div>
+        </div>
+    </div>
+
+    <!-- Debug Panel -->
+    <div class="debug-panel">
+        <div class="font-bold mb-2 border-b pb-2">Debug Console</div>
+        <div id="debug-logs"></div>
+        <button onclick="clearLogs()" class="mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded">Clear Logs</button>
+    </div>
+
+    <script src="dist/onairos.bundle.js"></script>
+    <script>
+        const { OnairosButton } = window.Onairos;
+        
+        // Debug logging function
+        const debugLogs = document.getElementById('debug-logs');
+        function addLog(message, type = 'info') {
+            const log = document.createElement('div');
+            log.className = `debug-log ${type}`;
+            log.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            debugLogs.appendChild(log);
+            debugLogs.scrollTop = debugLogs.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function clearLogs() {
+            debugLogs.innerHTML = '';
+        }
+        
+        // Override console methods to capture logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLog(args.join(' '), 'info');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLog(args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addLog(args.join(' '), 'warning');
+        };
+
+        // Populate environment info
+        document.getElementById('environment').textContent = 
+            navigator.userAgent.includes('Chrome') ? 'Chrome' :
+            navigator.userAgent.includes('Firefox') ? 'Firefox' :
+            navigator.userAgent.includes('Safari') ? 'Safari' : 'Other';
+            
+        document.getElementById('userAgent').textContent = navigator.userAgent.substring(0, 50) + '...';
+        
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                         (window.innerWidth <= 768);
+        document.getElementById('mobileDetection').textContent = isMobile ? 'Yes' : 'No';
+
+        // Initialize test
+        addLog('🚀 OAuth Debugging Test Started', 'success');
+        addLog(`📱 Mobile device detected: ${isMobile}`, 'info');
+        addLog('📋 All console logs will appear here', 'info');
+        
+        // Create OnairosButton for OAuth testing
+        const container = document.getElementById('onboarding-container');
+        
+        const OnboardingTestComponent = React.createElement(OnairosButton, {
+            login: true,
+            loginType: 'onboarding',
+            webpageName: 'OAuth Test App',
+            appIcon: 'https://onairos.sirv.com/Images/OnairosBlack.png',
+            onComplete: (result) => {
+                addLog('✅ Onboarding completed!', 'success');
+                addLog(`Connected accounts: ${JSON.stringify(result)}`, 'info');
+            }
+        });
+        
+        ReactDOM.render(OnboardingTestComponent, container);
+        
+        // Network monitoring
+        addLog('🌐 Monitoring network requests...', 'info');
+        
+        // Override fetch to monitor API calls
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options) {
+            addLog(`📡 API Request: ${url}`, 'info');
+            if (options) {
+                addLog(`📝 Method: ${options.method || 'GET'}`, 'info');
+                if (options.body) {
+                    addLog(`📄 Body: ${options.body}`, 'info');
+                }
+            }
+            
+            return originalFetch.apply(this, arguments)
+                .then(response => {
+                    addLog(`📋 Response: ${response.status} ${response.statusText}`, 
+                           response.ok ? 'success' : 'error');
+                    return response;
+                })
+                .catch(error => {
+                    addLog(`❌ Fetch Error: ${error.message}`, 'error');
+                    throw error;
+                });
+        };
+        
+        addLog('🔧 Ready for OAuth testing! Click any platform to test.', 'success');
+    </script>
+</body>
+</html> 

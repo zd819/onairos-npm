@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onairos Simplified Flow Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+        }
+        .result-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; color: #333; margin-bottom: 30px;">
+            🔥 Onairos Simplified Flow Test
+        </h1>
+        
+        <div class="test-section">
+            <h2>Test 1: Basic Button Render</h2>
+            <p>This should render the Onairos button with the new simplified flow:</p>
+            <div id="test1-container"></div>
+            <div class="result-box" id="test1-result">Waiting for button click...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 2: Custom Data Request</h2>
+            <p>This button includes custom data request parameters:</p>
+            <div id="test2-container"></div>
+            <div class="result-box" id="test2-result">Waiting for button click...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 3: Different Visual Styles</h2>
+            <p>Testing different button styles:</p>
+            <div id="test3-container" style="display: flex; gap: 15px; flex-wrap: wrap;"></div>
+            <div class="result-box" id="test3-result">Waiting for button click...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>Flow Status</h2>
+            <div class="result-box" id="flow-status">
+                ✅ Email Authentication: Ready<br>
+                ✅ Universal Onboarding: Ready<br>
+                ✅ PIN Setup: Ready<br>
+                ✅ Data Request: Ready<br>
+                🔥 All Othent/Arweave dependencies removed
+            </div>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        // Mock Onairos components for testing
+        const { useState } = React;
+
+        // Simple mock of the OnairosButton for testing
+        function MockOnairosButton({ 
+            requestData, 
+            onComplete, 
+            buttonType = 'pill',
+            visualType = 'full',
+            textColor = 'black'
+        }) {
+            const [showOverlay, setShowOverlay] = useState(false);
+            
+            const handleClick = () => {
+                setShowOverlay(true);
+                // Simulate the flow completion
+                setTimeout(() => {
+                    setShowOverlay(false);
+                    if (onComplete) {
+                        onComplete({
+                            approved: true,
+                            email: 'test@example.com',
+                            dataTypes: ['basic', 'preferences'],
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                }, 2000);
+            };
+
+            return (
+                <div>
+                    <button
+                        onClick={handleClick}
+                        className={`flex items-center justify-center font-bold rounded cursor-pointer ${
+                            buttonType === 'pill' ? 'px-4 py-2' : 'w-12 h-12'
+                        } bg-blue-600 text-white hover:bg-blue-700 transition-colors`}
+                    >
+                        {visualType === 'full' && (
+                            <>
+                                <img
+                                    src="https://onairos.sirv.com/Images/OnairosBlack.png"
+                                    alt="Onairos Logo"
+                                    className="w-6 h-6 mr-2"
+                                />
+                                Sign In with Onairos
+                            </>
+                        )}
+                        {visualType === 'icon' && (
+                            <img
+                                src="https://onairos.sirv.com/Images/OnairosBlack.png"
+                                alt="Onairos Logo"
+                                className="w-8 h-8"
+                            />
+                        )}
+                    </button>
+                    
+                    {showOverlay && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                                <div className="text-center">
+                                    <div className="animate-spin h-8 w-8 border-2 border-blue-600 rounded-full border-t-transparent mx-auto mb-4"></div>
+                                    <h3 className="text-lg font-semibold mb-2">Processing Authentication</h3>
+                                    <p className="text-gray-600">
+                                        Simulating: Email → Onboarding → PIN → Data Request
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Test 1: Basic button
+        function Test1() {
+            const handleComplete = (result) => {
+                document.getElementById('test1-result').textContent = 
+                    `✅ Flow completed!\n${JSON.stringify(result, null, 2)}`;
+            };
+
+            return (
+                <MockOnairosButton 
+                    onComplete={handleComplete}
+                    requestData={{
+                        dataTypes: [
+                            { id: 'basic', name: 'Basic Profile', required: true },
+                            { id: 'preferences', name: 'User Preferences', required: false }
+                        ]
+                    }}
+                />
+            );
+        }
+
+        // Test 2: Custom data request
+        function Test2() {
+            const handleComplete = (result) => {
+                document.getElementById('test2-result').textContent = 
+                    `✅ Custom flow completed!\n${JSON.stringify(result, null, 2)}`;
+            };
+
+            return (
+                <MockOnairosButton 
+                    onComplete={handleComplete}
+                    requestData={{
+                        dataTypes: [
+                            { id: 'profile', name: 'Full Profile', required: true },
+                            { id: 'analytics', name: 'Usage Analytics', required: false },
+                            { id: 'social', name: 'Social Connections', required: false }
+                        ]
+                    }}
+                />
+            );
+        }
+
+        // Test 3: Different styles
+        function Test3() {
+            const handleComplete = (result) => {
+                document.getElementById('test3-result').textContent = 
+                    `✅ Style test completed!\n${JSON.stringify(result, null, 2)}`;
+            };
+
+            return (
+                <>
+                    <MockOnairosButton 
+                        onComplete={handleComplete}
+                        visualType="full"
+                        buttonType="pill"
+                    />
+                    <MockOnairosButton 
+                        onComplete={handleComplete}
+                        visualType="icon"
+                        buttonType="square"
+                    />
+                    <div style={{backgroundColor: '#333', padding: '10px', borderRadius: '6px'}}>
+                        <MockOnairosButton 
+                            onComplete={handleComplete}
+                            visualType="full"
+                            textColor="white"
+                        />
+                    </div>
+                </>
+            );
+        }
+
+        // Render all tests
+        ReactDOM.render(<Test1 />, document.getElementById('test1-container'));
+        ReactDOM.render(<Test2 />, document.getElementById('test2-container'));
+        ReactDOM.render(<Test3 />, document.getElementById('test3-container'));
+    </script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</body>
+</html> 

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Universal Onboarding - Toggle Visibility</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .debug-info {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .debug-title {
+            font-weight: bold;
+            color: #0369a1;
+            margin-bottom: 10px;
+        }
+        .toggle-test {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="debug-info">
+            <div class="debug-title">🔍 Debug Info - Universal Onboarding Test</div>
+            <div id="debug-output">Loading component...</div>
+        </div>
+        
+        <div id="onboarding-container"></div>
+        
+        <div class="toggle-test">
+            <h3 class="font-bold text-amber-800 mb-2">🎯 Test Instructions:</h3>
+            <ol class="text-sm text-amber-700 space-y-1">
+                <li>1. You should see platform cards with toggle switches on the right</li>
+                <li>2. Click any toggle switch - it should change color and position</li>
+                <li>3. Check browser console for click events</li>
+                <li>4. Toggles should be visible and clickable</li>
+            </ol>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Mock platforms data (same as in UniversalOnboarding)
+        const platforms = [
+            { name: 'YouTube', icon: '📺', color: 'bg-red-500', connector: 'youtube' },
+            { name: 'LinkedIn', icon: '💼', color: 'bg-blue-700', connector: 'linkedin' },
+            { name: 'Reddit', icon: '🔥', color: 'bg-orange-500', connector: 'reddit' },
+            { name: 'Pinterest', icon: '📌', color: 'bg-red-600', connector: 'pinterest' },
+            { name: 'Instagram', icon: '📷', color: 'bg-pink-500', connector: 'instagram' }
+        ];
+
+        // Simplified test component focusing on toggle functionality
+        function TestUniversalOnboarding() {
+            const [connectedAccounts, setConnectedAccounts] = useState({});
+            const [isConnecting, setIsConnecting] = useState(false);
+            const [connectingPlatform, setConnectingPlatform] = useState(null);
+            const [debugInfo, setDebugInfo] = useState([]);
+
+            const addDebugInfo = (message) => {
+                console.log('🔥 DEBUG:', message);
+                setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`].slice(-5));
+            };
+
+            useEffect(() => {
+                addDebugInfo('Component mounted successfully');
+                addDebugInfo(`Platforms loaded: ${platforms.length} platforms`);
+            }, []);
+
+            const handleToggle = async (platformName) => {
+                addDebugInfo(`🎯 TOGGLE CLICKED: ${platformName}`);
+                
+                if (isConnecting) {
+                    addDebugInfo(`⚠️ Already connecting to ${connectingPlatform}, ignoring click`);
+                    return;
+                }
+
+                try {
+                    if (connectedAccounts[platformName]) {
+                        // Disconnect
+                        addDebugInfo(`🔌 Disconnecting from ${platformName}...`);
+                        setConnectedAccounts(prev => ({
+                            ...prev,
+                            [platformName]: false
+                        }));
+                        addDebugInfo(`✅ Disconnected from ${platformName}`);
+                    } else {
+                        // Connect
+                        addDebugInfo(`🚀 Connecting to ${platformName}...`);
+                        setIsConnecting(true);
+                        setConnectingPlatform(platformName);
+                        
+                        // Simulate connection delay
+                        setTimeout(() => {
+                            setConnectedAccounts(prev => ({
+                                ...prev,
+                                [platformName]: true
+                            }));
+                            setIsConnecting(false);
+                            setConnectingPlatform(null);
+                            addDebugInfo(`✅ Connected to ${platformName}`);
+                        }, 2000);
+                    }
+                } catch (error) {
+                    addDebugInfo(`❌ Error toggling ${platformName}: ${error.message}`);
+                    setIsConnecting(false);
+                    setConnectingPlatform(null);
+                }
+            };
+
+            return (
+                <div className="space-y-4">
+                    <div className="text-center mb-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-2">Test: Toggle Visibility & Functionality</h2>
+                        <p className="text-gray-600 text-sm">Click the toggle switches to test functionality</p>
+                    </div>
+
+                    {/* Platform List with Toggles */}
+                    <div className="space-y-3 mb-6">
+                        {platforms.map((platform) => {
+                            const isConnected = connectedAccounts[platform.name] || false;
+                            const isCurrentlyConnecting = connectingPlatform === platform.name;
+                            const isDisabled = isConnecting && !isCurrentlyConnecting;
+                            
+                            return (
+                                <div 
+                                    key={platform.name}
+                                    className={`flex items-center justify-between p-4 border rounded-lg transition-all duration-200 ${
+                                        isDisabled ? 'opacity-50' : 'hover:bg-gray-50 cursor-pointer'
+                                    } ${isConnected ? 'border-green-300 bg-green-50' : 'border-gray-200'} ${
+                                        isCurrentlyConnecting ? 'border-blue-300 bg-blue-50' : ''
+                                    }`}
+                                    onClick={() => !isDisabled && handleToggle(platform.name)}
+                                >
+                                    <div className="flex items-center space-x-3">
+                                        <div className={`w-10 h-10 rounded-lg ${platform.color} flex items-center justify-center text-white text-lg relative`}>
+                                            {isCurrentlyConnecting ? (
+                                                <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
+                                            ) : (
+                                                platform.icon
+                                            )}
+                                            {isConnected && !isCurrentlyConnecting && (
+                                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-medium text-gray-900">{platform.name}</h3>
+                                            <p className={`text-sm transition-colors ${
+                                                isCurrentlyConnecting ? 'text-blue-600' : 
+                                                isConnected ? 'text-green-600' : 'text-gray-500'
+                                            }`}>
+                                                {isCurrentlyConnecting ? 'Connecting...' : 
+                                                 isConnected ? 'Connected' : 'Not connected'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* THE TOGGLE SWITCH - This is what should be visible */}
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isDisabled) {
+                                                addDebugInfo(`🎛️ Toggle button clicked for ${platform.name}`);
+                                                handleToggle(platform.name);
+                                            }
+                                        }}
+                                        disabled={isDisabled}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                                            isConnected ? 'bg-green-500' : 'bg-gray-200'
+                                        } ${isCurrentlyConnecting ? 'bg-blue-500' : ''} ${
+                                            isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'
+                                        }`}
+                                        style={{
+                                            minWidth: '44px',
+                                            minHeight: '24px'
+                                        }}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
+                                                isConnected || isCurrentlyConnecting ? 'translate-x-6' : 'translate-x-1'
+                                            }`}
+                                        >
+                                            {isCurrentlyConnecting && (
+                                                <div className="w-full h-full rounded-full bg-blue-500 animate-pulse"></div>
+                                            )}
+                                        </span>
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Debug Output */}
+                    <div className="bg-gray-100 p-3 rounded-lg text-xs">
+                        <div className="font-bold mb-2">🔍 Debug Log:</div>
+                        {debugInfo.map((info, index) => (
+                            <div key={index} className="text-gray-700">{info}</div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        // Update debug info display
+        function updateDebugDisplay() {
+            const debugElement = document.getElementById('debug-output');
+            debugElement.innerHTML = `
+                <div>✅ React: ${typeof React !== 'undefined' ? 'Loaded' : 'Missing'}</div>
+                <div>✅ ReactDOM: ${typeof ReactDOM !== 'undefined' ? 'Loaded' : 'Missing'}</div>
+                <div>✅ Platforms: ${platforms.length} configured</div>
+                <div>🎯 Status: Component should render below with visible toggles</div>
+            `;
+        }
+
+        // Render the component
+        updateDebugDisplay();
+        ReactDOM.render(<TestUniversalOnboarding />, document.getElementById('onboarding-container'));
+    </script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</body>
+</html> 

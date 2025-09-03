@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onairos SDK - Tailwind v4.1.11 Test</title>
+    <!-- Use the built CSS file -->
+    <link rel="stylesheet" href="./dist/onairos.css">
+    <style>
+        /* Example of using Tailwind v4 CSS variables */
+        .custom-button {
+            background-color: var(--color-onairos-primary);
+            color: white;
+            padding: var(--spacing) * 3;
+            border-radius: 0.5rem;
+            transition: all var(--ease-snappy) 200ms;
+        }
+        
+        .custom-button:hover {
+            background-color: var(--color-onairos-secondary);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <header class="text-center mb-12">
+                <h1 class="text-4xl font-bold text-gray-900 mb-4">
+                    Onairos SDK with Tailwind CSS v4.1.11
+                </h1>
+                <p class="text-lg text-gray-600">
+                    Testing the new Tailwind v4 features and improved performance
+                </p>
+            </header>
+
+            <!-- Showcasing new v4 features -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                <!-- Container Queries Example -->
+                <div class="@container card-onairos">
+                    <h3 class="text-xl font-semibold mb-4">Container Queries</h3>
+                    <div class="grid grid-cols-1 @sm:grid-cols-2">
+                        <div class="bg-blue-100 p-3 rounded">Item 1</div>
+                        <div class="bg-blue-200 p-3 rounded">Item 2</div>
+                    </div>
+                </div>
+
+                <!-- Text Shadows Example -->
+                <div class="card-onairos">
+                    <h3 class="text-xl font-semibold mb-4 text-shadow-md">Text Shadows</h3>
+                    <p class="text-shadow-sm text-gray-700">
+                        This text has a subtle shadow using Tailwind v4's new text-shadow utilities.
+                    </p>
+                    <p class="text-shadow-lg text-shadow-blue-500/50 text-2xl font-bold mt-4">
+                        Colored text shadow!
+                    </p>
+                </div>
+
+                <!-- Dynamic Utilities Example -->
+                <div class="card-onairos">
+                    <h3 class="text-xl font-semibold mb-4">Dynamic Utilities</h3>
+                    <div class="grid grid-cols-7 gap-2 mb-4">
+                        <div class="bg-red-500 h-8 rounded"></div>
+                        <div class="bg-orange-500 h-8 rounded"></div>
+                        <div class="bg-yellow-500 h-8 rounded"></div>
+                        <div class="bg-green-500 h-8 rounded"></div>
+                        <div class="bg-blue-500 h-8 rounded"></div>
+                        <div class="bg-indigo-500 h-8 rounded"></div>
+                        <div class="bg-purple-500 h-8 rounded"></div>
+                    </div>
+                    <p class="text-sm text-gray-600">7-column grid with no config needed!</p>
+                </div>
+            </div>
+
+            <!-- New Gradient Features -->
+            <div class="mb-12">
+                <h2 class="text-2xl font-bold mb-6">New Gradient Features</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Linear with angle -->
+                    <div class="h-32 bg-linear-45 from-pink-500 to-orange-500 rounded-lg flex items-center justify-center text-white font-semibold">
+                        45° Linear Gradient
+                    </div>
+                    
+                    <!-- Radial gradient -->
+                    <div class="h-32 bg-radial-[at_30%_30%] from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-semibold">
+                        Radial Gradient
+                    </div>
+                    
+                    <!-- Conic gradient -->
+                    <div class="h-32 bg-conic from-red-500 via-yellow-500 to-blue-500 rounded-lg flex items-center justify-center text-white font-semibold">
+                        Conic Gradient
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Onairos Components -->
+            <div class="mb-12">
+                <h2 class="text-2xl font-bold mb-6">Onairos Custom Components</h2>
+                <div class="flex flex-wrap gap-4 items-center">
+                    <button class="btn-onairos">
+                        Primary Button
+                    </button>
+                    
+                    <button class="btn-onairos" disabled>
+                        <span class="loading-spinner mr-2"></span>
+                        Loading...
+                    </button>
+                    
+                    <button class="custom-button">
+                        CSS Variables Button
+                    </button>
+                </div>
+            </div>
+
+            <!-- Onairos SDK Integration -->
+            <div id="onairos-container" class="card-onairos">
+                <h2 class="text-2xl font-bold mb-4">Onairos Universal Onboarding</h2>
+                <p class="text-gray-600 mb-6">
+                    The Onairos SDK components now use Tailwind v4.1.11 with improved performance and modern CSS features.
+                </p>
+                <!-- This will be populated by the SDK -->
+                <div id="onairos-widget-placeholder" class="bg-gray-100 p-8 rounded-lg text-center">
+                    Onairos SDK component will be rendered here
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the Onairos SDK -->
+    <script src="./dist/onairos.bundle.js"></script>
+    <script>
+        // Initialize Onairos SDK
+        console.log('Tailwind v4.1.11 features loaded successfully!');
+        
+        // Example of using the SDK with new styling
+        if (window.Onairos) {
+            console.log('Onairos SDK loaded with Tailwind v4 support');
+        }
+    </script>
+</body>
+</html> 
