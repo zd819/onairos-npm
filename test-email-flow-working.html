@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test New Email Flow - Working Version</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div id="root" class="p-8 max-w-4xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                🧠 Test New Email Flow
+            </h1>
+            <p class="text-gray-600 text-lg">Testing the updated email and verification code flow</p>
+        </div>
+        
+        <div class="mb-8 p-6 bg-white border border-gray-200 rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Expected Flow:</h2>
+            <ol class="space-y-2 text-gray-700">
+                <li class="flex items-start">
+                    <span class="mr-2 text-blue-500 font-bold">1.</span>
+                    <span><strong>"Your AI persona is getting closer"</strong> - Email entry page with Google option</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="mr-2 text-blue-500 font-bold">2.</span>
+                    <span><strong>"Enter verification code"</strong> - 6 individual digit boxes</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="mr-2 text-blue-500 font-bold">3.</span>
+                    <span><strong>Connect Your Data</strong> (onboarding) or <strong>Data Request</strong> (existing users)</span>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Test Mode Notice -->
+        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h3 class="font-semibold mb-2 text-yellow-800">🧪 Test Mode Instructions:</h3>
+            <ul class="text-yellow-700 text-sm space-y-1">
+                <li>• Enter any valid email (e.g., test@example.com)</li>
+                <li>• Use verification code: <strong>123456</strong></li>
+                <li>• Flow will show new UI design with gradient buttons</li>
+            </ul>
+        </div>
+
+        <!-- Mode Selection -->
+        <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 class="font-semibold mb-3 text-blue-800">Mode Selection:</h3>
+            <div class="flex space-x-3">
+                <button id="testModeBtn" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+                    🧪 Test Mode
+                </button>
+                <button id="liveModeBtn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+                    🚀 Live Mode
+                </button>
+            </div>
+        </div>
+
+        <!-- Current Configuration Display -->
+        <div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <h3 class="font-semibold mb-2">Current Configuration:</h3>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="font-medium">Test Mode:</span>
+                    <span id="currentTestMode" class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">true</span>
+                </div>
+                <div>
+                    <span class="font-medium">Auto Fetch:</span>
+                    <span id="currentAutoFetch" class="ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-xs">false</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onairos Button Container -->
+        <div class="text-center mb-6">
+            <h3 class="text-lg font-semibold mb-4">Click to Test New Email Flow:</h3>
+            <div id="button-container" class="inline-block"></div>
+        </div>
+
+        <!-- Results Display -->
+        <div id="result" class="mt-6 p-6 bg-white border border-gray-200 rounded-xl shadow-lg hidden">
+            <h3 class="font-semibold mb-4 text-lg text-gray-800">
+                📊 Flow Completion Result:
+            </h3>
+            <pre id="result-data" class="text-sm text-gray-700 bg-gray-50 p-4 rounded-lg overflow-auto max-h-96"></pre>
+        </div>
+
+        <!-- Logs Container -->
+        <div class="mt-8">
+            <h3 class="text-lg font-semibold mb-4 text-gray-800">📋 Test Logs:</h3>
+            <div id="logs" class="bg-black text-green-400 p-4 rounded-lg font-mono text-sm max-h-64 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentConfig = {
+            testMode: true,  // Start in test mode
+            autoFetch: false
+        };
+
+        function updateConfigDisplay() {
+            document.getElementById('currentTestMode').textContent = currentConfig.testMode;
+            document.getElementById('currentTestMode').className = currentConfig.testMode 
+                ? 'ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs'
+                : 'ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-xs';
+            
+            document.getElementById('currentAutoFetch').textContent = currentConfig.autoFetch;
+            document.getElementById('currentAutoFetch').className = currentConfig.autoFetch 
+                ? 'ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs'
+                : 'ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-xs';
+        }
+
+        function addLog(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: 'text-blue-400',
+                success: 'text-green-400',
+                error: 'text-red-400',
+                warning: 'text-yellow-400'
+            };
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = colors[type] || colors.info;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function renderButton() {
+            // Clear container first
+            document.getElementById('button-container').innerHTML = '';
+            
+            addLog(`Attempting to load Onairos with testMode: ${currentConfig.testMode}`, 'info');
+            
+            // Try to load Onairos dynamically
+            const script = document.createElement('script');
+            script.type = 'module';
+            script.textContent = `
+                try {
+                    const module = await import('./dist/onairos.esm.js');
+                    window.OnairosModule = module;
+                    window.dispatchEvent(new CustomEvent('onairosLoaded'));
+                } catch (error) {
+                    console.error('Failed to load Onairos module:', error);
+                    window.dispatchEvent(new CustomEvent('onairosError', { detail: error }));
+                }
+            `;
+            document.head.appendChild(script);
+        }
+
+        // Listen for module load events
+        window.addEventListener('onairosLoaded', () => {
+            addLog('✅ Onairos module loaded successfully', 'success');
+            
+            const { OnairosButton } = window.OnairosModule || {};
+            
+            if (!OnairosButton) {
+                addLog('❌ OnairosButton not found in module', 'error');
+                return;
+            }
+
+            try {
+                const buttonElement = React.createElement(OnairosButton, {
+                    requestData: ['basic', 'personality', 'preferences'],
+                    webpageName: 'Email Flow Test',
+                    onComplete: handleComplete,
+                    autoFetch: currentConfig.autoFetch,
+                    testMode: currentConfig.testMode,
+                    buttonType: 'pill',
+                    visualType: 'full',
+                    textColor: 'black',
+                    appIcon: 'https://onairos.sirv.com/Images/OnairosBlack.png'
+                });
+
+                ReactDOM.render(buttonElement, document.getElementById('button-container'));
+                addLog(`✅ Button rendered with testMode: ${currentConfig.testMode}`, 'success');
+            } catch (error) {
+                addLog(`❌ Error rendering button: ${error.message}`, 'error');
+            }
+        });
+
+        window.addEventListener('onairosError', (event) => {
+            addLog(`❌ Failed to load Onairos: ${event.detail.message}`, 'error');
+            addLog('💡 Make sure the project is built: npm run build', 'warning');
+        });
+
+        function handleComplete(result) {
+            addLog('🎉 Flow completed!', 'success');
+            
+            // Show results
+            document.getElementById('result').classList.remove('hidden');
+            document.getElementById('result-data').textContent = JSON.stringify(result, null, 2);
+            
+            addLog(`📋 Result: ${result.success ? 'Success' : 'Failed'}`, result.success ? 'success' : 'error');
+        }
+
+        // Event handlers
+        document.getElementById('testModeBtn').addEventListener('click', () => {
+            currentConfig.testMode = true;
+            updateConfigDisplay();
+            renderButton();
+            addLog('🧪 Switched to TEST mode', 'info');
+        });
+
+        document.getElementById('liveModeBtn').addEventListener('click', () => {
+            currentConfig.testMode = false;
+            updateConfigDisplay();
+            renderButton();
+            addLog('🚀 Switched to LIVE mode', 'info');
+        });
+
+        // Initialize
+        updateConfigDisplay();
+        renderButton();
+        addLog('🚀 Email Flow Test initialized', 'success');
+        addLog('📋 Expected flow: Email (with Google option) → Code (6 digits) → Onboarding/Data Request', 'info');
+    </script>
+</body>
+</html> 

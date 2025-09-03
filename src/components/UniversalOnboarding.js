@@ -5,6 +5,8 @@ import InstagramConnector from './connectors/InstagramConnector';
 import PinterestConnector from './connectors/PinterestConnector';
 import RedditConnector from './connectors/RedditConnector';
 import GmailConnector from './connectors/GmailConnector';
+import PrimaryButton from './ui/PrimaryButton.jsx';
+import { COLORS } from '../theme/colors.js';
 
 const platforms = [
   { name: 'YouTube', icon: '📺', color: 'bg-red-500', connector: 'youtube' },
@@ -77,42 +79,20 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
   const connectedCount = Object.values(connectedAccounts).filter(Boolean).length;
 
   return (
-    <div className="w-full max-w-md mx-auto bg-white rounded-lg shadow-xl overflow-hidden" style={{ maxHeight: '90vh', height: 'auto' }}>
-      <div className="p-4 sm:p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 4rem)' }}>
-        {/* Header with App Logo and Arrow to Onairos */}
-        <div className="flex items-center justify-center mb-4 sm:mb-6">
-          <div className="flex items-center space-x-3">
-            <img 
-              src={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"} 
-              alt={appName} 
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg"
-            />
-            <div className="flex items-center text-gray-400">
-              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </div>
-            <img 
-              src="https://onairos.sirv.com/Images/OnairosBlack.png" 
-              alt="Onairos" 
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg"
-            />
-          </div>
-        </div>
-
-        <div className="text-center mb-4 sm:mb-6">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Connect Your Accounts</h2>
-          <p className="text-gray-600 text-xs sm:text-sm">
-            Choose which accounts to connect for a personalized experience
-          </p>
-        </div>
-
-        {/* Privacy Notice */}
-        <div className="mb-4 sm:mb-6 p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-blue-800 text-xs sm:text-sm">
-            🔒 Your data is never shared with anyone. It's only used to train your personal model and is stored securely.
-          </p>
-        </div>
+    <div className="w-full space-y-6">
+      {/* Privacy Notice */}
+      <div 
+        className="p-3 rounded-lg border"
+        style={{ 
+          backgroundColor: '#EBF8FF', 
+          borderColor: '#BEE3F8',
+          color: '#2B6CB0'
+        }}
+      >
+        <p className="text-sm">
+          🔒 Your data is never shared with anyone. It's only used to train your personal model and is stored securely.
+        </p>
+      </div>
 
         {/* Platform List - Vertical Layout with Toggles */}
         <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
@@ -165,26 +145,23 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
         )}
 
         {/* Continue Button */}
-        <button
-          onClick={handleContinue}
-          disabled={connectedCount === 0}
-          className={`w-full py-2 sm:py-3 px-4 rounded-lg font-semibold transition-colors text-sm sm:text-base ${
-            connectedCount > 0
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          Continue {connectedCount > 0 ? `with ${connectedCount} account${connectedCount > 1 ? 's' : ''}` : ''}
-        </button>
+        <div className="mb-4">
+          <PrimaryButton
+            label={connectedCount > 0 ? `Continue with ${connectedCount} account${connectedCount > 1 ? 's' : ''}` : 'Continue'}
+            onClick={handleContinue}
+            disabled={connectedCount === 0}
+            testId="continue-button"
+          />
+        </div>
 
         {/* Skip Option */}
         <button
           onClick={() => onComplete({ connectedAccounts: [], totalConnections: 0 })}
-          className="w-full mt-2 py-2 text-gray-500 hover:text-gray-700 text-xs sm:text-sm"
+          className="w-full mt-2 py-2 font-medium transition-colors text-sm"
+          style={{ color: COLORS.textSecondary }}
         >
           Skip for now
         </button>
-      </div>
 
       {/* OAuth Connector Dialogs */}
       <YoutubeConnector 

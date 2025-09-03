@@ -5,6 +5,7 @@ import PinSetup from './components/PinSetup.js';
 import DataRequest from './components/DataRequest.js';
 import TrainingComponent from './components/TrainingComponent.jsx';
 import { formatOnairosResponse } from './utils/responseFormatter.js';
+import { ModalPageLayout } from './components/ui/PageLayout.jsx';
 
 export function OnairosButton({
   requestData, 
@@ -35,6 +36,14 @@ export function OnairosButton({
   // Check for existing user session
   useEffect(() => {
     const checkExistingSession = () => {
+      // In test mode, always start fresh to see the full flow
+      if (testMode) {
+        console.log('🧪 Test mode: Starting fresh flow, clearing any cached user data');
+        localStorage.removeItem('onairosUser');
+        setCurrentFlow('email');
+        return;
+      }
+      
       const savedUser = localStorage.getItem('onairosUser');
       if (savedUser) {
         try {
@@ -56,7 +65,7 @@ export function OnairosButton({
     };
 
     checkExistingSession();
-  }, []);
+  }, [testMode]);
 
   const openTerminal = async () => {
     try {
@@ -85,11 +94,26 @@ export function OnairosButton({
       isNewUser: authData.isNewUser,
       userState: authData.userState,
       flowType: authData.flowType,
-      existingUser: authData.existingUser
+      existingUser: authData.existingUser,
+      hasAccountInfo: !!authData.accountInfo
     });
     
-    // Determine flow based on verification response
-    const isNewUser = authData.isNewUser === true || authData.flowType === 'onboarding' || authData.userState === 'new';
+    // Determine flow based on API response - more explicit checking
+    const isNewUser = authData.isNewUser === true || 
+                     authData.existingUser === false || 
+                     authData.flowType === 'onboarding' || 
+                     authData.userState === 'new' ||
+                     !authData.accountInfo; // No account info means new user
+    
+    console.log('🔍 Flow determination:', {
+      finalDecision: isNewUser ? 'NEW USER → onboarding (data connectors)' : 'EXISTING USER → dataRequest (data permissions)',
+      reasoning: {
+        isNewUser: authData.isNewUser,
+        existingUserFalse: authData.existingUser === false,
+        flowTypeOnboarding: authData.flowType === 'onboarding',
+        noAccountInfo: !authData.accountInfo
+      }
+    });
     
     const newUserData = {
       ...authData,
@@ -101,12 +125,12 @@ export function OnairosButton({
     setUserData(newUserData);
     localStorage.setItem('onairosUser', JSON.stringify(newUserData));
     
-    // Flow decision logic
+    // Flow decision logic - prioritize new user detection
     if (isNewUser) {
-      console.log('🚀 New user detected → Starting onboarding flow (includes training)');
+      console.log('🚀 NEW USER detected → Starting onboarding flow (data connectors page)');
       setCurrentFlow('onboarding');
     } else {
-      console.log('👋 Existing user detected → Going directly to data request');
+      console.log('👋 EXISTING USER detected → Going directly to data request (data permissions page)');
       setCurrentFlow('dataRequest');
     }
   };
@@ -191,6 +215,57 @@ export function OnairosButton({
       }
     } else {
       console.log('🔥 No onComplete callback provided');
+    }
+  };
+
+  const getFlowTitle = () => {
+    switch (currentFlow) {
+      case 'email':
+        return ''; // EmailAuth handles its own titles
+      case 'onboarding':
+        return 'Connect Your Data';
+      case 'pin':
+        return 'Secure Your Account';
+      case 'training':
+        return 'Training Your Model';
+      case 'dataRequest':
+        return 'Data Request';
+      default:
+        return '';
+    }
+  };
+
+  const getFlowSubtitle = () => {
+    switch (currentFlow) {
+      case 'email':
+        return ''; // EmailAuth handles its own subtitles
+      case 'onboarding':
+        return 'Choose which accounts to connect for a personalized experience';
+      case 'pin':
+        return 'Create a secure PIN to protect your data';
+      case 'training':
+        return 'Building your personalized insights';
+      case 'dataRequest':
+        return `Select the data you want to share with ${webpageName}`;
+      default:
+        return '';
+    }
+  };
+
+  const getFlowIcon = () => {
+    switch (currentFlow) {
+      case 'email':
+        return ''; // EmailAuth handles its own layout
+      case 'onboarding':
+        return '🔗';
+      case 'pin':
+        return '🔒';
+      case 'training':
+        return '⚡';
+      case 'dataRequest':
+        return '📊';
+      default:
+        return '';
     }
   };
 
@@ -308,32 +383,24 @@ export function OnairosButton({
         )}
       </button>
 
-      {/* Full-Screen Overlay (Plaid/SendPay Style) */}
+      {/* Modal with New Design */}
       {showOverlay && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onClick={handleBackdropClick}
+        <ModalPageLayout
+          visible={showOverlay}
+          onClose={handleCloseOverlay}
+          showBackButton={currentFlow !== 'email' && currentFlow !== 'dataRequest'}
+          onBack={() => {
+            if (currentFlow === 'onboarding') setCurrentFlow('email');
+            if (currentFlow === 'pin') setCurrentFlow('onboarding'); 
+            if (currentFlow === 'training') setCurrentFlow('pin');
+          }}
+          title={getFlowTitle()}
+          subtitle={getFlowSubtitle()}
+          icon={getFlowIcon()}
+          centerContent={true}
         >
-          <div 
-            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-hidden relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close button */}
-            <button
-              onClick={handleCloseOverlay}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            {/* Content */}
-            <div className="overflow-y-auto max-h-[90vh]">
-              {renderCurrentFlow()}
-            </div>
-          </div>
-        </div>
+          {renderCurrentFlow()}
+        </ModalPageLayout>
       )}
     </>
   );

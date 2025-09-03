@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
-
-// Remove the platform connectors - these should be handled in onboarding
-// const platformConnectors = [
-//   { name: 'YouTube', icon: '📺', color: 'bg-red-500', connector: 'youtube' },
-//   { name: 'LinkedIn', icon: '💼', color: 'bg-blue-700', connector: 'linkedin' },
-//   { name: 'Reddit', icon: '🔥', color: 'bg-orange-500', connector: 'reddit' },
-//   { name: 'Pinterest', icon: '📌', color: 'bg-red-600', connector: 'pinterest' },
-//   { name: 'Instagram', icon: '📷', color: 'bg-pink-500', connector: 'instagram' },
-//   { name: 'GitHub', icon: '⚡', color: 'bg-gray-800', connector: 'github' },
-//   { name: 'Facebook', icon: '👥', color: 'bg-blue-600', connector: 'facebook' },
-//   { name: 'Gmail', icon: '✉️', color: 'bg-red-400', connector: 'gmail' }
-// ];
+import PrimaryButton from './ui/PrimaryButton.jsx';
+import { COLORS } from '../theme/colors.js';
 
 const dataTypes = [
   { 
@@ -18,7 +8,7 @@ const dataTypes = [
     name: 'Basic Info', 
     description: 'Essential profile information, account details, and basic demographics', 
     icon: '👤',
-    required: true, // Auto-selected and non-deselectable
+    required: true,
     tooltip: 'Includes name, email, basic profile information. This data is essential for personalization and is always included.',
     privacyLink: 'https://onairos.uk/privacy#basic-info'
   },
@@ -26,7 +16,7 @@ const dataTypes = [
     id: 'personality', 
     name: 'Personality', 
     description: 'Personality traits, behavioral patterns and psychological insights', 
-    icon: '🧠',
+    icon: '💝',
     required: false,
     tooltip: 'AI-analyzed personality traits based on your social media activity and interactions. Used to improve content recommendations.',
     privacyLink: 'https://onairos.uk/privacy#personality-data'
@@ -42,86 +32,134 @@ const dataTypes = [
   }
 ];
 
-// Tooltip component
-const Tooltip = ({ children, content, privacyLink }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
+// Data Type Toggle Component (similar to PlatformToggle)
+const DataTypeToggle = ({ dataType, isEnabled, onToggle, isLast }) => {
+  const [isPressed, setIsPressed] = useState(false);
+
+  const handlePress = () => {
+    if (dataType.required) return; // Don't allow toggling required items
+    setIsPressed(true);
+    setTimeout(() => setIsPressed(false), 150);
+    onToggle(dataType.id, !isEnabled);
+  };
 
   return (
-    <div className="relative inline-block">
-      <span
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-        className="border-b border-dotted border-gray-400 cursor-help"
-      >
-        {children}
-      </span>
-      {showTooltip && (
-        <div className="absolute z-50 w-64 p-3 mt-2 text-sm bg-white border border-gray-200 rounded-lg shadow-lg left-0">
-          <p className="mb-2 text-gray-700">{content}</p>
-          <a 
-            href={privacyLink} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+    <div 
+      className={`w-full p-4 border rounded-xl cursor-pointer transition-all duration-200 ${!isLast ? 'mb-3' : ''}`}
+      style={{
+        backgroundColor: isPressed ? COLORS.grey50 : COLORS.surface,
+        borderColor: isEnabled ? COLORS.primary : COLORS.grey200,
+        borderWidth: '1px',
+        transform: isPressed ? 'scale(0.99)' : 'scale(1)',
+        opacity: dataType.required ? 0.6 : 1,
+        cursor: dataType.required ? 'default' : 'pointer'
+      }}
+      onClick={handlePress}
+    >
+      <div className="flex items-start justify-between">
+        {/* Left side - Icon and content */}
+        <div className="flex items-start space-x-3 flex-1">
+          {/* Icon circle */}
+          <div 
+            className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
+            style={{
+              backgroundColor: COLORS.grey100
+            }}
           >
-            Learn more about privacy →
-          </a>
+            <span className="text-xl">{dataType.icon}</span>
+          </div>
+          
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center space-x-2 mb-1">
+              <h3 
+                className="font-semibold text-left"
+                style={{ 
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  fontWeight: '600',
+                  fontSize: '16px',
+                  lineHeight: '20px',
+                  color: COLORS.grey800
+                }}
+              >
+                {dataType.name}
+              </h3>
+              {dataType.required && (
+                <span 
+                  className="text-xs px-2 py-1 rounded-full"
+                  style={{
+                    backgroundColor: COLORS.primary,
+                    color: COLORS.surface,
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    fontWeight: '500'
+                  }}
+                >
+                  Required
+                </span>
+              )}
+            </div>
+            <p 
+              className="text-left"
+              style={{ 
+                fontFamily: 'Inter, system-ui, sans-serif',
+                fontWeight: '400',
+                fontSize: '14px',
+                lineHeight: '20px',
+                color: COLORS.grey600
+              }}
+            >
+              {dataType.description}
+            </p>
+          </div>
         </div>
-      )}
+        
+        {/* Right side - Toggle */}
+        <div className="flex-shrink-0 ml-3">
+          <div 
+            className="w-12 h-6 rounded-full transition-all duration-200 relative"
+            style={{
+              backgroundColor: isEnabled ? COLORS.primary : COLORS.grey300
+            }}
+          >
+            <div 
+              className="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all duration-200"
+              style={{
+                left: isEnabled ? '26px' : '2px',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+              }}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default function DataRequest({ 
+const DataRequest = ({ 
+  userEmail = 'user@example.com', 
+  testMode = true, 
   onComplete, 
-  userEmail, 
-  appName = 'App', 
-  autoFetch = false,
-  testMode = false,
-  connectedAccounts = {} // Connected platforms from onboarding
-}) {
+  autoFetch = true,
+  appName = 'Test App',
+  formatResponse = false,
+  responseFormat = 'simple'
+}) => {
   const [selectedData, setSelectedData] = useState({
-    basic: true, // Auto-selected and required
+    basic: true, // Always true for required data
     personality: false,
     preferences: false
   });
-  
-  // Remove connector states - not needed for data request
-  // const [connectorStates, setConnectorStates] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
-  const [apiResponse, setApiResponse] = useState(null);
   const [apiError, setApiError] = useState(null);
 
-  // Remove connector initialization - not needed
-  // useEffect(() => {
-  //   const initialStates = {};
-  //   platformConnectors.forEach(platform => {
-  //     initialStates[platform.name] = {
-  //       connected: connectedAccounts[platform.name] || false,
-  //       selected: false
-  //     };
-  //   });
-  //   setConnectorStates(initialStates);
-  // }, [connectedAccounts]);
-
-  const handleDataToggle = (dataId) => {
-    // Don't allow toggling required items
+  const handleDataToggle = (dataId, enabled) => {
     const dataType = dataTypes.find(dt => dt.id === dataId);
-    if (dataType?.required) return;
-    
+    if (dataType?.required) return; // Don't allow toggling required items
+
     setSelectedData(prev => ({
       ...prev,
-      [dataId]: !prev[dataId]
+      [dataId]: enabled
     }));
-  };
-
-  // handleConnectorToggle removed - connectors are handled in onboarding
-
-  const handleRowClick = (dataId) => {
-    const dataType = dataTypes.find(dt => dt.id === dataId);
-    if (dataType?.required) return; // Don't allow clicking required items
-    handleDataToggle(dataId);
   };
 
   const generateUserHash = (email) => {
@@ -147,18 +185,13 @@ export default function DataRequest({
         .filter(([key, value]) => value)
         .map(([key]) => key);
 
-      // Get selected connectors
-      // const selectedConnectors = Object.entries(connectorStates)
-      //   .filter(([platform, state]) => state.selected && state.connected)
-      //   .map(([platform]) => platform);
-
       const mapDataTypesToConfirmations = (approvedData) => {
         const confirmations = [];
         const currentDate = new Date().toISOString();
         
         const dataTypeMapping = {
           'basic': 'Medium',
-          'personality': 'Large',
+          'personality': 'Large', 
           'preferences': 'Traits'
         };
         
@@ -182,7 +215,6 @@ export default function DataRequest({
         userHash,
         appName,
         approvedData,
-        // selectedConnectors, // Removed as connectors are handled in onboarding
         apiUrl: apiEndpoint,
         testMode,
         timestamp: new Date().toISOString()
@@ -194,226 +226,219 @@ export default function DataRequest({
           
           const requestBody = testMode ? {
             approvedData,
-            // selectedConnectors, // Removed as connectors are handled in onboarding
             userEmail,
             appName,
-            testMode,
-            timestamp: new Date().toISOString()
+            confirmations
           } : {
-            Info: {
-              storage: "local",
-              appId: appName,
-              confirmations: confirmations,
-              // connectors: selectedConnectors, // Removed as connectors are handled in onboarding
-              EncryptedUserPin: "pending_pin_integration",
-              account: userEmail,
-              proofMode: false,
-              Domain: window.location.hostname,
-              web3Type: "standard",
-              OthentSub: null
-            }
+            approvedData,
+            userEmail,
+            appName,
+            confirmations
           };
 
-          const response = await fetch(apiEndpoint, {
+          console.log('🔥 DataRequest: Making API call to:', apiEndpoint);
+          console.log('🔥 Request body:', requestBody);
+
+          const apiResponse = await fetch(apiEndpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-api-key': 'onairos_web_sdk_live_key_2024'
             },
             body: JSON.stringify(requestBody)
           });
 
-          if (!response.ok) {
-            throw new Error(`API request failed: ${response.status}`);
+          if (!apiResponse.ok) {
+            throw new Error(`API request failed with status ${apiResponse.status}`);
           }
 
-          const data = await response.json();
-          setApiResponse(data);
+          const apiData = await apiResponse.json();
+          console.log('🔥 API Response:', apiData);
 
           const result = {
             ...baseResult,
-            apiResponse: data,
+            apiResponse: apiData,
             success: true
           };
 
-          setTimeout(() => {
-            onComplete(result);
-          }, 1500);
+          setIsLoadingApi(false);
+          console.log('🔥 DataRequest: Calling onComplete with result:', result);
+          onComplete(result);
 
-          return result;
-
-        } catch (error) {
-          console.error('API request failed:', error);
-          setApiError(`API request failed: ${error.message}`);
+        } catch (apiError) {
+          console.error('🔥 API Error:', apiError);
+          setApiError(apiError.message);
+          setIsLoadingApi(false);
           
-          const result = {
+          const errorResult = {
             ...baseResult,
-            error: error.message,
+            apiResponse: null,
+            error: apiError.message,
             success: false
           };
           
-          setTimeout(() => {
-            onComplete(result);
-          }, 2000);
-          
-          return result;
+          onComplete(errorResult);
         }
       } else {
+        setIsLoadingApi(false);
+        console.log('🔥 DataRequest: Auto-fetch disabled, calling onComplete with base result');
         onComplete(baseResult);
-        return baseResult;
       }
-      
     } catch (error) {
-      console.error('Data processing failed:', error);
-      setApiError(`Processing failed: ${error.message}`);
-      throw error;
-    } finally {
+      console.error('🔥 DataRequest Error:', error);
+      setApiError(error.message);
       setIsLoadingApi(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    try {
-      const result = await fetchUserData();
       
-      if (result) {
-        onComplete(result);
+      if (onComplete) {
+        onComplete({
+          error: error.message,
+          success: false,
+          userEmail,
+          appName,
+          testMode
+        });
       }
-    } catch (error) {
-      setApiError(`Submission failed: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
+  // Count selected data types
   const selectedCount = Object.values(selectedData).filter(Boolean).length;
-  // const selectedConnectorCount = Object.values(connectorStates).filter(state => state.selected).length; // Removed as connectors are handled in onboarding
-  // const connectedCount = Object.values(connectorStates).filter(state => state.connected).length; // Removed as connectors are handled in onboarding
 
   return (
-    <div className="w-full max-w-md mx-auto bg-white rounded-lg shadow-xl overflow-hidden" style={{ maxHeight: '90vh', height: 'auto' }}>
-      <div className="p-4 sm:p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 4rem)' }}>
-        <div className="text-center mb-4 sm:mb-6">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Data Request</h2>
-          <p className="text-gray-600 text-xs sm:text-sm">
-            Select the data types and connections to share with <span className="font-medium">{appName}</span>
-          </p>
-        </div>
-
-        {/* Privacy Notice */}
-        <div className="mb-4 sm:mb-6 p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-blue-800 text-xs sm:text-sm">
-            🔒 Your selected data will be securely processed and used only for the intended purpose.
-          </p>
-        </div>
-
-        {/* Data Types Selection */}
-        <div className="mb-6">
-          <h3 className="text-md font-semibold text-gray-900 mb-3">Data Types</h3>
-          <div className="space-y-2 sm:space-y-3">
-            {dataTypes.map((dataType) => {
-              const isSelected = selectedData[dataType.id] || false;
-              const isRequired = dataType.required;
-              
-              return (
-                <div 
-                  key={dataType.id}
-                  className={`flex items-center justify-between p-3 sm:p-4 border rounded-lg transition-colors ${
-                    isRequired 
-                      ? 'bg-gray-100 border-gray-300 cursor-not-allowed' 
-                      : 'hover:bg-gray-50 cursor-pointer border-gray-200'
-                  }`}
-                  onClick={() => handleRowClick(dataType.id)}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="text-xl sm:text-2xl">
-                      {dataType.icon}
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900 text-sm sm:text-base">
-                        <Tooltip content={dataType.tooltip} privacyLink={dataType.privacyLink}>
-                          {dataType.name}
-                        </Tooltip>
-                        {isRequired && <span className="text-gray-500 ml-1 text-xs">(Required)</span>}
-                      </h4>
-                      <p className="text-xs sm:text-sm text-gray-500">{dataType.description}</p>
-                    </div>
-                  </div>
-                  
-                  {/* Toggle Switch or Required Badge */}
-                  {isRequired ? (
-                    <div className="px-2 py-1 bg-gray-400 text-white text-xs rounded-full">
-                      Required
-                    </div>
-                  ) : (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDataToggle(dataType.id);
-                      }}
-                      className={`relative inline-flex h-5 sm:h-6 w-9 sm:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        isSelected ? 'bg-blue-600' : 'bg-gray-200'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3 sm:h-4 w-3 sm:w-4 transform rounded-full bg-white transition-transform ${
-                          isSelected ? 'translate-x-5 sm:translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Selection Summary */}
-        <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 text-xs sm:text-sm">
-            ✅ {selectedCount} data type{selectedCount > 1 ? 's' : ''} selected
-          </p>
-        </div>
-
-        {/* API Status */}
-        {isLoadingApi && (
-          <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-blue-800 text-xs sm:text-sm">🔄 Processing your data request...</p>
-          </div>
-        )}
-
-        {apiError && (
-          <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800 text-xs sm:text-sm">❌ {apiError}</p>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <button
-            type="submit"
-            disabled={isSubmitting || selectedCount === 0}
-            className={`w-full py-2 sm:py-3 px-4 rounded-lg font-semibold transition-colors text-sm sm:text-base ${
-              selectedCount > 0 && !isSubmitting
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+    <div className="w-full h-full flex flex-col" style={{ backgroundColor: COLORS.surface }}>
+      {/* Fixed Header Section */}
+      <div className="flex-shrink-0 px-6 pt-6 pb-4">
+        {/* Security Notice */}
+        <div 
+          className="w-full p-4 rounded-xl mb-6 flex items-start space-x-3"
+          style={{ 
+            backgroundColor: '#EBF8FF',
+            border: `1px solid #BEE3F8`
+          }}
+        >
+          <div 
+            className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5"
+            style={{ backgroundColor: '#3182CE' }}
           >
-            {isSubmitting ? 'Processing...' : `Share Selected Data`}
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => onComplete({ selectedData: {}, selectedConnectors: [], cancelled: true })}
-            className="w-full py-2 text-gray-500 hover:text-gray-700 text-xs sm:text-sm"
+            <span className="text-white text-sm">🔒</span>
+          </div>
+          <p 
+            className="text-left"
+            style={{ 
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontWeight: '400',
+              fontSize: '14px',
+              lineHeight: '20px',
+              color: '#2B6CB0'
+            }}
+          >
+            Your selected data will be securely processed and used only for the intended purpose.
+          </p>
+        </div>
+
+        {/* Heading */}
+        <div className="mb-6">
+          <h1 
+            className="font-bold text-left mb-2"
+            style={{ 
+              fontFamily: 'IBM Plex Sans, system-ui, sans-serif',
+              fontWeight: '700',
+              fontSize: '24px',
+              lineHeight: '32px',
+              color: COLORS.grey800
+            }}
+          >
+            Data Types
+          </h1>
+        </div>
+      </div>
+
+      {/* Scrollable Data Types Section */}
+      <div className="flex-1 px-6 overflow-y-auto">
+        <div className="pb-32">
+          {dataTypes.map((dataType, index) => (
+            <DataTypeToggle
+              key={dataType.id}
+              dataType={dataType}
+              isEnabled={selectedData[dataType.id]}
+              onToggle={handleDataToggle}
+              isLast={index === dataTypes.length - 1}
+            />
+          ))}
+
+          {/* Selection Summary */}
+          <div 
+            className="mt-6 p-4 rounded-xl flex items-center space-x-2"
+            style={{ backgroundColor: COLORS.grey50 }}
+          >
+            <span 
+              className="text-sm"
+              style={{ 
+                fontFamily: 'Inter, system-ui, sans-serif',
+                fontWeight: '500',
+                color: COLORS.grey600
+              }}
+            >
+              ✅ {selectedCount} data type{selectedCount !== 1 ? 's' : ''} selected
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Fixed Bottom Buttons */}
+      <div 
+        className="flex-shrink-0 px-6 pb-6"
+        style={{ 
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: COLORS.surface,
+          paddingTop: '24px'
+        }}
+      >
+        <div className="mb-4">
+          <PrimaryButton
+            label={isLoadingApi ? "Processing..." : "Share Selected Data"}
+            onPress={fetchUserData}
+            disabled={isLoadingApi || selectedCount === 0}
+            loading={isLoadingApi}
+          />
+        </div>
+        
+        <div className="text-center">
+          <button 
+            className="text-center"
+            style={{ 
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontWeight: '500',
+              fontSize: '16px',
+              color: COLORS.grey600,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+            onClick={() => onComplete({ cancelled: true })}
           >
             Cancel
           </button>
-        </form>
+        </div>
+
+        {/* Error display */}
+        {apiError && (
+          <div 
+            className="mt-4 p-3 rounded-lg text-center"
+            style={{ 
+              backgroundColor: '#FEF2F2',
+              borderColor: '#FECACA',
+              color: '#DC2626'
+            }}
+          >
+            <p className="text-sm">{apiError}</p>
+          </div>
+        )}
       </div>
     </div>
   );
-} 
+};
+
+export default DataRequest; 

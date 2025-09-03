@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import PrimaryButton from './ui/PrimaryButton.jsx';
+import { COLORS } from '../theme/colors.js';
 
 export default function PinSetup({ onComplete, userEmail }) {
   const [pin, setPin] = useState('');
@@ -33,21 +35,15 @@ export default function PinSetup({ onComplete, userEmail }) {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white p-6">
-      <div className="text-center mb-6">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a2 2 0 002 2zM12 7V3m0 4l3-3m-3 3L9 4" />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Your Secure PIN</h2>
-        <p className="text-gray-600">Your PIN will be used to securely access your data</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="w-full space-y-6">
+      <form onSubmit={handleSubmit} className="w-full space-y-6">
         {/* PIN Input */}
         <div>
-          <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
+          <label 
+            htmlFor="pin" 
+            className="block text-sm font-medium mb-2"
+            style={{ color: COLORS.textPrimary }}
+          >
             Create PIN
           </label>
           <input
@@ -55,14 +51,26 @@ export default function PinSetup({ onComplete, userEmail }) {
             id="pin"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            style={{ 
+              borderColor: COLORS.border,
+              backgroundColor: COLORS.background
+            }}
             placeholder="Enter your secure PIN"
           />
         </div>
 
         {/* Requirements */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h4 className="text-sm font-medium text-gray-700 mb-3">PIN Requirements:</h4>
+        <div 
+          className="p-4 rounded-lg"
+          style={{ backgroundColor: COLORS.backgroundSecondary }}
+        >
+          <h4 
+            className="text-sm font-medium mb-3"
+            style={{ color: COLORS.textPrimary }}
+          >
+            PIN Requirements:
+          </h4>
           <div className="space-y-2">
             {Object.entries({
               length: 'At least 8 characters',
@@ -70,16 +78,24 @@ export default function PinSetup({ onComplete, userEmail }) {
               special: 'One special character (!@#$%^&*)'
             }).map(([key, label]) => (
               <div key={key} className="flex items-center">
-                <div className={`w-4 h-4 rounded-full mr-2 flex items-center justify-center ${
-                  requirements[key] ? 'bg-green-500' : 'bg-gray-300'
-                }`}>
+                <div 
+                  className="w-4 h-4 rounded-full mr-2 flex items-center justify-center"
+                  style={{ 
+                    backgroundColor: requirements[key] ? COLORS.success : COLORS.border 
+                  }}
+                >
                   {requirements[key] && (
                     <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   )}
                 </div>
-                <span className={`text-sm ${requirements[key] ? 'text-green-600' : 'text-gray-600'}`}>
+                <span 
+                  className="text-sm"
+                  style={{ 
+                    color: requirements[key] ? COLORS.success : COLORS.textSecondary 
+                  }}
+                >
                   {label}
                 </span>
               </div>
@@ -88,21 +104,19 @@ export default function PinSetup({ onComplete, userEmail }) {
         </div>
 
         {/* Submit Button */}
-        <button
-          type="submit"
+        <PrimaryButton
+          label="Create PIN"
+          onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${
-            canSubmit
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          Create PIN
-        </button>
+          testId="create-pin-button"
+        />
       </form>
 
       {userEmail && (
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p 
+          className="text-center text-sm"
+          style={{ color: COLORS.textSecondary }}
+        >
           Securing account for: <span className="font-medium">{userEmail}</span>
         </p>
       )}

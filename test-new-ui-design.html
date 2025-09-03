@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onairos New UI Design Test</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+        }
+
+        /* Custom button styling for the new design */
+        .onairos-button {
+            height: 48px;
+            border-radius: 100px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            background: linear-gradient(to bottom, #1A1A1A, #000000);
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 20px 30px 40px rgba(0,0,0,0.10);
+            transition: all 0.2s ease;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .onairos-button:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .onairos-button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(to bottom, #333333, #1A1A1A);
+            border: 1px solid rgba(0, 0, 0, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            right: 4px;
+            top: 4px;
+            color: white;
+            font-size: 20px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Mock components for testing
+        const PrimaryButton = ({ label = "Get Started", onClick, disabled = false, loading = false }) => {
+            return (
+                <div style={{ position: 'relative', width: '100%' }}>
+                    <button 
+                        className="onairos-button"
+                        onClick={onClick}
+                        disabled={disabled || loading}
+                    >
+                        {loading ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                        ) : (
+                            label
+                        )}
+                        {!loading && (
+                            <div className="icon-circle">
+                                →
+                            </div>
+                        )}
+                    </button>
+                </div>
+            );
+        };
+
+        const PageLayout = ({ children, title, subtitle, icon }) => {
+            return (
+                <div style={{ backgroundColor: 'white', minHeight: '100vh', padding: '24px' }}>
+                    {/* Header */}
+                    <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                        <div style={{ 
+                            width: '12px', 
+                            height: '6px', 
+                            backgroundColor: '#E5E7EB', 
+                            borderRadius: '100px',
+                            margin: '0 auto 24px'
+                        }}></div>
+                        
+                        {icon && (
+                            <div style={{ fontSize: '48px', marginBottom: '24px' }}>{icon}</div>
+                        )}
+                        
+                        {title && (
+                            <h1 style={{ 
+                                fontSize: '24px', 
+                                fontWeight: '700', 
+                                color: '#1A1A1A', 
+                                margin: '0 0 8px 0' 
+                            }}>
+                                {title}
+                            </h1>
+                        )}
+                        
+                        {subtitle && (
+                            <p style={{ 
+                                fontSize: '16px', 
+                                color: '#6B7280', 
+                                margin: '0 0 32px 0',
+                                lineHeight: '1.5',
+                                maxWidth: '400px',
+                                margin: '0 auto'
+                            }}>
+                                {subtitle}
+                            </p>
+                        )}
+                    </div>
+                    
+                    {children}
+                </div>
+            );
+        };
+
+        const TestApp = () => {
+            const [currentPage, setCurrentPage] = useState('welcome');
+            const [loading, setLoading] = useState(false);
+
+            const handleButtonClick = (action) => {
+                setLoading(true);
+                setTimeout(() => {
+                    setLoading(false);
+                    if (action === 'getStarted') {
+                        setCurrentPage('connect');
+                    } else if (action === 'continue') {
+                        setCurrentPage('training');
+                    }
+                }, 1500);
+            };
+
+            const renderWelcomePage = () => (
+                <PageLayout
+                    title="Welcome to Onairos"
+                    subtitle="OnairOS personalizes your digital experience on every app so you can just enjoy being you"
+                    icon="🧠"
+                >
+                    <div style={{ maxWidth: '400px', margin: '0 auto' }}>
+                        <div style={{ marginBottom: '40px' }}>
+                            <PrimaryButton
+                                label="Get Started"
+                                onClick={() => handleButtonClick('getStarted')}
+                                loading={loading}
+                            />
+                        </div>
+                    </div>
+                </PageLayout>
+            );
+
+            const renderConnectPage = () => (
+                <PageLayout
+                    title="Connect Your Data"
+                    subtitle="Choose which accounts to connect for a personalized experience"
+                    icon="🔗"
+                >
+                    <div style={{ maxWidth: '400px', margin: '0 auto', marginBottom: '40px' }}>
+                        {/* Privacy Notice */}
+                        <div style={{ 
+                            padding: '16px', 
+                            borderRadius: '8px', 
+                            backgroundColor: '#EBF8FF', 
+                            border: '1px solid #BEE3F8',
+                            color: '#2B6CB0',
+                            marginBottom: '24px'
+                        }}>
+                            <p style={{ fontSize: '14px', margin: 0 }}>
+                                🔒 Your data is never shared with anyone. It's only used to train your personal model and is stored securely.
+                            </p>
+                        </div>
+
+                        {/* Platform list placeholder */}
+                        <div style={{ marginBottom: '32px' }}>
+                            {['YouTube', 'LinkedIn', 'Instagram', 'Reddit'].map((platform, index) => (
+                                <div key={platform} style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between',
+                                    padding: '16px',
+                                    border: '1px solid #E5E7EB',
+                                    borderRadius: '8px',
+                                    marginBottom: '8px'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{ fontSize: '24px' }}>
+                                            {platform === 'YouTube' ? '📺' : 
+                                             platform === 'LinkedIn' ? '💼' : 
+                                             platform === 'Instagram' ? '📷' : '🔥'}
+                                        </div>
+                                        <span style={{ fontWeight: '500', color: '#1A1A1A' }}>{platform}</span>
+                                    </div>
+                                    <div style={{ 
+                                        width: '44px', 
+                                        height: '24px', 
+                                        backgroundColor: index < 2 ? '#3B82F6' : '#E5E7EB',
+                                        borderRadius: '12px',
+                                        position: 'relative',
+                                        cursor: 'pointer'
+                                    }}>
+                                        <div style={{ 
+                                            width: '20px', 
+                                            height: '20px', 
+                                            backgroundColor: 'white',
+                                            borderRadius: '50%',
+                                            position: 'absolute',
+                                            top: '2px',
+                                            left: index < 2 ? '22px' : '2px',
+                                            transition: 'all 0.2s ease'
+                                        }}></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <PrimaryButton
+                            label="Continue with 2 accounts"
+                            onClick={() => handleButtonClick('continue')}
+                            loading={loading}
+                        />
+                    </div>
+                </PageLayout>
+            );
+
+            const renderTrainingPage = () => (
+                <PageLayout
+                    title="Training Your Model"
+                    subtitle="Building your personalized insights"
+                    icon="🧠"
+                >
+                    <div style={{ maxWidth: '400px', margin: '0 auto', textAlign: 'center' }}>
+                        {/* Progress circle */}
+                        <div style={{ 
+                            width: '80px', 
+                            height: '80px', 
+                            background: 'linear-gradient(135deg, #3B82F6, #8B5CF6)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 24px',
+                            fontSize: '32px'
+                        }}>
+                            🧠
+                        </div>
+
+                        {/* Progress bar */}
+                        <div style={{ marginBottom: '24px' }}>
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                color: '#6B7280',
+                                fontSize: '14px',
+                                marginBottom: '8px'
+                            }}>
+                                <span>Progress</span>
+                                <span>75%</span>
+                            </div>
+                            <div style={{ 
+                                width: '100%', 
+                                height: '8px', 
+                                backgroundColor: '#F3F4F6',
+                                borderRadius: '4px',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{ 
+                                    width: '75%',
+                                    height: '100%',
+                                    background: 'linear-gradient(90deg, #3B82F6, #8B5CF6)',
+                                    borderRadius: '4px',
+                                    transition: 'all 0.3s ease'
+                                }}></div>
+                            </div>
+                        </div>
+
+                        {/* Step indicator */}
+                        <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'center', 
+                            gap: '8px',
+                            marginBottom: '24px'
+                        }}>
+                            {[0, 1, 2, 3].map((step, index) => (
+                                <div key={step} style={{ 
+                                    width: '12px', 
+                                    height: '12px', 
+                                    borderRadius: '50%',
+                                    backgroundColor: index < 3 ? '#3B82F6' : '#E5E7EB',
+                                    transition: 'all 0.3s ease'
+                                }}></div>
+                            ))}
+                        </div>
+
+                        {/* Current step details */}
+                        <div style={{ 
+                            padding: '16px',
+                            backgroundColor: '#F8F9FA',
+                            borderRadius: '8px',
+                            marginBottom: '32px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ 
+                                    width: '32px', 
+                                    height: '32px', 
+                                    backgroundColor: '#DBEAFE',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    🧠
+                                </div>
+                                <div style={{ textAlign: 'left' }}>
+                                    <h3 style={{ 
+                                        fontWeight: '500', 
+                                        color: '#1A1A1A',
+                                        margin: '0 0 4px 0',
+                                        fontSize: '16px'
+                                    }}>
+                                        Step 3 of 4
+                                    </h3>
+                                    <p style={{ 
+                                        color: '#6B7280',
+                                        margin: 0,
+                                        fontSize: '14px'
+                                    }}>
+                                        Building your personalized insights
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </PageLayout>
+            );
+
+            return (
+                <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+                    {/* Navigation */}
+                    <div style={{ 
+                        padding: '16px', 
+                        backgroundColor: 'white', 
+                        borderBottom: '1px solid #E5E7EB',
+                        display: 'flex',
+                        gap: '16px',
+                        justifyContent: 'center'
+                    }}>
+                        <button 
+                            onClick={() => setCurrentPage('welcome')}
+                            style={{ 
+                                padding: '8px 16px',
+                                borderRadius: '6px',
+                                border: currentPage === 'welcome' ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+                                backgroundColor: currentPage === 'welcome' ? '#EBF8FF' : 'white',
+                                color: currentPage === 'welcome' ? '#3B82F6' : '#6B7280',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Welcome
+                        </button>
+                        <button 
+                            onClick={() => setCurrentPage('connect')}
+                            style={{ 
+                                padding: '8px 16px',
+                                borderRadius: '6px',
+                                border: currentPage === 'connect' ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+                                backgroundColor: currentPage === 'connect' ? '#EBF8FF' : 'white',
+                                color: currentPage === 'connect' ? '#3B82F6' : '#6B7280',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Connect
+                        </button>
+                        <button 
+                            onClick={() => setCurrentPage('training')}
+                            style={{ 
+                                padding: '8px 16px',
+                                borderRadius: '6px',
+                                border: currentPage === 'training' ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+                                backgroundColor: currentPage === 'training' ? '#EBF8FF' : 'white',
+                                color: currentPage === 'training' ? '#3B82F6' : '#6B7280',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Training
+                        </button>
+                    </div>
+
+                    {/* Content */}
+                    <div style={{ maxWidth: '500px', margin: '0 auto', backgroundColor: 'white', minHeight: 'calc(100vh - 65px)' }}>
+                        {currentPage === 'welcome' && renderWelcomePage()}
+                        {currentPage === 'connect' && renderConnectPage()}
+                        {currentPage === 'training' && renderTrainingPage()}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<TestApp />, document.getElementById('root'));
+    </script>
+</body>
+</html> 
