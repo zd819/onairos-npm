@@ -221,62 +221,98 @@ const DataRequest = ({
       };
 
       if (autoFetch) {
-        try {
-          const confirmations = mapDataTypesToConfirmations(approvedData);
+        if (testMode) {
+          // Test mode: Skip API call completely, simulate response
+          console.log('🧪 Test mode: Simulating data request API call for:', approvedData);
           
-          const requestBody = testMode ? {
-            approvedData,
-            userEmail,
-            appName,
-            confirmations
-          } : {
-            approvedData,
-            userEmail,
-            appName,
-            confirmations
-          };
+          setTimeout(() => {
+            const simulatedApiData = {
+              success: true,
+              message: "Data request simulated successfully",
+              data: {
+                personalityScores: {
+                  openness: 0.75,
+                  conscientiousness: 0.68,
+                  extraversion: 0.82,
+                  agreeableness: 0.71,
+                  neuroticism: 0.43
+                },
+                insights: [
+                  "You show high creativity and openness to new experiences",
+                  "Strong social tendencies with good interpersonal skills",
+                  "Well-organized approach to tasks and goals"
+                ],
+                dataProcessed: approvedData,
+                timestamp: new Date().toISOString(),
+                testMode: true
+              }
+            };
 
-          console.log('🔥 DataRequest: Making API call to:', apiEndpoint);
-          console.log('🔥 Request body:', requestBody);
+            const result = {
+              ...baseResult,
+              apiResponse: simulatedApiData,
+              success: true,
+              simulated: true
+            };
 
-          const apiResponse = await fetch(apiEndpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody)
-          });
+            setIsLoadingApi(false);
+            console.log('🧪 Test mode: Simulated data request completed:', result);
+            onComplete(result);
+          }, 1200); // Simulate realistic processing time
+        } else {
+          // Production mode: Make real API call
+          try {
+            const confirmations = mapDataTypesToConfirmations(approvedData);
+            
+            const requestBody = {
+              approvedData,
+              userEmail,
+              appName,
+              confirmations
+            };
 
-          if (!apiResponse.ok) {
-            throw new Error(`API request failed with status ${apiResponse.status}`);
+            console.log('🔥 DataRequest: Making API call to:', apiEndpoint);
+            console.log('🔥 Request body:', requestBody);
+
+            const apiResponse = await fetch(apiEndpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(requestBody)
+            });
+
+            if (!apiResponse.ok) {
+              throw new Error(`API request failed with status ${apiResponse.status}`);
+            }
+
+            const apiData = await apiResponse.json();
+            console.log('🔥 API Response:', apiData);
+
+            const result = {
+              ...baseResult,
+              apiResponse: apiData,
+              success: true
+            };
+
+            setIsLoadingApi(false);
+            console.log('🔥 DataRequest: Calling onComplete with result:', result);
+            onComplete(result);
+
+          } catch (apiError) {
+            console.error('🔥 API Error:', apiError);
+            setApiError(apiError.message);
+            setIsLoadingApi(false);
+            
+            const errorResult = {
+              ...baseResult,
+              apiResponse: null,
+              error: apiError.message,
+              success: false
+            };
+            
+            onComplete(errorResult);
           }
-
-          const apiData = await apiResponse.json();
-          console.log('🔥 API Response:', apiData);
-
-          const result = {
-            ...baseResult,
-            apiResponse: apiData,
-            success: true
-          };
-
-          setIsLoadingApi(false);
-          console.log('🔥 DataRequest: Calling onComplete with result:', result);
-          onComplete(result);
-
-        } catch (apiError) {
-          console.error('🔥 API Error:', apiError);
-          setApiError(apiError.message);
-          setIsLoadingApi(false);
-          
-          const errorResult = {
-            ...baseResult,
-            apiResponse: null,
-            error: apiError.message,
-            success: false
-          };
-          
-          onComplete(errorResult);
         }
       } else {
         setIsLoadingApi(false);
