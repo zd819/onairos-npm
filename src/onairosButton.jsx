@@ -12,7 +12,7 @@ export function OnairosButton({
   webpageName, 
   inferenceData = null, 
   onComplete = null, 
-  autoFetch = false,
+  autoFetch = true, // Auto-enabled for seamless testing experience
   testMode = true, // Auto-enabled for design testing - set to false for production
   proofMode = false, 
   textLayout = 'below', 

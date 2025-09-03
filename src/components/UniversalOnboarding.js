@@ -194,43 +194,47 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
           Skip for now
         </button>
 
-      {/* OAuth Connector Dialogs */}
-      <YoutubeConnector 
-        open={activeConnector === 'youtube'}
-        onClose={() => setActiveConnector(null)}
-        onConnectionChange={handleConnectionChange}
-        username={username}
-      />
-      <LinkedInConnector 
-        open={activeConnector === 'linkedin'}
-        onClose={() => setActiveConnector(null)}
-        onConnectionChange={handleConnectionChange}
-        username={username}
-      />
-      <InstagramConnector 
-        open={activeConnector === 'instagram'}
-        onClose={() => setActiveConnector(null)}
-        onConnectionChange={handleConnectionChange}
-        username={username}
-      />
-      <PinterestConnector 
-        open={activeConnector === 'pinterest'}
-        onClose={() => setActiveConnector(null)}
-        onConnectionChange={handleConnectionChange}
-        username={username}
-      />
-      <RedditConnector 
-        open={activeConnector === 'reddit'}
-        onClose={() => setActiveConnector(null)}
-        onConnectionChange={handleConnectionChange}
-        username={username}
-      />
-      <GmailConnector 
-        open={activeConnector === 'gmail'}
-        onClose={() => setActiveConnector(null)}
-        onConnectionChange={handleConnectionChange}
-        username={username}
-      />
+      {/* OAuth Connector Dialogs - Only show in production mode */}
+      {!testMode && (
+        <>
+          <YoutubeConnector 
+            open={activeConnector === 'youtube'}
+            onClose={() => setActiveConnector(null)}
+            onConnectionChange={handleConnectionChange}
+            username={username}
+          />
+          <LinkedInConnector 
+            open={activeConnector === 'linkedin'}
+            onClose={() => setActiveConnector(null)}
+            onConnectionChange={handleConnectionChange}
+            username={username}
+          />
+          <InstagramConnector 
+            open={activeConnector === 'instagram'}
+            onClose={() => setActiveConnector(null)}
+            onConnectionChange={handleConnectionChange}
+            username={username}
+          />
+          <PinterestConnector 
+            open={activeConnector === 'pinterest'}
+            onClose={() => setActiveConnector(null)}
+            onConnectionChange={handleConnectionChange}
+            username={username}
+          />
+          <RedditConnector 
+            open={activeConnector === 'reddit'}
+            onClose={() => setActiveConnector(null)}
+            onConnectionChange={handleConnectionChange}
+            username={username}
+          />
+          <GmailConnector 
+            open={activeConnector === 'gmail'}
+            onClose={() => setActiveConnector(null)}
+            onConnectionChange={handleConnectionChange}
+            username={username}
+          />
+        </>
+      )}
     </div>
   );
 }
