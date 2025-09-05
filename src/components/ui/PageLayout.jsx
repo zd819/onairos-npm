@@ -41,6 +41,8 @@ const PageLayout = ({
     padding: '24px',
     display: 'flex',
     flexDirection: 'column',
+    overflow: 'auto',
+    minHeight: 0, // Allow flex item to shrink below content size
     ...(centerContent && {
       alignItems: 'center',
       justifyContent: 'flex-start'
@@ -171,8 +173,9 @@ const ModalPageLayout = ({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     zIndex: 1000,
     display: 'flex',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'center',
+    padding: '20px',
     ...backdropStyle
   };
 
@@ -180,12 +183,16 @@ const ModalPageLayout = ({
     backgroundColor: COLORS.background,
     borderTopLeftRadius: '24px',
     borderTopRightRadius: '24px',
-    maxHeight: '85vh',
-    minHeight: '45vh',
+    borderBottomLeftRadius: '24px',
+    borderBottomRightRadius: '24px',
+    maxHeight: 'calc(100vh - 40px)',
+    minHeight: '60vh',
     width: '100%',
     maxWidth: '500px',
     boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.3)',
     overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
     ...modalStyle
   };
 

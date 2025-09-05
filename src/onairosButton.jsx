@@ -186,7 +186,8 @@ export function OnairosButton({
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
 
-    // Close overlay
+    // Close overlay immediately
+    console.log('🔥 Closing overlay after data request completion');
     setShowOverlay(false);
 
     // Format response if requested and API response is present

@@ -174,6 +174,11 @@ const DataRequest = ({
   };
 
   const fetchUserData = async () => {
+    console.log('🔥 DataRequest: fetchUserData called');
+    console.log('🔥 DataRequest: onComplete function:', typeof onComplete);
+    console.log('🔥 DataRequest: selectedData:', selectedData);
+    console.log('🔥 DataRequest: selectedCount:', selectedCount);
+    
     setIsLoadingApi(true);
     setApiError(null);
     
@@ -257,7 +262,13 @@ const DataRequest = ({
 
             setIsLoadingApi(false);
             console.log('🧪 Test mode: Simulated data request completed:', result);
-            onComplete(result);
+            console.log('🔥 DataRequest: onComplete function type:', typeof onComplete);
+            if (onComplete && typeof onComplete === 'function') {
+              onComplete(result);
+              console.log('🔥 DataRequest: onComplete called successfully (test mode)');
+            } else {
+              console.error('🔥 DataRequest: onComplete is not a function or is undefined (test mode)');
+            }
           }, 1200); // Simulate realistic processing time
         } else {
           // Production mode: Make real API call
@@ -297,7 +308,13 @@ const DataRequest = ({
 
             setIsLoadingApi(false);
             console.log('🔥 DataRequest: Calling onComplete with result:', result);
-            onComplete(result);
+            console.log('🔥 DataRequest: onComplete function type:', typeof onComplete);
+            if (onComplete && typeof onComplete === 'function') {
+              onComplete(result);
+              console.log('🔥 DataRequest: onComplete called successfully');
+            } else {
+              console.error('🔥 DataRequest: onComplete is not a function or is undefined');
+            }
 
           } catch (apiError) {
             console.error('🔥 API Error:', apiError);
@@ -317,7 +334,13 @@ const DataRequest = ({
       } else {
         setIsLoadingApi(false);
         console.log('🔥 DataRequest: Auto-fetch disabled, calling onComplete with base result');
-        onComplete(baseResult);
+        console.log('🔥 DataRequest: onComplete function type:', typeof onComplete);
+        if (onComplete && typeof onComplete === 'function') {
+          onComplete(baseResult);
+          console.log('🔥 DataRequest: onComplete called successfully (auto-fetch disabled)');
+        } else {
+          console.error('🔥 DataRequest: onComplete is not a function or is undefined (auto-fetch disabled)');
+        }
       }
     } catch (error) {
       console.error('🔥 DataRequest Error:', error);
@@ -432,12 +455,13 @@ const DataRequest = ({
           paddingTop: '24px'
         }}
       >
-        <div className="mb-4">
+        <div className="mb-4 flex justify-center">
           <PrimaryButton
             label={isLoadingApi ? "Processing..." : "Share Selected Data"}
-            onPress={fetchUserData}
+            onClick={fetchUserData}
             disabled={isLoadingApi || selectedCount === 0}
             loading={isLoadingApi}
+            centered={true}
           />
         </div>
         

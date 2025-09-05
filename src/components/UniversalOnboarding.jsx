@@ -390,9 +390,9 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
         </p>
       </div>
 
-      {/* Compact Platform Grid */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        {platforms.map((platform) => {
+      {/* Platform Toggle List */}
+      <div className="space-y-3 mb-4">
+        {platforms.slice(0, 6).map((platform) => {
           const isConnected = connectedAccounts[platform.name] || false;
           const isCurrentlyConnecting = connectingPlatform === platform.name;
           const hasError = connectionErrors[platform.name];
@@ -401,63 +401,80 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
           return (
             <div 
               key={platform.name}
-              className={`relative p-3 border-2 rounded-lg transition-all duration-200 cursor-pointer ${
-                isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'
+              className={`flex items-center justify-between p-3 border rounded-lg transition-all duration-200 ${
+                isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'
               } ${
-                isConnected ? 'border-green-400 bg-green-50' : 
-                hasError ? 'border-red-400 bg-red-50' :
-                isCurrentlyConnecting ? 'border-blue-400 bg-blue-50' : 
-                'border-gray-200 bg-white hover:border-gray-300'
+                isConnected ? 'border-green-300 bg-green-50' : 
+                hasError ? 'border-red-300 bg-red-50' :
+                isCurrentlyConnecting ? 'border-blue-300 bg-blue-50' : 
+                'border-gray-200 bg-white'
               }`}
               onClick={() => !isDisabled && handleToggle(platform.name)}
             >
-              {/* Platform Icon */}
-              <div className={`w-8 h-8 rounded-lg ${platform.color} flex items-center justify-center text-white text-lg mb-2 mx-auto relative`}>
-                {isCurrentlyConnecting ? (
-                  <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></div>
-                ) : (
-                  platform.icon
-                )}
+              {/* Left side - Platform info */}
+              <div className="flex items-center space-x-3">
+                {/* Platform Icon */}
+                <div className={`w-10 h-10 rounded-lg ${platform.color} flex items-center justify-center text-white text-lg relative`}>
+                  {isCurrentlyConnecting ? (
+                    <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
+                  ) : (
+                    platform.icon
+                  )}
+                  
+                  {/* Connection Status Indicator */}
+                  {isConnected && !isCurrentlyConnecting && (
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                      <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                  
+                  {hasError && !isCurrentlyConnecting && (
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                      <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
                 
-                {/* Connection Status Indicator */}
-                {isConnected && !isCurrentlyConnecting && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                )}
-                
-                {hasError && !isCurrentlyConnecting && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                )}
+                {/* Platform Name and Description */}
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm">{platform.name}</h3>
+                  <p className="text-gray-600 text-xs">
+                    {platform.name === 'YouTube' ? 'We analyze your watch history, likes, and subscriptions to understand your interests.' :
+                     platform.name === 'Pinterest' ? 'We analyze your pins, boards, and interests to understand your style and preferences.' :
+                     `Connect your ${platform.name} account to enhance your experience.`}
+                  </p>
+                  
+                  {/* Error Message */}
+                  {hasError && (
+                    <p className="text-xs text-red-600 mt-1">
+                      {hasError}
+                    </p>
+                  )}
+                </div>
               </div>
               
-              {/* Platform Name */}
-              <div className="text-center">
-                <h3 className="font-medium text-gray-900 text-xs">{platform.name}</h3>
-                <p className={`text-xs mt-1 ${
-                  isCurrentlyConnecting ? 'text-blue-600' : 
-                  isConnected ? 'text-green-600' : 
-                  hasError ? 'text-red-600' :
-                  'text-gray-500'
-                }`}>
-                  {isCurrentlyConnecting ? 'Connecting...' : 
-                   isConnected ? 'Connected' : 
-                   hasError ? 'Failed' :
-                   'Tap to connect'}
-                </p>
-                
-                {/* Error Message */}
-                {hasError && (
-                  <p className="text-xs text-red-600 mt-1 break-words">
-                    {hasError}
-                  </p>
-                )}
+              {/* Right side - Toggle Switch */}
+              <div className="flex items-center">
+                <button
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    isConnected ? 'bg-blue-600' : 'bg-gray-200'
+                  } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isDisabled) handleToggle(platform.name);
+                  }}
+                  disabled={isDisabled}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      isConnected ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
           );
@@ -477,7 +494,7 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
       <button
         onClick={handleContinue}
         disabled={connectedCount === 0}
-        className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${
+        className={`mx-auto px-3 py-2 rounded-lg font-medium transition-colors text-xs max-w-40 ${
           connectedCount > 0
             ? 'bg-blue-600 text-white hover:bg-blue-700'
             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -489,7 +506,7 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
       {/* Skip Option */}
       <button
         onClick={() => onComplete({ connectedAccounts: [], totalConnections: 0 })}
-        className="w-full mt-2 py-2 text-gray-500 hover:text-gray-700 text-sm"
+        className="mx-auto mt-2 py-2 px-4 text-gray-500 hover:text-gray-700 text-sm"
       >
         Skip for now
       </button>

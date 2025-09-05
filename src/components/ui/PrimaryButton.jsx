@@ -44,6 +44,7 @@ const PrimaryButton = ({
   className = '',
   style = {},
   textStyle = {},
+  centered = false,
   ...props
 }) => {
   const [pressed, setPressed] = useState(false);
@@ -59,7 +60,10 @@ const PrimaryButton = ({
     background: `linear-gradient(to bottom, ${COLORS.btnGradStart}, ${COLORS.btnGradEnd})`,
     position: 'relative',
     overflow: 'hidden',
-    width: '100%',
+    width: centered ? 'auto' : '100%',
+    minWidth: centered ? '250px' : 'auto',
+    maxWidth: centered ? '350px' : 'none',
+    margin: centered ? '0 auto' : '0',
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.65 : 1,
     boxShadow: disabled ? 'none' : '20px 30px 40px rgba(0,0,0,0.10)',
