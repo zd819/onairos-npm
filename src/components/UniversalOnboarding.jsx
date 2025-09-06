@@ -1,14 +1,60 @@
 import React, { useState, useEffect } from 'react';
 
 const platforms = [
-  { name: 'YouTube', icon: '📺', color: 'bg-red-500', connector: 'youtube' },
-  { name: 'LinkedIn', icon: '💼', color: 'bg-blue-700', connector: 'linkedin' },
-  { name: 'Reddit', icon: '🔥', color: 'bg-orange-500', connector: 'reddit' },
-  { name: 'Pinterest', icon: '📌', color: 'bg-red-600', connector: 'pinterest' },
-  { name: 'Instagram', icon: '📷', color: 'bg-pink-500', connector: 'instagram' },
-  { name: 'GitHub', icon: '⚡', color: 'bg-gray-800', connector: 'github' },
-  { name: 'Facebook', icon: '👥', color: 'bg-blue-600', connector: 'facebook' },
-  { name: 'Gmail', icon: '✉️', color: 'bg-red-400', connector: 'gmail' }
+  { 
+    name: 'Google', 
+    icon: (
+      <svg className="w-6 h-6" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+    ), 
+    color: 'bg-white', 
+    connector: 'gmail',
+    description: "We use your search, YouTube, and location signals to better understand your interests and routines."
+  },
+  { 
+    name: 'Reddit', 
+    icon: (
+      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#FF4500">
+        <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z" />
+      </svg>
+    ), 
+    color: 'bg-white', 
+    connector: 'reddit',
+    description: "We use your search history to better understand your interests and routines."
+  },
+  { 
+    name: 'Instagram', 
+    icon: (
+      <svg className="w-6 h-6" viewBox="0 0 24 24">
+        <defs>
+          <radialGradient id="instagram-gradient" cx="0.5" cy="1" r="1">
+            <stop offset="0%" stopColor="#FD5949" />
+            <stop offset="50%" stopColor="#D6249F" />
+            <stop offset="100%" stopColor="#285AEB" />
+          </radialGradient>
+        </defs>
+        <path fill="url(#instagram-gradient)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.073-1.689-.073-4.849 0-3.204.013-3.583.072-4.948.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+      </svg>
+    ), 
+    color: 'bg-white', 
+    connector: 'instagram',
+    description: "We use your search history to better understand your interests and routines."
+  },
+  { 
+    name: 'LinkedIn', 
+    icon: (
+      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#0077B5">
+        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+      </svg>
+    ), 
+    color: 'bg-white', 
+    connector: 'linkedin',
+    description: "We use your search history to better understand your interests and routines."
+  }
 ];
 
 // Enhanced SDK configuration
@@ -25,7 +71,7 @@ const sdkConfig = {
  * UniversalOnboarding Component - Compact & Enhanced
  * Displays a streamlined onboarding screen for data connections
  */
-export default function UniversalOnboarding({ onComplete, appIcon, appName = 'App' }) {
+export default function UniversalOnboarding({ onComplete, onBack, appIcon, appName = 'App' }) {
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState(null);
@@ -360,156 +406,120 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
   const connectedCount = Object.values(connectedAccounts).filter(Boolean).length;
 
   return (
-    <div className="max-w-sm mx-auto bg-white p-4 rounded-lg shadow-lg">
-      {/* Compact Header */}
-      <div className="flex items-center justify-center mb-4">
-        <div className="flex items-center space-x-2">
-          <img 
-            src={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"} 
-            alt={appName} 
-            className="w-8 h-8 rounded-lg"
-          />
-          <div className="flex items-center text-gray-400">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </div>
-          <img 
-            src="https://onairos.sirv.com/Images/OnairosBlack.png" 
-            alt="Onairos" 
-            className="w-8 h-8 rounded-lg"
-          />
+    <div className="w-full h-full flex flex-col" style={{ height: '100%', minHeight: 0 }}>
+      {/* Content - Flexible center area */}
+      <div className="px-6 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }}>
+        <div className="mb-6 flex-shrink-0">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">Connect app data</h1>
+          <p className="text-gray-600 text-base">More connections, better personalization.</p>
         </div>
-      </div>
 
-      {/* Simple Clear Title */}
-      <div className="text-center mb-4">
-        <h2 className="text-lg font-bold text-gray-900 mb-1">Connect Data</h2>
-        <p className="text-gray-600 text-sm">
-          Connect data here to enhance your {appName} experience
-        </p>
-      </div>
+        <div className="mb-6 flex justify-center flex-shrink-0">
+          <div className="w-32 h-32 rounded-3xl shadow-lg" style={{
+            background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)'
+          }}></div>
+        </div>
 
-      {/* Platform Toggle List */}
-      <div className="space-y-3 mb-4">
-        {platforms.slice(0, 6).map((platform) => {
-          const isConnected = connectedAccounts[platform.name] || false;
-          const isCurrentlyConnecting = connectingPlatform === platform.name;
-          const hasError = connectionErrors[platform.name];
-          const isDisabled = isConnecting && !isCurrentlyConnecting;
-          
-          return (
-            <div 
-              key={platform.name}
-              className={`flex items-center justify-between p-3 border rounded-lg transition-all duration-200 ${
-                isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'
-              } ${
-                isConnected ? 'border-green-300 bg-green-50' : 
-                hasError ? 'border-red-300 bg-red-50' :
-                isCurrentlyConnecting ? 'border-blue-300 bg-blue-50' : 
-                'border-gray-200 bg-white'
-              }`}
-              onClick={() => !isDisabled && handleToggle(platform.name)}
-            >
-              {/* Left side - Platform info */}
-              <div className="flex items-center space-x-3">
-                {/* Platform Icon */}
-                <div className={`w-10 h-10 rounded-lg ${platform.color} flex items-center justify-center text-white text-lg relative`}>
-                  {isCurrentlyConnecting ? (
-                    <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
-                  ) : (
-                    platform.icon
-                  )}
-                  
-                  {/* Connection Status Indicator */}
-                  {isConnected && !isCurrentlyConnecting && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                      <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
-                  
-                  {hasError && !isCurrentlyConnecting && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                      <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Platform Name and Description */}
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">{platform.name}</h3>
-                  <p className="text-gray-600 text-xs">
-                    {platform.name === 'YouTube' ? 'We analyze your watch history, likes, and subscriptions to understand your interests.' :
-                     platform.name === 'Pinterest' ? 'We analyze your pins, boards, and interests to understand your style and preferences.' :
-                     `Connect your ${platform.name} account to enhance your experience.`}
-                  </p>
-                  
-                  {/* Error Message */}
-                  {hasError && (
-                    <p className="text-xs text-red-600 mt-1">
-                      {hasError}
-                    </p>
-                  )}
-                </div>
-              </div>
+        {/* Scrollable platform list */}
+        <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+          <div className="space-y-4 pb-4">
+            {platforms.map((platform) => {
+              const isConnected = connectedAccounts[platform.name] || false;
+              const isCurrentlyConnecting = connectingPlatform === platform.name;
+              const hasError = connectionErrors[platform.name];
+              const isDisabled = isConnecting && !isCurrentlyConnecting;
               
-              {/* Right side - Toggle Switch */}
-              <div className="flex items-center">
-                <button
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                    isConnected ? 'bg-blue-600' : 'bg-gray-200'
-                  } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!isDisabled) handleToggle(platform.name);
+              return (
+                <div
+                  key={platform.name}
+                  className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
+                  style={{
+                    backgroundColor: "#ffffff",
+                    border: "none",
+                    outline: "none",
                   }}
-                  disabled={isDisabled}
+                  onClick={() => !isDisabled && handleToggle(platform.name)}
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      isConnected ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0 border border-gray-100">
+                    {isCurrentlyConnecting ? (
+                      <div className="animate-spin h-5 w-5 border-2 border-gray-400 rounded-full border-t-transparent"></div>
+                    ) : (
+                      platform.icon
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 pr-4">
+                    <h3
+                      className="font-medium mb-1"
+                      style={{
+                        backgroundColor: "#ffffff !important",
+                        color: "#111827 !important",
+                        border: "none",
+                        outline: "none",
+                      }}
+                    >
+                      {platform.name}
+                    </h3>
+                    <p
+                      className="text-sm leading-relaxed"
+                      style={{
+                        backgroundColor: "#ffffff !important",
+                        color: "#4B5563 !important",
+                        border: "none",
+                        outline: "none",
+                      }}
+                    >
+                      {platform.description}
+                    </p>
+                    
+                    {/* Error Message */}
+                    {hasError && (
+                      <p className="text-xs text-red-600 mt-1">
+                        {hasError}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isDisabled) handleToggle(platform.name);
+                      }}
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors cursor-pointer ${
+                        isConnected ? "bg-green-500" : "bg-gray-300"
+                      } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${
+                          isConnected ? "translate-x-6" : "translate-x-0.5"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* Connection Status Summary */}
-      {connectedCount > 0 && (
-        <div className="mb-4 p-2 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 text-sm text-center">
-            ✅ {connectedCount} connection{connectedCount > 1 ? 's' : ''} active
-          </p>
+      {/* Buttons - Fixed at bottom */}
+      <div className="px-6 pb-6 pt-4 flex-shrink-0 space-y-3" style={{ minHeight: 'auto' }}>
+        <div
+          className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors"
+          onClick={handleContinue}
+        >
+          Update
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </div>
-      )}
-
-      {/* Continue Button */}
-      <button
-        onClick={handleContinue}
-        disabled={connectedCount === 0}
-        className={`mx-auto px-3 py-2 rounded-lg font-medium transition-colors text-xs max-w-40 ${
-          connectedCount > 0
-            ? 'bg-blue-600 text-white hover:bg-blue-700'
-            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-        }`}
-      >
-        {connectedCount > 0 ? `Continue with ${connectedCount} connection${connectedCount > 1 ? 's' : ''}` : 'Connect at least one platform'}
-      </button>
-
-      {/* Skip Option */}
-      <button
-        onClick={() => onComplete({ connectedAccounts: [], totalConnections: 0 })}
-        className="mx-auto mt-2 py-2 px-4 text-gray-500 hover:text-gray-700 text-sm"
-      >
-        Skip for now
-      </button>
+        <div
+          onClick={() => onComplete({ connectedAccounts: [], totalConnections: 0 })}
+          className="w-full text-gray-600 text-base font-medium py-3 text-center cursor-pointer hover:text-gray-800 transition-colors"
+        >
+          Skip
+        </div>
+      </div>
     </div>
   );
 }

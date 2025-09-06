@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import WelcomeScreen from './components/WelcomeScreen.jsx';
 import EmailAuth from './components/EmailAuth.js';
 import UniversalOnboarding from './components/UniversalOnboarding.jsx';
 import PinSetup from './components/PinSetup.js';
@@ -29,7 +30,7 @@ export function OnairosButton({
 }) {
 
   const [showOverlay, setShowOverlay] = useState(false);
-  const [currentFlow, setCurrentFlow] = useState('email'); // 'email' | 'onboarding' | 'pin' | 'dataRequest' (training is within onboarding)
+  const [currentFlow, setCurrentFlow] = useState('welcome'); // 'welcome' | 'email' | 'onboarding' | 'pin' | 'dataRequest' (training is within onboarding)
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
 
@@ -40,7 +41,7 @@ export function OnairosButton({
       if (testMode) {
         console.log('🧪 Test mode: Starting fresh flow, clearing any cached user data');
         localStorage.removeItem('onairosUser');
-        setCurrentFlow('email');
+        setCurrentFlow('welcome');
         return;
       }
       
@@ -86,6 +87,11 @@ export function OnairosButton({
     if (e.target === e.currentTarget) {
       handleCloseOverlay();
     }
+  };
+
+  const handleWelcomeContinue = () => {
+    console.log('🔥 Welcome screen continue clicked');
+    setCurrentFlow('email');
   };
 
   const handleEmailAuthSuccess = (authData) => {
@@ -221,6 +227,8 @@ export function OnairosButton({
 
   const getFlowTitle = () => {
     switch (currentFlow) {
+      case 'welcome':
+        return ''; // WelcomeScreen handles its own titles
       case 'email':
         return ''; // EmailAuth handles its own titles
       case 'onboarding':
@@ -238,6 +246,8 @@ export function OnairosButton({
 
   const getFlowSubtitle = () => {
     switch (currentFlow) {
+      case 'welcome':
+        return ''; // WelcomeScreen handles its own subtitles
       case 'email':
         return ''; // EmailAuth handles its own subtitles
       case 'onboarding':
@@ -255,6 +265,8 @@ export function OnairosButton({
 
   const getFlowIcon = () => {
     switch (currentFlow) {
+      case 'welcome':
+        return ''; // WelcomeScreen handles its own layout
       case 'email':
         return ''; // EmailAuth handles its own layout
       case 'onboarding':
@@ -272,10 +284,18 @@ export function OnairosButton({
 
   const renderCurrentFlow = () => {
     switch (currentFlow) {
+      case 'welcome':
+        return (
+          <WelcomeScreen 
+            onContinue={handleWelcomeContinue}
+            onClose={handleCloseOverlay}
+          />
+        );
       case 'email':
         return (
           <EmailAuth 
             onSuccess={handleEmailAuthSuccess}
+            onBack={() => setCurrentFlow('welcome')}
             testMode={testMode} // Use the testMode prop from initialization
           />
         );
@@ -284,6 +304,7 @@ export function OnairosButton({
         return (
           <UniversalOnboarding 
             onComplete={handleOnboardingComplete}
+            onBack={() => setCurrentFlow('email')}
             appIcon={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"}
             appName={webpageName}
             username={userData?.email || userData?.username}
@@ -388,22 +409,71 @@ export function OnairosButton({
 
       {/* Modal with New Design */}
       {showOverlay && (
-        <ModalPageLayout
-          visible={showOverlay}
-          onClose={handleCloseOverlay}
-          showBackButton={currentFlow !== 'email' && currentFlow !== 'dataRequest'}
-          onBack={() => {
-            if (currentFlow === 'onboarding') setCurrentFlow('email');
-            if (currentFlow === 'pin') setCurrentFlow('onboarding'); 
-            if (currentFlow === 'training') setCurrentFlow('pin');
-          }}
-          title={getFlowTitle()}
-          subtitle={getFlowSubtitle()}
-          icon={getFlowIcon()}
-          centerContent={true}
-        >
-          {renderCurrentFlow()}
-        </ModalPageLayout>
+        <>
+          {currentFlow === 'onboarding' ? (
+            // Special case for onboarding - render directly without PageLayout wrapper
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh', maxHeight: '90vh' }}>
+                {/* Header */}
+                <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
+                  <button
+                    onClick={() => setCurrentFlow('email')}
+                    className="absolute left-6 top-6 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+
+                  <button
+                    onClick={handleCloseOverlay}
+                    className="absolute right-6 top-6 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+
+                  {/* Progress Bar */}
+                  <div className="flex justify-center mb-8">
+                    <div className="w-24 h-1 bg-gray-300 rounded-full">
+                      <div className="w-20 h-1 bg-gray-900 rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Onboarding Content */}
+                <UniversalOnboarding 
+                  onComplete={handleOnboardingComplete}
+                  onBack={() => setCurrentFlow('email')}
+                  appIcon={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"}
+                  appName={webpageName}
+                  username={userData?.email || userData?.username}
+                  testMode={testMode}
+                />
+              </div>
+            </div>
+          ) : (
+            // All other flows use PageLayout wrapper
+            <ModalPageLayout
+              visible={showOverlay}
+              onClose={handleCloseOverlay}
+              showBackButton={currentFlow !== 'welcome' && currentFlow !== 'email' && currentFlow !== 'dataRequest'}
+              onBack={() => {
+                if (currentFlow === 'email') setCurrentFlow('welcome');
+                if (currentFlow === 'onboarding') setCurrentFlow('email');
+                if (currentFlow === 'pin') setCurrentFlow('onboarding'); 
+                if (currentFlow === 'training') setCurrentFlow('pin');
+              }}
+              title={getFlowTitle()}
+              subtitle={getFlowSubtitle()}
+              icon={getFlowIcon()}
+              centerContent={true}
+            >
+              {renderCurrentFlow()}
+            </ModalPageLayout>
+          )}
+        </>
       )}
     </>
   );

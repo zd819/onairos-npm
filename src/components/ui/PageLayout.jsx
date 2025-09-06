@@ -99,11 +99,6 @@ const PageLayout = ({
               </button>
             )}
 
-            {/* Handle bar for mobile-like experience */}
-            <div 
-              className="w-12 h-1.5 rounded-full mx-auto"
-              style={{ backgroundColor: COLORS.border }}
-            />
 
             {/* Close button */}
             {showCloseButton && onClose && (
@@ -175,7 +170,6 @@ const ModalPageLayout = ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '20px',
     ...backdropStyle
   };
 
@@ -185,8 +179,7 @@ const ModalPageLayout = ({
     borderTopRightRadius: '24px',
     borderBottomLeftRadius: '24px',
     borderBottomRightRadius: '24px',
-    maxHeight: 'calc(100vh - 40px)',
-    minHeight: '60vh',
+    height: '100vh',
     width: '100%',
     maxWidth: '500px',
     boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.3)',
