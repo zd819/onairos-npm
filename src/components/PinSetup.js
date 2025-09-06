@@ -1,31 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import PrimaryButton from './ui/PrimaryButton.jsx';
-import { COLORS } from '../theme/colors.js';
 
-export default function PinSetup({ onComplete, userEmail }) {
+export default function PinSetup({ onComplete, onBack, userEmail }) {
   const [pin, setPin] = useState('');
-  const [requirements, setRequirements] = useState({
+  const [pinRequirements, setPinRequirements] = useState({
     length: false,
+    uppercase: false,
     number: false,
-    special: false
   });
 
-  // Check PIN requirements (simplified)
+  // Check PIN requirements
   useEffect(() => {
-    setRequirements({
-      length: pin.length >= 8,
-      number: /[0-9]/.test(pin),
-      special: /[!@#$%^&*(),.?":{}|<>]/.test(pin)
+    setPinRequirements({
+      length: pin.length >= 6,
+      uppercase: /[A-Z]/.test(pin),
+      number: /\d/.test(pin),
     });
   }, [pin]);
 
-  const allRequirementsMet = Object.values(requirements).every(req => req);
-  const canSubmit = allRequirementsMet && pin.length > 0;
+  const allRequirementsMet = pinRequirements.length && pinRequirements.uppercase && pinRequirements.number;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (canSubmit) {
-      // In a real app, you would hash the PIN before storing
+  const handleSubmit = () => {
+    if (allRequirementsMet) {
       onComplete({
         pin: pin, // This should be hashed in production
         pinCreated: true,
@@ -35,91 +30,85 @@ export default function PinSetup({ onComplete, userEmail }) {
   };
 
   return (
-    <div className="w-full space-y-6">
-      <form onSubmit={handleSubmit} className="w-full space-y-6">
-        {/* PIN Input */}
-        <div>
-          <label 
-            htmlFor="pin" 
-            className="block text-sm font-medium mb-2"
-            style={{ color: COLORS.textPrimary }}
-          >
-            Create PIN
-          </label>
+    <div className="w-full h-full flex flex-col" style={{ height: '100%', minHeight: 0 }}>
+      {/* Content - Flexible center area */}
+      <div className="px-6 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }}>
+        <div className="mb-6 flex-shrink-0">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Create a PIN</h1>
+          <p className="text-gray-600 text-base">A PIN so only you have the access to your data</p>
+        </div>
+
+        <div className="mb-6 flex-shrink-0">
           <input
             type="password"
-            id="pin"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            className="w-full px-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            style={{ 
-              borderColor: COLORS.border,
-              backgroundColor: COLORS.background
-            }}
-            placeholder="Enter your secure PIN"
+            className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-center text-lg font-medium focus:border-gray-900 focus:outline-none bg-gray-50"
+            placeholder="Enter your PIN"
+            maxLength={20}
           />
         </div>
 
-        {/* Requirements */}
-        <div 
-          className="p-4 rounded-lg"
-          style={{ backgroundColor: COLORS.backgroundSecondary }}
-        >
-          <h4 
-            className="text-sm font-medium mb-3"
-            style={{ color: COLORS.textPrimary }}
-          >
-            PIN Requirements:
-          </h4>
-          <div className="space-y-2">
-            {Object.entries({
-              length: 'At least 8 characters',
-              number: 'One number (0-9)',
-              special: 'One special character (!@#$%^&*)'
-            }).map(([key, label]) => (
-              <div key={key} className="flex items-center">
-                <div 
-                  className="w-4 h-4 rounded-full mr-2 flex items-center justify-center"
-                  style={{ 
-                    backgroundColor: requirements[key] ? COLORS.success : COLORS.border 
-                  }}
+        {/* Scrollable requirements list */}
+        <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+          <div className="space-y-3 pb-4">
+            <p className="text-gray-900 font-medium mb-4">Your PIN must:</p>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-5 h-5 rounded-full border-2 ${pinRequirements.length ? "border-green-500 bg-green-500" : "border-gray-300 bg-white"}`}
                 >
-                  {requirements[key] && (
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {pinRequirements.length && (
+                    <svg className="w-3 h-3 text-white m-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   )}
                 </div>
-                <span 
-                  className="text-sm"
-                  style={{ 
-                    color: requirements[key] ? COLORS.success : COLORS.textSecondary 
-                  }}
-                >
-                  {label}
-                </span>
+                <span className="text-gray-700">Be at least 6 characters in length.</span>
               </div>
-            ))}
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-5 h-5 rounded-full border-2 ${pinRequirements.uppercase ? "border-green-500 bg-green-500" : "border-gray-300 bg-white"}`}
+                >
+                  {pinRequirements.uppercase && (
+                    <svg className="w-3 h-3 text-white m-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-gray-700">Contain an uppercase letter.</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-5 h-5 rounded-full border-2 ${pinRequirements.number ? "border-green-500 bg-green-500" : "border-gray-300 bg-white"}`}
+                >
+                  {pinRequirements.number && (
+                    <svg className="w-3 h-3 text-white m-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-gray-700">Contain a number.</span>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Submit Button */}
-        <PrimaryButton
-          label="Create PIN"
+      {/* Buttons - Fixed at bottom */}
+      <div className="px-6 pb-6 pt-4 flex-shrink-0 space-y-3" style={{ minHeight: 'auto' }}>
+        <div
+          className={`w-full rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors ${
+            allRequirementsMet ? "bg-gray-900 hover:bg-gray-800 text-white" : "bg-gray-400 text-white"
+          }`}
           onClick={handleSubmit}
-          disabled={!canSubmit}
-          testId="create-pin-button"
-        />
-      </form>
-
-      {userEmail && (
-        <p 
-          className="text-center text-sm"
-          style={{ color: COLORS.textSecondary }}
         >
-          Securing account for: <span className="font-medium">{userEmail}</span>
-        </p>
-      )}
+          Continue
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
     </div>
   );
 } 

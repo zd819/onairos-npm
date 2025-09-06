@@ -5,6 +5,7 @@ import UniversalOnboarding from './components/UniversalOnboarding.jsx';
 import PinSetup from './components/PinSetup.js';
 import DataRequest from './components/DataRequest.js';
 import TrainingComponent from './components/TrainingComponent.jsx';
+import LoadingScreen from './components/LoadingScreen.jsx';
 import { formatOnairosResponse } from './utils/responseFormatter.js';
 import { ModalPageLayout } from './components/ui/PageLayout.jsx';
 
@@ -163,7 +164,11 @@ export function OnairosButton({
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
     
-    // Move to data request flow within the same overlay
+    // Move to loading flow
+    setCurrentFlow('loading');
+  };
+
+  const handleLoadingComplete = () => {
     setCurrentFlow('dataRequest');
   };
 
@@ -480,12 +485,46 @@ export function OnairosButton({
                 />
               </div>
             </div>
+          ) : currentFlow === 'pin' ? (
+            // Special case for pin - render directly without PageLayout wrapper
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
+                {/* Header */}
+                <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
+                  <button
+                    onClick={() => setCurrentFlow('onboarding')}
+                    className="absolute left-6 top-6 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Progress Bar */}
+                  <div className="flex justify-center mb-8">
+                    <div className="w-24 h-1 bg-gray-300 rounded-full">
+                      <div className="w-20 h-1 bg-gray-900 rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PinSetup Content */}
+                <PinSetup 
+                  onComplete={handlePinSetupComplete}
+                  onBack={() => setCurrentFlow('onboarding')}
+                  userEmail={userData?.email}
+                />
+              </div>
+            </div>
+          ) : currentFlow === 'loading' ? (
+            // Loading screen
+            <LoadingScreen onComplete={handleLoadingComplete} />
           ) : (
             // All other flows use PageLayout wrapper
             <ModalPageLayout
               visible={showOverlay}
               onClose={handleCloseOverlay}
-              showBackButton={currentFlow !== 'welcome' && currentFlow !== 'email' && currentFlow !== 'dataRequest'}
+              showBackButton={currentFlow !== 'welcome' && currentFlow !== 'email' && currentFlow !== 'dataRequest' && currentFlow !== 'pin' && currentFlow !== 'loading'}
               onBack={() => {
                 if (currentFlow === 'email') setCurrentFlow('welcome');
                 if (currentFlow === 'onboarding') setCurrentFlow('email');
