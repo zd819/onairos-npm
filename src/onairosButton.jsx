@@ -413,7 +413,7 @@ export function OnairosButton({
           {currentFlow === 'onboarding' ? (
             // Special case for onboarding - render directly without PageLayout wrapper
             <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh', maxHeight: '90vh' }}>
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
@@ -422,15 +422,6 @@ export function OnairosButton({
                   >
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-
-                  <button
-                    onClick={handleCloseOverlay}
-                    className="absolute right-6 top-6 p-1 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
 
@@ -450,6 +441,42 @@ export function OnairosButton({
                   appName={webpageName}
                   username={userData?.email || userData?.username}
                   testMode={testMode}
+                />
+              </div>
+            </div>
+          ) : currentFlow === 'dataRequest' ? (
+            // Special case for dataRequest - render directly without PageLayout wrapper
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
+                {/* Header */}
+                <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
+                  <button
+                    onClick={() => setCurrentFlow('onboarding')}
+                    className="absolute left-6 top-6 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Progress Bar */}
+                  <div className="flex justify-center mb-8">
+                    <div className="w-24 h-1 bg-gray-300 rounded-full">
+                      <div className="w-24 h-1 bg-gray-900 rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* DataRequest Content */}
+                <DataRequest 
+                  onComplete={handleDataRequestComplete}
+                  userEmail={userData?.email}
+                  requestData={requestData}
+                  appName={webpageName}
+                  autoFetch={autoFetch}
+                  testMode={testMode}
+                  appIcon={appIcon}
+                  connectedAccounts={userData?.connectedAccounts || {}}
                 />
               </div>
             </div>

@@ -5,131 +5,90 @@ import { COLORS } from '../theme/colors.js';
 const dataTypes = [
   { 
     id: 'basic', 
-    name: 'Basic Info', 
+    name: 'Basic Profile', 
     description: 'Essential profile information, account details, and basic demographics', 
-    icon: '👤',
+    icon: 'User',
     required: true,
     tooltip: 'Includes name, email, basic profile information. This data is essential for personalization and is always included.',
     privacyLink: 'https://onairos.uk/privacy#basic-info'
   },
   { 
-    id: 'personality', 
-    name: 'Personality', 
-    description: 'Personality traits, behavioral patterns and psychological insights', 
-    icon: '💝',
-    required: false,
-    tooltip: 'AI-analyzed personality traits based on your social media activity and interactions. Used to improve content recommendations.',
-    privacyLink: 'https://onairos.uk/privacy#personality-data'
-  },
-  { 
     id: 'preferences', 
-    name: 'Preferences', 
+    name: 'User Preferences', 
     description: 'User preferences, interests, settings and personal choices', 
-    icon: '⚙️',
+    icon: 'Grid3X3',
     required: false,
     tooltip: 'Your stated preferences and interests from connected platforms. Helps customize your experience.',
     privacyLink: 'https://onairos.uk/privacy#preferences-data'
+  },
+  { 
+    id: 'personality', 
+    name: 'Personality Traits', 
+    description: 'Personality traits, behavioral patterns and psychological insights', 
+    icon: 'Brain',
+    required: false,
+    tooltip: 'AI-analyzed personality traits based on your social media activity and interactions. Used to improve content recommendations.',
+    privacyLink: 'https://onairos.uk/privacy#personality-data'
   }
 ];
 
-// Data Type Toggle Component (similar to PlatformToggle)
+// Data Type Toggle Component with new checkbox design
 const DataTypeToggle = ({ dataType, isEnabled, onToggle, isLast }) => {
-  const [isPressed, setIsPressed] = useState(false);
-
-  const handlePress = () => {
+  const handleToggle = () => {
     if (dataType.required) return; // Don't allow toggling required items
-    setIsPressed(true);
-    setTimeout(() => setIsPressed(false), 150);
     onToggle(dataType.id, !isEnabled);
   };
 
+  const getIconComponent = (iconName) => {
+    const iconProps = { className: "w-5 h-5 text-gray-600" };
+    
+    switch (iconName) {
+      case 'User':
+        return (
+          <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        );
+      case 'Grid3X3':
+        return (
+          <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+        );
+      case 'Brain':
+        return (
+          <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+        );
+      default:
+        return <span className="text-xl">{iconName}</span>;
+    }
+  };
+
   return (
-    <div 
-      className={`w-full p-4 border rounded-xl cursor-pointer transition-all duration-200 ${!isLast ? 'mb-3' : ''}`}
-      style={{
-        backgroundColor: isPressed ? COLORS.grey50 : COLORS.surface,
-        borderColor: isEnabled ? COLORS.primary : COLORS.grey200,
-        borderWidth: '1px',
-        transform: isPressed ? 'scale(0.99)' : 'scale(1)',
-        opacity: dataType.required ? 0.6 : 1,
-        cursor: dataType.required ? 'default' : 'pointer'
-      }}
-      onClick={handlePress}
-    >
-      <div className="flex items-start justify-between">
-        {/* Left side - Icon and content */}
-        <div className="flex items-start space-x-3 flex-1">
-          {/* Icon circle */}
-          <div 
-            className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
-            style={{
-              backgroundColor: COLORS.grey100
-            }}
-          >
-            <span className="text-xl">{dataType.icon}</span>
-          </div>
-          
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2 mb-1">
-              <h3 
-                className="font-semibold text-left"
-                style={{ 
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                  fontWeight: '600',
-                  fontSize: '16px',
-                  lineHeight: '20px',
-                  color: COLORS.grey800
-                }}
-              >
-                {dataType.name}
-              </h3>
-              {dataType.required && (
-                <span 
-                  className="text-xs px-2 py-1 rounded-full"
-                  style={{
-                    backgroundColor: COLORS.primary,
-                    color: COLORS.surface,
-                    fontFamily: 'Inter, system-ui, sans-serif',
-                    fontWeight: '500'
-                  }}
-                >
-                  Required
-                </span>
-              )}
-            </div>
-            <p 
-              className="text-left"
-              style={{ 
-                fontFamily: 'Inter, system-ui, sans-serif',
-                fontWeight: '400',
-                fontSize: '14px',
-                lineHeight: '20px',
-                color: COLORS.grey600
-              }}
-            >
-              {dataType.description}
-            </p>
-          </div>
+    <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50">
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+          {getIconComponent(dataType.icon)}
         </div>
-        
-        {/* Right side - Toggle */}
-        <div className="flex-shrink-0 ml-3">
-          <div 
-            className="w-12 h-6 rounded-full transition-all duration-200 relative"
-            style={{
-              backgroundColor: isEnabled ? COLORS.primary : COLORS.grey300
-            }}
-          >
-            <div 
-              className="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all duration-200"
-              style={{
-                left: isEnabled ? '26px' : '2px',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-              }}
+        <span className="font-medium text-gray-900">{dataType.name}</span>
+      </div>
+      <div
+        onClick={handleToggle}
+        className={`w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${
+          isEnabled ? "bg-gray-900 border-gray-900" : "bg-white border-gray-300"
+        }`}
+      >
+        {isEnabled && (
+          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clipRule="evenodd"
             />
-          </div>
-        </div>
+          </svg>
+        )}
       </div>
     </div>
   );
@@ -363,136 +322,77 @@ const DataRequest = ({
   const selectedCount = Object.values(selectedData).filter(Boolean).length;
 
   return (
-    <div className="w-full h-full flex flex-col" style={{ backgroundColor: COLORS.surface }}>
-      {/* Fixed Header Section */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4">
-        {/* Security Notice */}
-        <div 
-          className="w-full p-4 rounded-xl mb-6 flex items-start space-x-3"
-          style={{ 
-            backgroundColor: '#EBF8FF',
-            border: `1px solid #BEE3F8`
-          }}
-        >
-          <div 
-            className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5"
-            style={{ backgroundColor: '#3182CE' }}
-          >
-            <span className="text-white text-sm">🔒</span>
+    <div className="w-full h-full flex flex-col">
+      {/* Content - Flexible center area */}
+      <div className="px-6 flex-1 flex flex-col min-h-0 pb-4">
+        {/* Icon Flow */}
+        <div className="mb-6 flex justify-center items-center gap-4 flex-shrink-0">
+          <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center border border-gray-100">
+            <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2Z"
+                fill="black"
+              />
+              <path
+                d="M21 9V7L15 6.5V9C15 10.66 13.66 12 12 12C10.34 12 9 10.66 9 9V6.5L3 7V9C3 12.87 6.13 16 10 16V22H14V16C17.87 16 21 12.87 21 9Z"
+                fill="black"
+              />
+            </svg>
           </div>
-          <p 
-            className="text-left"
-            style={{ 
-              fontFamily: 'Inter, system-ui, sans-serif',
-              fontWeight: '400',
-              fontSize: '14px',
-              lineHeight: '20px',
-              color: '#2B6CB0'
-            }}
-          >
-            Your selected data will be securely processed and used only for the intended purpose.
-          </p>
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center border border-gray-100">
+            <span className="text-2xl font-serif font-bold text-black">E</span>
+          </div>
         </div>
 
-        {/* Heading */}
-        <div className="mb-6">
-          <h1 
-            className="font-bold text-left mb-2"
-            style={{ 
-              fontFamily: 'IBM Plex Sans, system-ui, sans-serif',
-              fontWeight: '700',
-              fontSize: '24px',
-              lineHeight: '32px',
-              color: COLORS.grey800
-            }}
-          >
-            Data Types
+        {/* Title Section */}
+        <div className="mb-6 flex-shrink-0">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">
+            Enoch wants to personalize your experience
           </h1>
+          <p className="text-gray-600 text-base">Choose what to share:</p>
         </div>
-      </div>
 
-      {/* Scrollable Data Types Section */}
-      <div className="flex-1 px-6 overflow-y-auto">
-        <div className="pb-32">
-          {dataTypes.map((dataType, index) => (
-            <DataTypeToggle
-              key={dataType.id}
-              dataType={dataType}
-              isEnabled={selectedData[dataType.id]}
-              onToggle={handleDataToggle}
-              isLast={index === dataTypes.length - 1}
-            />
-          ))}
-
-          {/* Selection Summary */}
-          <div 
-            className="mt-6 p-4 rounded-xl flex items-center space-x-2"
-            style={{ backgroundColor: COLORS.grey50 }}
-          >
-            <span 
-              className="text-sm"
-              style={{ 
-                fontFamily: 'Inter, system-ui, sans-serif',
-                fontWeight: '500',
-                color: COLORS.grey600
-              }}
-            >
-              ✅ {selectedCount} data type{selectedCount !== 1 ? 's' : ''} selected
-            </span>
+        {/* Consent Options */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="space-y-4 pb-6">
+            {dataTypes.map((dataType, index) => (
+              <DataTypeToggle
+                key={dataType.id}
+                dataType={dataType}
+                isEnabled={selectedData[dataType.id]}
+                onToggle={handleDataToggle}
+                isLast={index === dataTypes.length - 1}
+              />
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Fixed Bottom Buttons */}
-      <div 
-        className="flex-shrink-0 px-6 pb-6"
-        style={{ 
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: COLORS.surface,
-          paddingTop: '24px'
-        }}
-      >
-        <div className="mb-4 flex justify-center">
-          <PrimaryButton
-            label={isLoadingApi ? "Processing..." : "Share Selected Data"}
-            onClick={fetchUserData}
-            disabled={isLoadingApi || selectedCount === 0}
-            loading={isLoadingApi}
-            centered={true}
-          />
+      {/* Buttons - Fixed at bottom */}
+      <div className="px-6 pb-8 pt-4 flex-shrink-0 space-y-3">
+        <div
+          className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors"
+          onClick={fetchUserData}
+          disabled={isLoadingApi || selectedCount === 0}
+        >
+          {isLoadingApi ? "Processing..." : "Accept & Continue"}
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </div>
-        
-        <div className="text-center">
-          <button 
-            className="text-center"
-            style={{ 
-              fontFamily: 'Inter, system-ui, sans-serif',
-              fontWeight: '500',
-              fontSize: '16px',
-              color: COLORS.grey600,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer'
-            }}
-            onClick={() => onComplete({ cancelled: true })}
-          >
-            Cancel
-          </button>
+        <div
+          onClick={() => onComplete({ cancelled: true })}
+          className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full py-4 text-base font-medium text-center cursor-pointer transition-colors"
+        >
+          Decline
         </div>
 
         {/* Error display */}
         {apiError && (
-          <div 
-            className="mt-4 p-3 rounded-lg text-center"
-            style={{ 
-              backgroundColor: '#FEF2F2',
-              borderColor: '#FECACA',
-              color: '#DC2626'
-            }}
-          >
+          <div className="mt-4 p-3 rounded-lg text-center bg-red-50 border border-red-200 text-red-600">
             <p className="text-sm">{apiError}</p>
           </div>
         )}
