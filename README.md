@@ -17,16 +17,18 @@ https://Onairos.uk/dev-board
 ### 2. Installation
 
 #### Standard Installation
+
 ```bash
 npm install onairos
 ```
 
 #### Laravel Vite Installation
+
 ```bash
 npm install onairos
 # For Vue.js integration
 npm install --save-dev @vitejs/plugin-vue
-# For React integration  
+# For React integration
 npm install --save-dev @vitejs/plugin-react
 ```
 
@@ -37,21 +39,21 @@ npm install --save-dev @vitejs/plugin-react
 Import and use the OnairosButton component:
 
 ```jsx
-import { OnairosButton } from 'onairos';
+import { OnairosButton } from "onairos";
 
 function MyApp() {
   return (
     <OnairosButton
-      requestData={['email', 'profile', 'social']}
+      requestData={["email", "profile", "social"]}
       webpageName="My Application"
       autoFetch={true} // Default - automatically makes API calls
       onComplete={(result) => {
-        console.log('Data approved:', result.approved);
-        console.log('API Response:', result.apiResponse); // Available when autoFetch is true
-        
+        console.log("Data approved:", result.approved);
+        console.log("API Response:", result.apiResponse); // Available when autoFetch is true
+
         if (result.apiResponse) {
           // Use the API response data directly
-          console.log('User data:', result.apiResponse);
+          console.log("User data:", result.apiResponse);
         }
       }}
     />
@@ -65,32 +67,32 @@ For Laravel applications using Blade templates:
 
 ```js
 // vite.config.js
-import { defineConfig } from 'vite';
-import laravel from 'laravel-vite-plugin';
-import { onairosLaravelPlugin } from 'onairos/vite-plugin';
+import { defineConfig } from "vite";
+import laravel from "laravel-vite-plugin";
+import { onairosLaravelPlugin } from "onairos/vite-plugin";
 
 export default defineConfig({
-    plugins: [
-        laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
-            refresh: true,
-        }),
-        onairosLaravelPlugin({
-            bladeSupport: true
-        })
-    ],
+  plugins: [
+    laravel({
+      input: ["resources/css/app.css", "resources/js/app.js"],
+      refresh: true,
+    }),
+    onairosLaravelPlugin({
+      bladeSupport: true,
+    }),
+  ],
 });
 ```
 
 ```js
 // resources/js/app.js
-import { initializeOnairosForBlade } from 'onairos/blade';
+import { initializeOnairosForBlade } from "onairos/blade";
 
-document.addEventListener('DOMContentLoaded', () => {
-    initializeOnairosForBlade({
-        testMode: import.meta.env.DEV,
-        autoDetectMobile: true
-    });
+document.addEventListener("DOMContentLoaded", () => {
+  initializeOnairosForBlade({
+    testMode: import.meta.env.DEV,
+    autoDetectMobile: true,
+  });
 });
 ```
 
@@ -115,37 +117,79 @@ For Laravel applications using Vue.js:
 
 ```js
 // vite.config.js
-import { defineConfig } from 'vite';
-import laravel from 'laravel-vite-plugin';
-import vue from '@vitejs/plugin-vue';
-import { onairosVuePlugin } from 'onairos/vite-plugin';
+import { defineConfig } from "vite";
+import laravel from "laravel-vite-plugin";
+import vue from "@vitejs/plugin-vue";
+import { onairosVuePlugin } from "onairos/vite-plugin";
 
 export default defineConfig({
-    plugins: [
-        laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
-            refresh: true,
-        }),
-        vue(),
-        onairosVuePlugin()
-    ],
+  plugins: [
+    laravel({
+      input: ["resources/css/app.css", "resources/js/app.js"],
+      refresh: true,
+    }),
+    vue(),
+    onairosVuePlugin(),
+  ],
 });
 ```
 
 ```js
 // resources/js/app.js
-import { createApp } from 'vue';
-import OnairosVue from 'onairos/src/laravel/OnairosVue.vue';
+import { createApp } from "vue";
+import OnairosVue from "onairos/src/laravel/OnairosVue.vue";
 
 const app = createApp({});
-app.component('onairos-button', OnairosVue);
-app.mount('#app');
+app.component("onairos-button", OnairosVue);
+app.mount("#app");
+```
+
+#### Vite Optimization Configuration
+
+For Vite applications, add the following configuration to ensure proper asset handling:
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  optimizeDeps: {
+    exclude: ["onairos"],
+  },
+});
+```
+
+#### Custom Persona Images
+
+The library includes default persona images that change based on connected platforms. In Vite dev environments, these may show as gradient fallbacks due to asset processing. To use custom images:
+
+```jsx
+import { OnairosButton } from "onairos";
+
+function MyApp() {
+  return (
+    <OnairosButton
+      requestData={["email", "profile", "social"]}
+      webpageName="My Application"
+      personaImages={{
+        1: "/path/to/persona1.png",
+        2: "/path/to/persona2.png",
+        3: "/path/to/persona3.png",
+        4: "/path/to/persona4.png",
+        5: "/path/to/persona5.png",
+      }}
+      onComplete={(result) => {
+        console.log("Data approved:", result.approved);
+      }}
+    />
+  );
+}
 ```
 
 ```blade
 {{-- In your Blade template --}}
 <div id="app">
-    <onairos-button 
+    <onairos-button
         :request-data="['email', 'profile']"
         webpage-name="Laravel Vue App"
         @complete="handleComplete"
@@ -168,7 +212,7 @@ app.mount('#app');
 #### Laravel-Specific Props
 
 - **`buttonType`** (String): `'pill'`, `'icon'`, or `'rounded'`
-- **`size`** (String): `'small'`, `'medium'`, or `'large'`  
+- **`size`** (String): `'small'`, `'medium'`, or `'large'`
 - **`textColor`** (String): Button text color
 - **`disabled`** (Boolean): Disable the button
 
@@ -177,6 +221,7 @@ app.mount('#app');
 For complete Laravel integration examples and advanced configuration, see our [Laravel Integration Guide](./LARAVEL_INTEGRATION_GUIDE.md).
 
 The guide covers:
+
 - ✅ **Blade Templates**: Direct integration with PHP templates
 - ✅ **Vue.js Components**: Reactive Vue components
 - ✅ **React Components**: React integration patterns
@@ -187,36 +232,41 @@ The guide covers:
 ### 6. Migration from v1.x
 
 **Before (v1.x - Complex)**:
+
 ```jsx
 // Old complex setup with manual event listeners
 useEffect(() => {
   const handleMessage = (event) => {
-    if (event.data?.source === 'content-script' && event.data?.type === 'API_URL_RESPONSE') {
+    if (
+      event.data?.source === "content-script" &&
+      event.data?.type === "API_URL_RESPONSE"
+    ) {
       const { APIurl, accessToken } = event.data;
       // Manual API call handling
       fetch(APIurl, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${accessToken}` },
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify(InputData),
       });
     }
   };
-  window.addEventListener('message', handleMessage);
-  return () => window.removeEventListener('message', handleMessage);
+  window.addEventListener("message", handleMessage);
+  return () => window.removeEventListener("message", handleMessage);
 }, []);
 
-<Onairos requestData={complexRequestObject} webpageName={webpageName} />
+<Onairos requestData={complexRequestObject} webpageName={webpageName} />;
 ```
 
 **After (v2.0 - Simple)**:
+
 ```jsx
 // New simplified approach
 <OnairosButton
-  requestData={['email', 'profile']}
+  requestData={["email", "profile"]}
   webpageName="My App"
   onComplete={(result) => {
     // API call already made automatically
-    console.log('User data:', result.apiResponse);
+    console.log("User data:", result.apiResponse);
   }}
 />
 ```
@@ -224,7 +274,7 @@ useEffect(() => {
 ### 7. Data Types Available
 
 - **`email`**: Email address for account identification
-- **`profile`**: Basic profile information and preferences  
+- **`profile`**: Basic profile information and preferences
 - **`social`**: Connected social media accounts
 - **`activity`**: Usage patterns and interactions
 - **`preferences`**: User settings and customization choices
@@ -235,14 +285,14 @@ The component includes comprehensive error handling:
 
 ```jsx
 <OnairosButton
-  requestData={['email']}
+  requestData={["email"]}
   webpageName="My App"
   onComplete={(result) => {
     if (result.apiError) {
-      console.error('API Error:', result.apiError);
+      console.error("API Error:", result.apiError);
       // Handle error appropriately
     } else if (result.apiResponse) {
-      console.log('Success:', result.apiResponse);
+      console.log("Success:", result.apiResponse);
       // Process data
     }
   }}
@@ -267,6 +317,7 @@ The component includes comprehensive error handling:
 ### 11. Support
 
 For issues or questions:
+
 - Check the [troubleshooting guide](./POPUP_IMPLEMENTATION_README.md)
 - Review browser console for errors
 - Contact support with detailed error information
@@ -275,13 +326,14 @@ For issues or questions:
 
 ## Legacy Documentation (v1.x)
 
-*The following sections document the previous complex implementation for reference:*
+_The following sections document the previous complex implementation for reference:_
 
 ### Legacy Request Object Format
 
 Previously required complex request objects:
+
 ```json
-"RequestObject":{ 
+"RequestObject":{
     "Small": {
       "type":"Personality",
       "descriptions":"Insight into your Interests",
@@ -303,42 +355,43 @@ Previously required complex request objects:
 ### Legacy API Usage
 
 Previously required manual event handling:
+
 ```jsx
-export default async function UseAPIURL(event){
-    if (event.data && event.data.source === 'content-script' && event.data.type === 'API_URL_RESPONSE') {
-      const { APIurl, accessToken } = event.data;
-      await fetch(APIurl, {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}`
-          },
-          body: JSON.stringify(InputData),
-      }).then(async (data)=>{
-            // process Onairos Data
+export default async function UseAPIURL(event) {
+  if (
+    event.data &&
+    event.data.source === "content-script" &&
+    event.data.type === "API_URL_RESPONSE"
+  ) {
+    const { APIurl, accessToken } = event.data;
+    await fetch(APIurl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(InputData),
+    })
+      .then(async (data) => {
+        // process Onairos Data
       })
-      .catch(error => console.error(error));
-    }
+      .catch((error) => console.error(error));
+  }
 }
 ```
 
-*This manual approach is no longer needed with v2.0's autoFetch functionality.*
+_This manual approach is no longer needed with v2.0's autoFetch functionality._
 
 ### Legacy Output Format
 
 API still responds with the same format:
+
 ```json
 {
-  "output": [
-    [[0.9998]],
-    [[0.9999]],
-    [[0.9922]],
-    [[0.0013]]
-  ]
+  "output": [[[0.9998]], [[0.9999]], [[0.9922]], [[0.0013]]]
 }
 ```
 
 ### Integration Notes
 
 When integrating the onairos package into your application, ensure your Webpack configuration handles dynamic imports correctly and serves the necessary chunk files from `node_modules/onairos/dist`.
-

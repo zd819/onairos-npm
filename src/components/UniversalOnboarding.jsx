@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
+// Default persona images - using public folder paths for consumer compatibility
+const defaultPersonaImages = {
+  1: '/persona1.png',
+  2: '/persona2.png',
+  3: '/persona3.png',
+  4: '/persona4.png',
+  5: '/persona5.png',
+};
+
 const platforms = [
   { 
     name: 'Google', 
@@ -71,7 +80,10 @@ const sdkConfig = {
  * UniversalOnboarding Component - Compact & Enhanced
  * Displays a streamlined onboarding screen for data connections
  */
-export default function UniversalOnboarding({ onComplete, onBack, appIcon, appName = 'App' }) {
+export default function UniversalOnboarding({ onComplete, onBack, appIcon, appName = 'App', personaImages: personaImagesProp }) {
+  // Use provided persona images or fallback to defaults
+  const personaImages = personaImagesProp ?? defaultPersonaImages;
+  
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState(null);
@@ -404,6 +416,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   };
 
   const connectedCount = Object.values(connectedAccounts).filter(Boolean).length;
+  const personaNumber = Math.min(connectedCount + 1, 5); // 0 connections = persona 1, 1 connection = persona 2, etc.
 
   return (
     <div className="w-full h-full flex flex-col" style={{ height: '100%', minHeight: 0 }}>
@@ -412,41 +425,58 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         <div className="mb-6 flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">Connect app data</h1>
           <p className="text-gray-600 text-base">More connections, better personalization.</p>
-        </div>
+          </div>
 
         <div className="mb-6 flex justify-center flex-shrink-0">
-          <div className="w-32 h-32 rounded-3xl shadow-lg" style={{
-            background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)'
-          }}></div>
+          <div className="w-32 h-32 rounded-3xl shadow-lg overflow-hidden">
+            <img
+              src={personaImages[personaNumber]}
+              alt={`Persona ${personaNumber}`}
+              className="w-full h-full object-cover"
+              onLoad={() => console.log('✅ Persona image loaded successfully!')}
+              onError={(e) => {
+                console.log('❌ Persona image failed to load:', personaImages[personaNumber]);
+                console.log('Connected count:', connectedCount);
+                console.log('Persona number:', personaNumber);
+                console.log('All persona URLs:', personaImages);
+                console.log('Current location:', window.location.href);
+                console.log('Trying to load from:', personaImages[personaNumber]);
+                
+                // Fallback to gradient if image fails to load
+                e.target.style.display = 'none';
+                e.target.parentElement.style.background = 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)';
+              }}
+          />
         </div>
+      </div>
 
         {/* Scrollable platform list */}
         <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
           <div className="space-y-4 pb-4">
             {platforms.map((platform) => {
-              const isConnected = connectedAccounts[platform.name] || false;
-              const isCurrentlyConnecting = connectingPlatform === platform.name;
-              const hasError = connectionErrors[platform.name];
-              const isDisabled = isConnecting && !isCurrentlyConnecting;
-              
-              return (
-                <div
-                  key={platform.name}
+          const isConnected = connectedAccounts[platform.name] || false;
+          const isCurrentlyConnecting = connectingPlatform === platform.name;
+          const hasError = connectionErrors[platform.name];
+          const isDisabled = isConnecting && !isCurrentlyConnecting;
+          
+          return (
+            <div 
+              key={platform.name}
                   className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
                   style={{
                     backgroundColor: "#ffffff",
                     border: "none",
                     outline: "none",
                   }}
-                  onClick={() => !isDisabled && handleToggle(platform.name)}
-                >
+              onClick={() => !isDisabled && handleToggle(platform.name)}
+            >
                   <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0 border border-gray-100">
-                    {isCurrentlyConnecting ? (
+                  {isCurrentlyConnecting ? (
                       <div className="animate-spin h-5 w-5 border-2 border-gray-400 rounded-full border-t-transparent"></div>
-                    ) : (
-                      platform.icon
-                    )}
-                  </div>
+                  ) : (
+                    platform.icon
+                  )}
+                    </div>
                   <div className="flex-1 min-w-0 pr-4">
                     <h3
                       className="font-medium mb-1"
@@ -469,36 +499,36 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                       }}
                     >
                       {platform.description}
+                  </p>
+                  
+                  {/* Error Message */}
+                  {hasError && (
+                    <p className="text-xs text-red-600 mt-1">
+                      {hasError}
                     </p>
-                    
-                    {/* Error Message */}
-                    {hasError && (
-                      <p className="text-xs text-red-600 mt-1">
-                        {hasError}
-                      </p>
-                    )}
-                  </div>
+                  )}
+                </div>
                   <div className="flex-shrink-0">
                     <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!isDisabled) handleToggle(platform.name);
-                      }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isDisabled) handleToggle(platform.name);
+                  }}
                       className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors cursor-pointer ${
                         isConnected ? "bg-green-500" : "bg-gray-300"
                       } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                    >
-                      <span
+                >
+                  <span
                         className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${
                           isConnected ? "translate-x-6" : "translate-x-0.5"
-                        }`}
-                      />
+                    }`}
+                  />
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
         </div>
       </div>
 
@@ -506,7 +536,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       <div className="px-6 pb-6 pt-4 flex-shrink-0 space-y-3" style={{ minHeight: 'auto' }}>
         <div
           className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors"
-          onClick={handleContinue}
+        onClick={handleContinue}
         >
           Update
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -514,9 +544,9 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           </svg>
         </div>
         <div
-          onClick={() => onComplete({ connectedAccounts: [], totalConnections: 0 })}
+        onClick={() => onComplete({ connectedAccounts: [], totalConnections: 0 })}
           className="w-full text-gray-600 text-base font-medium py-3 text-center cursor-pointer hover:text-gray-800 transition-colors"
-        >
+      >
           Skip
         </div>
       </div>
