@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 
 // Default persona images - using public folder paths for consumer compatibility
 const defaultPersonaImages = {
-  1: '/persona1.png',
-  2: '/persona2.png',
-  3: '/persona3.png',
-  4: '/persona4.png',
-  5: '/persona5.png',
+  1: 'https://anushkasirv.sirv.com/persona1.png',
+  2: 'https://anushkasirv.sirv.com/persona2.png', 
+  3: 'https://anushkasirv.sirv.com/persona3.png',
+  4: 'https://anushkasirv.sirv.com/persona4.png',
+  5: 'https://anushkasirv.sirv.com/persona5.png',
 };
 
 const platforms = [
@@ -427,11 +427,13 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           <p className="text-gray-600 text-base">More connections, better personalization.</p>
           </div>
 
-        <div className="mb-8 flex justify-center flex-shrink-0">
-          <div className="w-48 h-48 rounded-3xl shadow-lg overflow-hidden">
+        <div className="mb-2 flex justify-center flex-shrink-0">
+          <div className="w-56 h-56 overflow-hidden">
             <img
               src={personaImages[personaNumber]}
               alt={`Persona ${personaNumber}`}
+              width="224"
+              height="224"
               className="w-full h-full object-cover"
               onLoad={() => console.log('✅ Persona image loaded successfully!')}
               onError={(e) => {
