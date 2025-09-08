@@ -159,6 +159,14 @@ module.exports = [
           {
             from: path.resolve(__dirname, 'public', 'oauth-callback.html'),
             to: path.resolve(__dirname, 'dist', 'oauth-callback.html')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'persona*.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'src', 'assets', 'persona*.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
           }
         ]
       }),

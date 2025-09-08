@@ -149,5 +149,6 @@
   "bugs": {
     "url": "https://github.com/zd819/OnairosNPM/issues"
   },
-  "homepage": "https://onairos.uk"
+  "homepage": "https://onairos.uk",
+  "files": ["dist", "src/assets", "package.json", "README.md"]
 }

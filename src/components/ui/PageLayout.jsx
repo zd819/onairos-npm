@@ -32,8 +32,7 @@ const PageLayout = ({
     top: 0,
     backgroundColor: COLORS.background,
     zIndex: 10,
-    padding: '12px 24px 8px',
-    borderBottom: `1px solid ${COLORS.borderLight}`
+    padding: '12px 24px 8px'
   };
 
   const contentStyle = {
@@ -41,6 +40,8 @@ const PageLayout = ({
     padding: '24px',
     display: 'flex',
     flexDirection: 'column',
+    overflow: 'auto',
+    minHeight: 0, // Allow flex item to shrink below content size
     ...(centerContent && {
       alignItems: 'center',
       justifyContent: 'flex-start'
@@ -97,11 +98,6 @@ const PageLayout = ({
               </button>
             )}
 
-            {/* Handle bar for mobile-like experience */}
-            <div 
-              className="w-12 h-1.5 rounded-full mx-auto"
-              style={{ backgroundColor: COLORS.border }}
-            />
 
             {/* Close button */}
             {showCloseButton && onClose && (
@@ -171,7 +167,7 @@ const ModalPageLayout = ({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     zIndex: 1000,
     display: 'flex',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'center',
     ...backdropStyle
   };
@@ -180,12 +176,15 @@ const ModalPageLayout = ({
     backgroundColor: COLORS.background,
     borderTopLeftRadius: '24px',
     borderTopRightRadius: '24px',
-    maxHeight: '85vh',
-    minHeight: '45vh',
+    borderBottomLeftRadius: '24px',
+    borderBottomRightRadius: '24px',
+    height: '100vh',
     width: '100%',
     maxWidth: '500px',
     boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.3)',
     overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
     ...modalStyle
   };
 

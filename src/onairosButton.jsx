@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import WelcomeScreen from './components/WelcomeScreen.jsx';
 import EmailAuth from './components/EmailAuth.js';
 import UniversalOnboarding from './components/UniversalOnboarding.jsx';
 import PinSetup from './components/PinSetup.js';
 import DataRequest from './components/DataRequest.js';
 import TrainingComponent from './components/TrainingComponent.jsx';
+import LoadingScreen from './components/LoadingScreen.jsx';
 import { formatOnairosResponse } from './utils/responseFormatter.js';
 import { ModalPageLayout } from './components/ui/PageLayout.jsx';
 
@@ -29,7 +31,7 @@ export function OnairosButton({
 }) {
 
   const [showOverlay, setShowOverlay] = useState(false);
-  const [currentFlow, setCurrentFlow] = useState('email'); // 'email' | 'onboarding' | 'pin' | 'dataRequest' (training is within onboarding)
+  const [currentFlow, setCurrentFlow] = useState('welcome'); // 'welcome' | 'email' | 'onboarding' | 'pin' | 'dataRequest' (training is within onboarding)
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
 
@@ -40,7 +42,7 @@ export function OnairosButton({
       if (testMode) {
         console.log('🧪 Test mode: Starting fresh flow, clearing any cached user data');
         localStorage.removeItem('onairosUser');
-        setCurrentFlow('email');
+        setCurrentFlow('welcome');
         return;
       }
       
@@ -86,6 +88,11 @@ export function OnairosButton({
     if (e.target === e.currentTarget) {
       handleCloseOverlay();
     }
+  };
+
+  const handleWelcomeContinue = () => {
+    console.log('🔥 Welcome screen continue clicked');
+    setCurrentFlow('email');
   };
 
   const handleEmailAuthSuccess = (authData) => {
@@ -157,7 +164,11 @@ export function OnairosButton({
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
     
-    // Move to data request flow within the same overlay
+    // Move to loading flow
+    setCurrentFlow('loading');
+  };
+
+  const handleLoadingComplete = () => {
     setCurrentFlow('dataRequest');
   };
 
@@ -186,7 +197,8 @@ export function OnairosButton({
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
 
-    // Close overlay
+    // Close overlay immediately
+    console.log('🔥 Closing overlay after data request completion');
     setShowOverlay(false);
 
     // Format response if requested and API response is present
@@ -220,6 +232,8 @@ export function OnairosButton({
 
   const getFlowTitle = () => {
     switch (currentFlow) {
+      case 'welcome':
+        return ''; // WelcomeScreen handles its own titles
       case 'email':
         return ''; // EmailAuth handles its own titles
       case 'onboarding':
@@ -237,6 +251,8 @@ export function OnairosButton({
 
   const getFlowSubtitle = () => {
     switch (currentFlow) {
+      case 'welcome':
+        return ''; // WelcomeScreen handles its own subtitles
       case 'email':
         return ''; // EmailAuth handles its own subtitles
       case 'onboarding':
@@ -254,6 +270,8 @@ export function OnairosButton({
 
   const getFlowIcon = () => {
     switch (currentFlow) {
+      case 'welcome':
+        return ''; // WelcomeScreen handles its own layout
       case 'email':
         return ''; // EmailAuth handles its own layout
       case 'onboarding':
@@ -271,18 +289,28 @@ export function OnairosButton({
 
   const renderCurrentFlow = () => {
     switch (currentFlow) {
+      case 'welcome':
+        return (
+          <WelcomeScreen 
+            onContinue={handleWelcomeContinue}
+            onClose={handleCloseOverlay}
+          />
+        );
       case 'email':
         return (
-          <EmailAuth 
-            onSuccess={handleEmailAuthSuccess}
-            testMode={testMode} // Use the testMode prop from initialization
-          />
+          <div className="h-[min(85vh,700px)]">
+            <EmailAuth 
+              onSuccess={handleEmailAuthSuccess}
+              testMode={testMode} // Use the testMode prop from initialization
+            />
+          </div>
         );
       
       case 'onboarding':
         return (
           <UniversalOnboarding 
             onComplete={handleOnboardingComplete}
+            onBack={() => setCurrentFlow('email')}
             appIcon={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"}
             appName={webpageName}
             username={userData?.email || userData?.username}
@@ -387,22 +415,138 @@ export function OnairosButton({
 
       {/* Modal with New Design */}
       {showOverlay && (
-        <ModalPageLayout
-          visible={showOverlay}
-          onClose={handleCloseOverlay}
-          showBackButton={currentFlow !== 'email' && currentFlow !== 'dataRequest'}
-          onBack={() => {
-            if (currentFlow === 'onboarding') setCurrentFlow('email');
-            if (currentFlow === 'pin') setCurrentFlow('onboarding'); 
-            if (currentFlow === 'training') setCurrentFlow('pin');
-          }}
-          title={getFlowTitle()}
-          subtitle={getFlowSubtitle()}
-          icon={getFlowIcon()}
-          centerContent={true}
-        >
-          {renderCurrentFlow()}
-        </ModalPageLayout>
+        <>
+          {currentFlow === 'email' ? (
+            // Special case for email - render directly without PageLayout wrapper
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-6">
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
+                {/* Header */}
+                <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
+                  <button
+                    onClick={handleCloseOverlay}
+                    className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Email Content */}
+                <div className="h-[min(85vh,700px)]">
+                  <EmailAuth 
+                    onSuccess={handleEmailAuthSuccess}
+                    testMode={testMode}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : currentFlow === 'onboarding' ? (
+            // Special case for onboarding - render directly without PageLayout wrapper
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-6">
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
+                {/* Header */}
+                <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
+                  <button
+                    onClick={() => setCurrentFlow('email')}
+                    className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Onboarding Content */}
+                <UniversalOnboarding 
+                  onComplete={handleOnboardingComplete}
+                  onBack={() => setCurrentFlow('email')}
+                  appIcon={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"}
+                  appName={webpageName}
+                  username={userData?.email || userData?.username}
+                  testMode={testMode}
+                />
+              </div>
+            </div>
+          ) : currentFlow === 'dataRequest' ? (
+            // Special case for dataRequest - render directly without PageLayout wrapper
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-6">
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
+                {/* Header */}
+                <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
+                  <button
+                    onClick={() => setCurrentFlow('loading')}
+                    className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* DataRequest Content */}
+                <DataRequest 
+                  onComplete={handleDataRequestComplete}
+                  userEmail={userData?.email}
+                  requestData={requestData}
+                  appName={webpageName}
+                  autoFetch={autoFetch}
+                  testMode={testMode}
+                  appIcon={appIcon}
+                  connectedAccounts={userData?.connectedAccounts || {}}
+                />
+              </div>
+            </div>
+          ) : currentFlow === 'pin' ? (
+            // Special case for pin - render directly without PageLayout wrapper
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-6">
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
+                {/* Header */}
+                <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
+                  <button
+                    onClick={() => setCurrentFlow('onboarding')}
+                    className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* PinSetup Content - Must take remaining height */}
+                <div className="flex-1 min-h-0">
+                  <PinSetup 
+                    onComplete={handlePinSetupComplete}
+                    onBack={() => setCurrentFlow('onboarding')}
+                    userEmail={userData?.email}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : currentFlow === 'loading' ? (
+            // Loading screen
+            <LoadingScreen onComplete={handleLoadingComplete} />
+          ) : (
+            // All other flows use PageLayout wrapper
+            <ModalPageLayout
+              visible={showOverlay}
+              onClose={handleCloseOverlay}
+              showBackButton={currentFlow === 'training'}
+              onBack={() => {
+                if (currentFlow === 'email') setCurrentFlow('welcome');
+                if (currentFlow === 'onboarding') setCurrentFlow('email');
+                if (currentFlow === 'pin') setCurrentFlow('onboarding'); 
+                if (currentFlow === 'training') setCurrentFlow('pin');
+              }}
+              title={getFlowTitle()}
+              subtitle={getFlowSubtitle()}
+              icon={getFlowIcon()}
+              centerContent={true}
+            >
+              {renderCurrentFlow()}
+            </ModalPageLayout>
+          )}
+        </>
       )}
     </>
   );
