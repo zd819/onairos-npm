@@ -421,14 +421,14 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   return (
     <div className="w-full h-full flex flex-col" style={{ height: '100%', minHeight: 0 }}>
       {/* Content - Flexible center area */}
-      <div className="px-6 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }}>
+      <div className="px-6 pt-16 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }}>
         <div className="mb-6 flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">Connect app data</h1>
           <p className="text-gray-600 text-base">More connections, better personalization.</p>
           </div>
 
-        <div className="mb-6 flex justify-center flex-shrink-0">
-          <div className="w-32 h-32 rounded-3xl shadow-lg overflow-hidden">
+        <div className="mb-8 flex justify-center flex-shrink-0">
+          <div className="w-48 h-48 rounded-3xl shadow-lg overflow-hidden">
             <img
               src={personaImages[personaNumber]}
               alt={`Persona ${personaNumber}`}
@@ -451,7 +451,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       </div>
 
         {/* Scrollable platform list */}
-        <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+        <div className="flex-1 overflow-y-auto mt-4" style={{ minHeight: 0 }}>
           <div className="space-y-4 pb-4">
             {platforms.map((platform) => {
           const isConnected = connectedAccounts[platform.name] || false;
@@ -514,12 +514,12 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                     e.stopPropagation();
                     if (!isDisabled) handleToggle(platform.name);
                   }}
-                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors cursor-pointer ${
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-200 ease-in-out cursor-pointer ${
                         isConnected ? "bg-green-500" : "bg-gray-300"
                       } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-all duration-200 ease-in-out shadow-md ${
                           isConnected ? "translate-x-6" : "translate-x-0.5"
                     }`}
                   />

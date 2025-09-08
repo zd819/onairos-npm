@@ -32,8 +32,7 @@ const PageLayout = ({
     top: 0,
     backgroundColor: COLORS.background,
     zIndex: 10,
-    padding: '12px 24px 8px',
-    borderBottom: `1px solid ${COLORS.borderLight}`
+    padding: '12px 24px 8px'
   };
 
   const contentStyle = {

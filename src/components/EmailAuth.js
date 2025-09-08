@@ -3,7 +3,7 @@ import { Mail, ArrowRight, Check } from 'lucide-react';
 import PrimaryButton from './ui/PrimaryButton.jsx';
 import { COLORS } from '../theme/colors.js';
 
-export default function EmailAuth({ onSuccess, onBack, testMode = true }) {
+export default function EmailAuth({ onSuccess, testMode = true }) {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState('email'); // 'email' | 'code' | 'success'
@@ -69,6 +69,61 @@ export default function EmailAuth({ onSuccess, onBack, testMode = true }) {
       console.error('Email request error:', error);
       setError(error.message);
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    try {
+      // Use the same Google OAuth logic as UniversalOnboarding
+      const sdkConfig = {
+        baseUrl: 'https://api2.onairos.uk',
+        apiKey: window.onairosApiKey || 'test-key',
+        enableHealthMonitoring: true,
+        enableAutoRefresh: true,
+        enableConnectionValidation: true
+      };
+
+      const username = localStorage.getItem('username') || localStorage.getItem('onairosUser')?.email || 'user@example.com';
+      
+      const authorizeUrl = `${sdkConfig.baseUrl}/gmail/authorize`;
+      const params = new URLSearchParams({
+        username: username,
+        sdk_type: 'web',
+        return_url: window.location.origin + '/oauth-callback.html'
+      });
+
+      const fullUrl = `${authorizeUrl}?${params.toString()}`;
+      console.log('🔗 Starting Google OAuth from email flow...');
+      console.log('📋 Google OAuth URL:', fullUrl);
+
+      // Open popup for OAuth
+      const popup = window.open(
+        fullUrl,
+        'google_oauth',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
+      );
+
+      if (!popup) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
+      }
+
+      // Monitor popup for completion
+      const checkInterval = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkInterval);
+          console.log('✅ Google OAuth popup closed');
+          // Simulate successful OAuth for now
+          onSuccess({ 
+            email: 'user@gmail.com', 
+            method: 'google',
+            connectedAccounts: { Google: true }
+          });
+        }
+      }, 1000);
+
+    } catch (error) {
+      console.error('❌ Google OAuth failed:', error);
+      setError('Google authentication failed. Please try again.');
     }
   };
 
@@ -166,20 +221,8 @@ export default function EmailAuth({ onSuccess, onBack, testMode = true }) {
 
   const renderEmailStep = () => (
     <div className="w-full flex flex-col" style={{ height: '100%' }}>
-      {/* Header */}
-      <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
-        <button
-          onClick={onBack}
-          className="absolute left-6 top-6 p-1 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-      </div>
-
       {/* Content - Flexible center area */}
-      <div className="px-6 text-center flex-1 flex flex-col justify-center">
+      <div className="px-12 pt-16 pb-8 text-center flex-1 flex flex-col">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">
             Your AI persona is getting closer
@@ -193,7 +236,7 @@ export default function EmailAuth({ onSuccess, onBack, testMode = true }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
-            className="w-full px-4 py-4 text-base bg-gray-50 border-0 rounded-xl placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-gray-200 outline-none transition-all duration-200"
+            className="w-full max-w-sm mx-auto px-4 py-4 text-base bg-gray-50 border-0 rounded-xl placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-gray-200 outline-none transition-all duration-200"
             style={{ 
               fontFamily: 'Inter, system-ui, sans-serif'
             }}
@@ -208,10 +251,11 @@ export default function EmailAuth({ onSuccess, onBack, testMode = true }) {
         <div className="mb-8">
           <button
             type="button"
-            className="w-full py-4 text-base font-medium rounded-xl border border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-3 bg-transparent transition-colors"
+            className="w-full max-w-sm mx-auto py-4 text-base font-medium rounded-xl border border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-3 bg-transparent transition-colors"
             style={{ 
               fontFamily: 'Inter, system-ui, sans-serif'
             }}
+            onClick={handleGoogleAuth}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -244,9 +288,9 @@ export default function EmailAuth({ onSuccess, onBack, testMode = true }) {
       </div>
 
       {/* Continue Button - Fixed at bottom */}
-      <div className="px-6 pb-8 flex-shrink-0">
+      <div className="px-12 pb-8 flex-shrink-0">
         <button
-          className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+          className="w-full max-w-sm mx-auto bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
           onClick={handleEmailSubmit}
           disabled={isLoading || !email.trim()}
           style={{ 
@@ -265,9 +309,9 @@ export default function EmailAuth({ onSuccess, onBack, testMode = true }) {
   const renderCodeStep = () => (
     <div className="w-full flex flex-col" style={{ height: '100%' }}>
       {/* Heading - matching VerificationStep.tsx */}
-      <div className="w-full mb-10">
+      <div className="w-full pt-16 px-12 mb-10 text-center">
         <h1 
-          className="font-bold text-left mb-2"
+          className="font-bold mb-2"
           style={{ 
             fontFamily: 'IBM Plex Sans, system-ui, sans-serif',
             fontWeight: '700',
@@ -279,7 +323,7 @@ export default function EmailAuth({ onSuccess, onBack, testMode = true }) {
           Enter verification code
         </h1>
         <p 
-          className="text-left mb-2"
+          className="mb-2"
           style={{ 
             fontFamily: 'Inter, system-ui, sans-serif',
             fontWeight: '400',
@@ -292,22 +336,9 @@ export default function EmailAuth({ onSuccess, onBack, testMode = true }) {
         </p>
       </div>
 
-      {/* Test mode notice */}
-      {testMode && (
-        <div 
-          className="p-3 rounded-lg border text-center mb-6"
-          style={{ 
-            backgroundColor: '#EBF8FF', 
-            borderColor: '#BEE3F8',
-            color: '#2B6CB0'
-          }}
-        >
-          <p className="text-sm">Test mode: Use code 123456</p>
-        </div>
-      )}
 
       {/* Code Input - matching VerificationStep design with individual digit boxes */}
-      <div className="px-4 mb-6">
+      <div className="px-12 mb-6">
         <div className="flex justify-center space-x-3">
           {Array.from({ length: 6 }, (_, index) => (
             <input
@@ -346,41 +377,45 @@ export default function EmailAuth({ onSuccess, onBack, testMode = true }) {
 
       {/* Error Display */}
       {error && (
-        <div className="mb-6">
+        <div className="px-12 mb-6">
           <p className="text-sm text-center" style={{ color: COLORS.error }}>{error}</p>
         </div>
       )}
 
       {/* Continue Button - positioned right below code inputs */}
-      <div className="w-full mb-6">
-        <PrimaryButton
-          label="Continue"
-          onClick={handleCodeSubmit}
-          loading={isLoading}
-          disabled={isLoading || code.length !== 6}
-          testId="verify-code-button"
-        />
+      <div className="px-12 mb-6">
+        <div className="max-w-sm mx-auto">
+          <PrimaryButton
+            label="Continue"
+            onClick={handleCodeSubmit}
+            loading={isLoading}
+            disabled={isLoading || code.length !== 6}
+            testId="verify-code-button"
+          />
+        </div>
       </div>
 
       {/* Spacer */}
       <div style={{ flex: 1, minHeight: '20px' }} />
 
       {/* Back to email option */}
-      <div className="w-full">
-        <button
-          type="button"
-          onClick={() => setStep('email')}
-          className="w-full py-2 px-4 font-medium transition-colors text-sm"
-          style={{ color: COLORS.textSecondary }}
-        >
-          Use a different email
-        </button>
+      <div className="px-12 w-full">
+        <div className="max-w-sm mx-auto">
+          <button
+            type="button"
+            onClick={() => setStep('email')}
+            className="w-full py-2 px-4 font-medium transition-colors text-sm"
+            style={{ color: COLORS.textSecondary }}
+          >
+            Use a different email
+          </button>
+        </div>
       </div>
     </div>
   );
 
   const renderSuccessStep = () => (
-    <div className="w-full flex flex-col items-center space-y-6">
+    <div className="w-full flex flex-col items-center space-y-6 pt-16 px-12">
       <div 
         className="flex items-center justify-center w-16 h-16 rounded-full"
         style={{ backgroundColor: '#D1FAE5' }}

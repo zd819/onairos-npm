@@ -4,18 +4,6 @@ import { COLORS } from '../theme/colors.js';
 export default function WelcomeScreen({ onContinue, onClose }) {
   return (
     <div className="w-full flex flex-col" style={{ height: '100%' }}>
-      {/* Header with close button */}
-      <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
-        <button
-          onClick={onClose}
-          className="absolute left-6 top-6 p-1 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
       {/* Content - Flexible center area */}
       <div className="px-6 text-center flex-1 flex flex-col justify-center">
         {/* Avatar */}

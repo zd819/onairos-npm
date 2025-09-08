@@ -41,23 +41,11 @@ export default function LoadingScreen({ onComplete }) {
   const currentState = loadingStates[currentStep];
 
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-end justify-center">
+    <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center p-6">
       {/* Modal - Full height from bottom */}
-      <div className="bg-white rounded-t-3xl w-full max-w-sm mx-auto shadow-2xl overflow-hidden h-screen max-h-screen flex flex-col">
+      <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden h-screen max-h-screen flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
         {/* Header */}
-        <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
-          <div className="absolute left-6 top-6 p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer">
-            <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="flex justify-center mb-8">
-            <div className="w-24 h-1 bg-gray-300 rounded-full">
-              <div className="w-16 h-1 bg-gray-900 rounded-full"></div>
-            </div>
-          </div>
+        <div className="px-6 pt-6 pb-4 flex-shrink-0">
         </div>
 
         {/* Content - Centered loading state */}

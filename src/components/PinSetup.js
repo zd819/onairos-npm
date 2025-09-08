@@ -32,7 +32,7 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
   return (
     <div className="w-full h-full flex flex-col" style={{ height: '100%', minHeight: 0 }}>
       {/* Content - Flexible center area */}
-      <div className="px-6 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }}>
+      <div className="px-6 pt-16 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }}>
         <div className="mb-6 flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Create a PIN</h1>
           <p className="text-gray-600 text-base">A PIN so only you have the access to your data</p>
@@ -98,10 +98,12 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
       {/* Buttons - Fixed at bottom */}
       <div className="px-6 pb-6 pt-4 flex-shrink-0 space-y-3" style={{ minHeight: 'auto' }}>
         <div
-          className={`w-full rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors ${
-            allRequirementsMet ? "bg-gray-900 hover:bg-gray-800 text-white" : "bg-gray-400 text-white"
+          className={`w-full rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 transition-colors ${
+            allRequirementsMet 
+              ? "bg-gray-900 hover:bg-gray-800 text-white cursor-pointer" 
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
-          onClick={handleSubmit}
+          onClick={allRequirementsMet ? handleSubmit : undefined}
         >
           Continue
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

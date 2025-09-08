@@ -324,7 +324,7 @@ const DataRequest = ({
   return (
     <div className="w-full h-full flex flex-col">
       {/* Content - Flexible center area */}
-      <div className="px-6 flex-1 flex flex-col min-h-0 pb-4">
+      <div className="px-6 pt-16 flex-1 flex flex-col min-h-0 pb-4">
         {/* Icon Flow */}
         <div className="mb-6 flex justify-center items-center gap-4 flex-shrink-0">
           <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center border border-gray-100">
