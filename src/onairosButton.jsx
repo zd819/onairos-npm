@@ -27,7 +27,8 @@ export function OnairosButton({
   appIcon = null,
   enableTraining = true,
   formatResponse = true,
-  responseFormat = { includeDictionary: true, includeArray: true }
+  responseFormat = { includeDictionary: true, includeArray: true },
+  priorityPlatform = null // Platform to prioritize (e.g., 'gmail', 'pinterest', 'linkedin')
 }) {
 
   const [showOverlay, setShowOverlay] = useState(false);
@@ -318,6 +319,7 @@ export function OnairosButton({
             appName={webpageName}
             username={userData?.email || userData?.username}
             testMode={testMode}
+            priorityPlatform={priorityPlatform}
           />
         );
       
@@ -468,6 +470,7 @@ export function OnairosButton({
                   appName={webpageName}
                   username={userData?.email || userData?.username}
                   testMode={testMode}
+                  priorityPlatform={priorityPlatform}
                 />
               </div>
             </div>
