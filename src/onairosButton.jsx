@@ -294,6 +294,9 @@ export function OnairosButton({
           <WelcomeScreen 
             onContinue={handleWelcomeContinue}
             onClose={handleCloseOverlay}
+            webpageName={webpageName}
+            appIcon={appIcon}
+            testMode={testMode}
           />
         );
       case 'email':

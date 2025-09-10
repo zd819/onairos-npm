@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, ArrowRight, Check } from 'lucide-react';
 import PrimaryButton from './ui/PrimaryButton.jsx';
 import { COLORS } from '../theme/colors.js';
@@ -9,6 +9,19 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
   const [step, setStep] = useState('email'); // 'email' | 'code' | 'success'
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-focus first PIN input when code step loads
+  useEffect(() => {
+    if (step === 'code') {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        const firstInput = document.querySelector('input[maxLength="1"]');
+        if (firstInput) {
+          firstInput.focus();
+        }
+      }, 100);
+    }
+  }, [step]);
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -225,7 +238,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
       <div className="px-12 pt-16 pb-8 text-center flex-1 flex flex-col">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">
-            Your AI persona is getting closer
+            Use pre-existing Persona or create a new one in seconds
           </h1>
           <p className="text-gray-600 text-base">Sign in or create an account</p>
         </div>

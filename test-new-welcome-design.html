@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onairos SDK - New Welcome Design Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            border-bottom: 1px solid #e5e5e5;
+            padding-bottom: 24px;
+        }
+        
+        .test-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        h1 {
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+        
+        h2 {
+            color: #4a4a4a;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+        
+        .description {
+            color: #6a6a6a;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        
+        .test-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .test-btn {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .test-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .logs {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            border-left: 4px solid #007acc;
+        }
+        
+        .log-entry {
+            margin-bottom: 4px;
+            color: #2d3748;
+        }
+        
+        .log-time {
+            color: #718096;
+            margin-right: 8px;
+        }
+        
+        .app-icon-preview {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-right: 12px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎨 Onairos SDK - New Welcome Screen Design</h1>
+        <p class="description">
+            Test the redesigned welcome screen with different app configurations. 
+            The new design features:
+        </p>
+        <ul>
+            <li><strong>Higher "Welcome to" text</strong> when app info is provided</li>
+            <li><strong>Visual data flow</strong>: Onairos → Arrow → Your App</li>
+            <li><strong>App names below logos</strong> for clear identification</li>
+            <li><strong>Dynamic description</strong> mentioning the specific app name</li>
+            <li><strong>Test mode fallbacks</strong> with colorful placeholder icons</li>
+        </ul>
+
+        <div class="test-section">
+            <h2>🏢 Test with App Name & Icon</h2>
+            <p class="description">
+                <span class="app-icon-preview">M</span>
+                Shows the full visual flow: Onairos → data → MyApp with both logos displayed
+            </p>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="testWithAppInfo()">Test with MyApp & Icon</button>
+                <button class="test-btn" onclick="testWithRealApp()">Test with Spotify Example</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📱 Test App Name Only</h2>
+            <p class="description">
+                Uses test mode placeholder icon (colorful gradient with first letter)
+            </p>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="testAppNameOnly()">Test Name Only</button>
+                <button class="test-btn" onclick="testLongAppName()">Test Long App Name</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 Test Default (No App Info)</h2>
+            <p class="description">
+                Falls back to original single Onairos logo design with generic text
+            </p>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="testDefault()">Test Default Design</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔄 Test Complete Flow</h2>
+            <p class="description">
+                See the complete onboarding flow with the new welcome screen
+            </p>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="testCompleteFlow()">Test Full Flow</button>
+            </div>
+        </div>
+
+        <div class="logs" id="logs">
+            <div class="log-entry">
+                <span class="log-time">[Ready]</span>
+                <span>🎨 New Welcome Screen Design Test Ready</span>
+            </div>
+            <div class="log-entry">
+                <span class="log-time">[Info]</span>
+                <span>📋 Click any test button to see the new welcome screen design</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load React and ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <script>
+        let onairosInstance = null;
+        
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            let icon = '📝';
+            if (type === 'success') icon = '✅';
+            if (type === 'error') icon = '❌';
+            if (type === 'test') icon = '🧪';
+            
+            logEntry.innerHTML = `
+                <span class="log-time">[${time}]</span>
+                <span>${icon} ${message}</span>
+            `;
+            
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        // Load Onairos SDK
+        const script = document.createElement('script');
+        script.src = './dist/onairos.bundle.js';
+        script.onload = () => {
+            log('Onairos SDK loaded successfully', 'success');
+        };
+        script.onerror = () => {
+            log('Failed to load Onairos SDK', 'error');
+        };
+        document.head.appendChild(script);
+
+        function testWithAppInfo() {
+            log('Testing with app name and custom icon', 'test');
+            
+            // Create a simple app icon (data URL for a colorful square)
+            const appIcon = 'data:image/svg+xml;base64,' + btoa(`
+                <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#667eea"/>
+                            <stop offset="100%" style="stop-color:#764ba2"/>
+                        </linearGradient>
+                    </defs>
+                    <rect width="48" height="48" rx="12" fill="url(#grad)"/>
+                    <text x="24" y="32" font-family="Arial" font-size="20" font-weight="bold" text-anchor="middle" fill="white">M</text>
+                </svg>
+            `);
+            
+            if (window.OnairosButton) {
+                onairosInstance = new window.OnairosButton({
+                    requestData: ['personality', 'traits'],
+                    webpageName: 'MyApp',
+                    appIcon: appIcon,
+                    testMode: true,
+                    onComplete: (data) => {
+                        log('SDK completed with data: ' + JSON.stringify(data, null, 2), 'success');
+                    }
+                });
+                onairosInstance.render(document.body);
+                log('Rendered SDK with MyApp and custom icon', 'success');
+            } else {
+                log('OnairosButton not available yet', 'error');
+            }
+        }
+
+        function testWithRealApp() {
+            log('Testing with Spotify example', 'test');
+            
+            // Use Spotify's actual logo
+            const spotifyIcon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Spotify_icon.svg/232px-Spotify_icon.svg.png';
+            
+            if (window.OnairosButton) {
+                onairosInstance = new window.OnairosButton({
+                    requestData: ['personality', 'traits', 'interests'],
+                    webpageName: 'Spotify',
+                    appIcon: spotifyIcon,
+                    testMode: true,
+                    onComplete: (data) => {
+                        log('SDK completed with data: ' + JSON.stringify(data, null, 2), 'success');
+                    }
+                });
+                onairosInstance.render(document.body);
+                log('Rendered SDK with Spotify branding', 'success');
+            } else {
+                log('OnairosButton not available yet', 'error');
+            }
+        }
+
+        function testAppNameOnly() {
+            log('Testing with app name only (test mode placeholder)', 'test');
+            
+            if (window.OnairosButton) {
+                onairosInstance = new window.OnairosButton({
+                    requestData: ['personality', 'traits'],
+                    webpageName: 'CoolApp',
+                    testMode: true,
+                    onComplete: (data) => {
+                        log('SDK completed with data: ' + JSON.stringify(data, null, 2), 'success');
+                    }
+                });
+                onairosInstance.render(document.body);
+                log('Rendered SDK with app name only (should show gradient placeholder)', 'success');
+            } else {
+                log('OnairosButton not available yet', 'error');
+            }
+        }
+
+        function testLongAppName() {
+            log('Testing with long app name', 'test');
+            
+            if (window.OnairosButton) {
+                onairosInstance = new window.OnairosButton({
+                    requestData: ['personality'],
+                    webpageName: 'MyVeryLongApplicationName',
+                    testMode: true,
+                    onComplete: (data) => {
+                        log('SDK completed with data: ' + JSON.stringify(data, null, 2), 'success');
+                    }
+                });
+                onairosInstance.render(document.body);
+                log('Rendered SDK with long app name (should truncate nicely)', 'success');
+            } else {
+                log('OnairosButton not available yet', 'error');
+            }
+        }
+
+        function testDefault() {
+            log('Testing default design (no app info)', 'test');
+            
+            if (window.OnairosButton) {
+                onairosInstance = new window.OnairosButton({
+                    requestData: ['personality', 'traits'],
+                    testMode: true,
+                    onComplete: (data) => {
+                        log('SDK completed with data: ' + JSON.stringify(data, null, 2), 'success');
+                    }
+                });
+                onairosInstance.render(document.body);
+                log('Rendered SDK with default design (should show original layout)', 'success');
+            } else {
+                log('OnairosButton not available yet', 'error');
+            }
+        }
+
+        function testCompleteFlow() {
+            log('Testing complete flow with new design', 'test');
+            
+            if (window.OnairosButton) {
+                onairosInstance = new window.OnairosButton({
+                    requestData: ['personality', 'traits', 'interests'],
+                    webpageName: 'TestApp',
+                    testMode: true,
+                    enableTraining: true,
+                    onComplete: (data) => {
+                        log('Complete flow finished: ' + JSON.stringify(data, null, 2), 'success');
+                    }
+                });
+                onairosInstance.render(document.body);
+                log('Started complete flow test (Welcome → Email → Code → Connectors → Training → Data)', 'success');
+            } else {
+                log('OnairosButton not available yet', 'error');
+            }
+        }
+
+        // Clean up function
+        function cleanup() {
+            if (onairosInstance) {
+                onairosInstance.destroy();
+                onairosInstance = null;
+                log('Cleaned up previous SDK instance', 'info');
+            }
+        }
+
+        // Add cleanup before each test
+        window.addEventListener('beforeunload', cleanup);
+        
+        // Override test functions to include cleanup
+        const originalTests = {
+            testWithAppInfo,
+            testWithRealApp,
+            testAppNameOnly,
+            testLongAppName,
+            testDefault,
+            testCompleteFlow
+        };
+
+        Object.keys(originalTests).forEach(testName => {
+            window[testName] = function() {
+                cleanup();
+                setTimeout(() => originalTests[testName](), 100);
+            };
+        });
+    </script>
+</body>
+</html>

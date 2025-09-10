@@ -421,19 +421,19 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   return (
     <div className="w-full h-full flex flex-col" style={{ height: '100%', minHeight: 0 }}>
       {/* Content - Flexible center area */}
-      <div className="px-6 pt-16 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }}>
-        <div className="mb-6 flex-shrink-0">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">Connect app data</h1>
-          <p className="text-gray-600 text-base">More connections, better personalization.</p>
-          </div>
+      <div className="px-6 pt-12 flex-shrink-0">
+        <div className="mb-4 flex-shrink-0">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">Connect data, securely</h1>
+          <p className="text-gray-600 text-base">More data, means a better Experience on {appName}.</p> 
+        </div>
 
-        <div className="mb-2 flex justify-center flex-shrink-0">
-          <div className="w-56 h-56 overflow-hidden">
+        <div className="mb-4 flex justify-center flex-shrink-0">
+          <div className="w-64 h-64 overflow-hidden">
             <img
               src={personaImages[personaNumber]}
               alt={`Persona ${personaNumber}`}
-              width="224"
-              height="224"
+              width="256"
+              height="256"
               className="w-full h-full object-cover"
               onLoad={() => console.log('✅ Persona image loaded successfully!')}
               onError={(e) => {
@@ -448,13 +448,14 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                 e.target.style.display = 'none';
                 e.target.parentElement.style.background = 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)';
               }}
-          />
+            />
+          </div>
         </div>
       </div>
 
-        {/* Scrollable platform list */}
-        <div className="flex-1 overflow-y-auto mt-4" style={{ minHeight: 0 }}>
-          <div className="space-y-4 pb-4">
+      {/* Scrollable platform list - Reduced height */}
+      <div className="flex-1 overflow-y-auto px-6" style={{ minHeight: 0, maxHeight: '40vh' }}>
+          <div className="space-y-3 pb-4">
             {platforms.map((platform) => {
           const isConnected = connectedAccounts[platform.name] || false;
           const isCurrentlyConnecting = connectingPlatform === platform.name;
@@ -464,7 +465,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           return (
             <div 
               key={platform.name}
-                  className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="flex items-start gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors"
                   style={{
                     backgroundColor: "#ffffff",
                     border: "none",
@@ -530,9 +531,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
             </div>
           );
         })}
-      </div>
+          </div>
         </div>
-      </div>
 
       {/* Buttons - Fixed at bottom */}
       <div className="px-6 pb-6 pt-4 flex-shrink-0 space-y-3" style={{ minHeight: 'auto' }}>
