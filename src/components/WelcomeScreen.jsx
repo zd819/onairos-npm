@@ -1,28 +1,34 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { COLORS } from '../theme/colors.js';
 
 export default function WelcomeScreen({ onContinue, onClose }) {
+  // Load Sirv script for responsive images
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://scripts.sirv.com/sirvjs/v3/sirv.js';
+    script.async = true;
+    document.head.appendChild(script);
+    
+    return () => {
+      const existingScript = document.querySelector('script[src="https://scripts.sirv.com/sirvjs/v3/sirv.js"]');
+      if (existingScript) {
+        document.head.removeChild(existingScript);
+      }
+    };
+  }, []);
+
   return (
     <div className="w-full flex flex-col" style={{ height: '100%' }}>
       {/* Content - Flexible center area */}
       <div className="px-6 text-center flex-1 flex flex-col justify-center">
-        {/* Avatar */}
+        {/* Logo */}
         <div className="mb-8 flex justify-center">
-          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
-            <div className="w-8 h-8 relative">
-              {/* VR Headset Icon */}
-              <svg viewBox="0 0 32 32" className="w-full h-full">
-                <path
-                  d="M4 12c0-2.2 1.8-4 4-4h16c2.2 0 4 1.8 4 4v8c0 2.2-1.8 4-4 4h-4l-2-3h-4l-2 3H8c-2.2 0-4-1.8-4-4v-8z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-                <circle cx="10" cy="16" r="2" fill="currentColor" />
-                <circle cx="22" cy="16" r="2" fill="currentColor" />
-                <path d="M12 24c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2" stroke="currentColor" strokeWidth="2" fill="none" />
-              </svg>
-            </div>
+          <div className="w-20 h-20 flex items-center justify-center">
+            <img 
+              className="Sirv w-full h-full object-contain" 
+              data-src="https://anushkasirv.sirv.com/OnairosBlack.png" 
+              alt="Onairos Logo"
+            />
           </div>
         </div>
 
