@@ -43,7 +43,7 @@ export default function LoadingScreen({ onComplete }) {
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center p-6">
       {/* Modal - Full height from bottom */}
-      <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden h-screen max-h-screen flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
+      <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
         {/* Header */}
         <div className="px-6 pt-6 pb-4 flex-shrink-0">
         </div>
@@ -51,14 +51,14 @@ export default function LoadingScreen({ onComplete }) {
         {/* Content - Centered loading state */}
         <div className="flex-1 flex flex-col justify-center items-center px-6">
           <div className="text-center mb-12">
-            <h1 className="text-lg font-bold text-gray-900 mb-8 leading-tight">
+            <h1 className="font-bold text-gray-900 leading-tight" style={{ fontSize: 'clamp(16px, 4vw, 20px)', marginBottom: 'clamp(24px, 6vw, 48px)' }}>
               {currentState.message}
               {currentState.message !== "Complete!" && (
                 <span className="inline-block w-8 text-left">{".".repeat(dotCount)}</span>
               )}
             </h1>
 
-            <div className="w-64 mx-auto">
+            <div className="mx-auto" style={{ width: 'clamp(200px, 50vw, 300px)' }}>
               <div className="w-full h-2 bg-gray-200 rounded-full">
                 <div
                   className="h-2 bg-gray-900 rounded-full transition-all duration-1000 ease-out"

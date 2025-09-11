@@ -32,12 +32,12 @@ const PageLayout = ({
     top: 0,
     backgroundColor: COLORS.background,
     zIndex: 10,
-    padding: '12px 24px 8px'
+    padding: 'clamp(8px, 2vw, 16px) clamp(16px, 4vw, 32px) clamp(6px, 1.5vw, 12px)'
   };
 
   const contentStyle = {
     flex: 1,
-    padding: '24px',
+    padding: 'clamp(16px, 4vw, 32px)',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'auto',
@@ -50,31 +50,32 @@ const PageLayout = ({
 
   const titleStyle = {
     fontFamily: 'Inter, system-ui, sans-serif',
-    fontSize: '24px',
+    fontSize: 'clamp(20px, 5vw, 28px)',
     fontWeight: '700',
     color: COLORS.textPrimary,
-    margin: '0 0 8px 0',
-    textAlign: centerContent ? 'center' : 'left'
+    margin: '0 0 clamp(6px, 1.5vw, 12px) 0',
+    textAlign: centerContent ? 'center' : 'left',
+    lineHeight: '1.2'
   };
 
   const subtitleStyle = {
     fontFamily: 'Inter, system-ui, sans-serif',
-    fontSize: '16px',
+    fontSize: 'clamp(14px, 3.5vw, 18px)',
     fontWeight: '400',
     color: COLORS.textSecondary,
-    margin: '0 0 32px 0',
+    margin: '0 0 clamp(20px, 5vw, 40px) 0',
     textAlign: centerContent ? 'center' : 'left',
     lineHeight: '1.5'
   };
 
   const iconStyle = {
-    width: '48px',
-    height: '48px',
-    margin: '0 auto 24px',
+    width: 'clamp(40px, 8vw, 56px)',
+    height: 'clamp(40px, 8vw, 56px)',
+    margin: '0 auto clamp(16px, 4vw, 32px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '24px'
+    fontSize: 'clamp(20px, 5vw, 28px)'
   };
 
   return (
@@ -178,7 +179,7 @@ const ModalPageLayout = ({
     borderTopRightRadius: '24px',
     borderBottomLeftRadius: '24px',
     borderBottomRightRadius: '24px',
-    height: '100vh',
+    height: '90vh',
     width: '100%',
     maxWidth: '500px',
     boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.3)',

@@ -419,16 +419,16 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   const personaNumber = Math.min(connectedCount + 1, 5); // 0 connections = persona 1, 1 connection = persona 2, etc.
 
   return (
-    <div className="w-full h-full flex flex-col" style={{ height: '100%', minHeight: 0 }}>
+    <div className="w-full h-full flex flex-col" style={{ height: '90vh', minHeight: 0 }}>
       {/* Content - Flexible center area */}
-      <div className="px-6 pt-16 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }}>
-        <div className="mb-6 flex-shrink-0">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">Connect app data</h1>
-          <p className="text-gray-600 text-base">More connections, better personalization.</p>
-          </div>
+      <div className="px-6 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden', paddingTop: 'clamp(16px, 4vw, 32px)' }}>
+        <div className="mb-2 flex-shrink-0 text-center">
+          <h1 className="font-bold text-gray-900 leading-tight" style={{ fontSize: 'clamp(18px, 4.5vw, 24px)', marginBottom: 'clamp(2px, 0.5vw, 4px)', lineHeight: '1.2' }}>Connect app data</h1>
+          <p className="text-gray-600" style={{ fontSize: 'clamp(12px, 3vw, 16px)', lineHeight: '1.3' }}>More connections, better personalization.</p>
+        </div>
 
-        <div className="mb-2 flex justify-center flex-shrink-0">
-          <div className="w-56 h-56 overflow-hidden">
+        <div className="flex justify-center flex-shrink-0" style={{ marginBottom: 'clamp(8px, 2vw, 16px)' }}>
+          <div className="overflow-hidden rounded-2xl" style={{ width: 'clamp(150px, 35vw, 200px)', height: 'clamp(150px, 35vw, 200px)' }}>
             <img
               src={personaImages[personaNumber]}
               alt={`Persona ${personaNumber}`}
@@ -448,13 +448,13 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                 e.target.style.display = 'none';
                 e.target.parentElement.style.background = 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)';
               }}
-          />
+            />
+          </div>
         </div>
-      </div>
 
         {/* Scrollable platform list */}
-        <div className="flex-1 overflow-y-auto mt-4" style={{ minHeight: 0 }}>
-          <div className="space-y-4 pb-4">
+        <div className="flex-1 overflow-y-auto" style={{ minHeight: '250px', maxHeight: '600px', marginTop: 'clamp(6px, 1.5vw, 12px)' }}>
+          <div className="pb-20" style={{ gap: 'clamp(3px, 0.8vw, 6px)', display: 'flex', flexDirection: 'column' }}>
             {platforms.map((platform) => {
           const isConnected = connectedAccounts[platform.name] || false;
           const isCurrentlyConnecting = connectingPlatform === platform.name;
@@ -464,15 +464,18 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           return (
             <div 
               key={platform.name}
-                  className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="flex items-center rounded-xl hover:bg-gray-50 transition-all duration-200 cursor-pointer"
                   style={{
                     backgroundColor: "#ffffff",
-                    border: "none",
                     outline: "none",
+                    gap: 'clamp(6px, 1.5vw, 10px)',
+                    padding: 'clamp(6px, 1.5vw, 10px)',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                    marginBottom: 'clamp(3px, 0.8vw, 6px)'
                   }}
               onClick={() => !isDisabled && handleToggle(platform.name)}
             >
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0 border border-gray-100">
+                  <div className="bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-gray-200" style={{ width: 'clamp(28px, 6vw, 36px)', height: 'clamp(28px, 6vw, 36px)' }}>
                   {isCurrentlyConnecting ? (
                       <div className="animate-spin h-5 w-5 border-2 border-gray-400 rounded-full border-t-transparent"></div>
                   ) : (
@@ -481,27 +484,26 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                     </div>
                   <div className="flex-1 min-w-0 pr-4">
                     <h3
-                      className="font-medium mb-1"
+                      className="font-semibold"
                       style={{
-                        backgroundColor: "#ffffff !important",
-                        color: "#111827 !important",
-                        border: "none",
-                        outline: "none",
+                        color: "#111827",
+                        fontSize: 'clamp(12px, 2.8vw, 15px)',
+                        marginBottom: 'clamp(1px, 0.3vw, 3px)',
+                        lineHeight: '1.2'
                       }}
                     >
                       {platform.name}
                     </h3>
                     <p
-                      className="text-sm leading-relaxed"
+                      className="leading-tight"
                       style={{
-                        backgroundColor: "#ffffff !important",
-                        color: "#4B5563 !important",
-                        border: "none",
-                        outline: "none",
+                        color: "#6B7280",
+                        fontSize: 'clamp(10px, 2.2vw, 12px)',
+                        lineHeight: '1.3'
                       }}
                     >
                       {platform.description}
-                  </p>
+                    </p>
                   
                   {/* Error Message */}
                   {hasError && (
@@ -516,29 +518,43 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                     e.stopPropagation();
                     if (!isDisabled) handleToggle(platform.name);
                   }}
-                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-200 ease-in-out cursor-pointer ${
-                        isConnected ? "bg-green-500" : "bg-gray-300"
+                      className={`relative inline-flex items-center rounded-full transition-all duration-300 ease-in-out cursor-pointer ${
+                        isConnected ? "bg-blue-500" : "bg-gray-300"
                       } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      style={{ 
+                        height: 'clamp(20px, 4vw, 26px)', 
+                        width: 'clamp(40px, 8vw, 52px)',
+                        boxShadow: isConnected ? '0 2px 4px rgba(59, 130, 246, 0.3)' : '0 1px 2px rgba(0, 0, 0, 0.1)'
+                      }}
                 >
                   <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-all duration-200 ease-in-out shadow-md ${
+                        className={`inline-block rounded-full bg-white transition-all duration-300 ease-in-out shadow-lg ${
                           isConnected ? "translate-x-6" : "translate-x-0.5"
                     }`}
+                        style={{ 
+                          height: 'clamp(16px, 3.5vw, 20px)', 
+                          width: 'clamp(16px, 3.5vw, 20px)'
+                        }}
                   />
                     </div>
               </div>
             </div>
           );
         })}
-      </div>
+          </div>
         </div>
       </div>
 
       {/* Buttons - Fixed at bottom */}
-      <div className="px-6 pb-6 pt-4 flex-shrink-0 space-y-3" style={{ minHeight: 'auto' }}>
+      <div className="flex-shrink-0" style={{ padding: 'clamp(8px, 2vw, 16px) clamp(16px, 4vw, 24px)', minHeight: 'auto', display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 10px)' }}>
         <div
-          className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors"
-        onClick={handleContinue}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 shadow-lg hover:shadow-xl"
+          style={{ 
+            padding: 'clamp(10px, 2.5vw, 14px)', 
+            fontSize: 'clamp(13px, 3.2vw, 16px)',
+            minHeight: 'clamp(36px, 7vw, 44px)'
+          }}
+          onClick={handleContinue}
         >
           Update
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -547,7 +563,12 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         </div>
         <div
         onClick={() => onComplete({ connectedAccounts: [], totalConnections: 0 })}
-          className="w-full text-gray-600 text-base font-medium py-3 text-center cursor-pointer hover:text-gray-800 transition-colors"
+          className="w-full text-gray-500 font-medium text-center cursor-pointer hover:text-gray-700 transition-colors"
+          style={{ 
+            padding: 'clamp(6px, 1.5vw, 10px)', 
+            fontSize: 'clamp(12px, 3vw, 15px)',
+            minHeight: 'clamp(28px, 5vw, 36px)'
+          }}
       >
           Skip
         </div>

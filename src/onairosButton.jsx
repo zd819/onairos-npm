@@ -419,7 +419,7 @@ export function OnairosButton({
           {currentFlow === 'email' ? (
             // Special case for email - render directly without PageLayout wrapper
             <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-6">
-              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
@@ -444,7 +444,7 @@ export function OnairosButton({
           ) : currentFlow === 'onboarding' ? (
             // Special case for onboarding - render directly without PageLayout wrapper
             <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-6">
-              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
@@ -471,7 +471,7 @@ export function OnairosButton({
           ) : currentFlow === 'dataRequest' ? (
             // Special case for dataRequest - render directly without PageLayout wrapper
             <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-6">
-              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
@@ -500,7 +500,7 @@ export function OnairosButton({
           ) : currentFlow === 'pin' ? (
             // Special case for pin - render directly without PageLayout wrapper
             <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-6">
-              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100vh' }}>
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
