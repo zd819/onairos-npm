@@ -32,7 +32,7 @@ const dataTypes = [
   }
 ];
 
-// Data Type Toggle Component with new checkbox design
+// Data Type Toggle Component with compact checkbox design
 const DataTypeToggle = ({ dataType, isEnabled, onToggle, isLast }) => {
   const handleToggle = () => {
     if (dataType.required) return; // Don't allow toggling required items
@@ -40,7 +40,7 @@ const DataTypeToggle = ({ dataType, isEnabled, onToggle, isLast }) => {
   };
 
   const getIconComponent = (iconName) => {
-    const iconProps = { className: "w-5 h-5 text-gray-600" };
+    const iconProps = { className: "w-4 h-4 text-gray-600" };
     
     switch (iconName) {
       case 'User':
@@ -62,26 +62,28 @@ const DataTypeToggle = ({ dataType, isEnabled, onToggle, isLast }) => {
           </svg>
         );
       default:
-        return <span className="text-xl">{iconName}</span>;
+        return <span className="text-lg">{iconName}</span>;
     }
   };
 
-  return (
-    <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50">
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-          {getIconComponent(dataType.icon)}
-        </div>
-        <span className="font-medium text-gray-900">{dataType.name}</span>
-      </div>
+            return (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                    <div className="flex items-center gap-4">
+                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                            {getIconComponent(dataType.icon)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <span className="font-medium text-gray-900 text-sm">{dataType.name}</span>
+                        </div>
+                    </div>
       <div
         onClick={handleToggle}
-        className={`w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${
+        className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-colors flex-shrink-0 ${
           isEnabled ? "bg-gray-900 border-gray-900" : "bg-white border-gray-300"
         }`}
       >
         {isEnabled && (
-          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
             <path
               fillRule="evenodd"
               d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -322,13 +324,13 @@ const DataRequest = ({
   const selectedCount = Object.values(selectedData).filter(Boolean).length;
 
   return (
-    <div className="w-full h-full flex flex-col">
-      {/* Content - Flexible center area */}
-      <div className="px-6 pt-16 flex-1 flex flex-col min-h-0 pb-4">
+    <div className="w-full h-full flex flex-col min-h-0">
+      {/* Content - Flexible center area with proper constraints */}
+      <div className="px-6 pt-16 flex-1 flex flex-col min-h-0" style={{ minHeight: 'calc(100vh - 200px)' }}>
         {/* Icon Flow */}
-        <div className="mb-6 flex justify-center items-center gap-4 flex-shrink-0">
-          <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center border border-gray-100">
-            <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none">
+        <div className="mb-4 flex justify-center items-center gap-4 flex-shrink-0">
+          <div className="w-12 h-12 bg-white rounded-xl shadow-lg flex items-center justify-center border border-gray-100">
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
               <path
                 d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2Z"
                 fill="black"
@@ -339,25 +341,25 @@ const DataRequest = ({
               />
             </svg>
           </div>
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-          <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center border border-gray-100">
-            <span className="text-2xl font-serif font-bold text-black">E</span>
+          <div className="w-12 h-12 bg-white rounded-xl shadow-lg flex items-center justify-center border border-gray-100">
+            <span className="text-xl font-serif font-bold text-black">E</span>
           </div>
         </div>
 
         {/* Title Section */}
-        <div className="mb-6 flex-shrink-0">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">
+        <div className="mb-4 flex-shrink-0">
+          <h1 className="text-xl font-bold text-gray-900 mb-2 text-balance leading-tight">
             Enoch wants to personalize your experience
           </h1>
-          <p className="text-gray-600 text-base">Choose what to share:</p>
+          <p className="text-gray-600 text-sm">Choose what to share:</p>
         </div>
 
-        {/* Consent Options */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="space-y-4 pb-6">
+        {/* Consent Options - Scrollable area */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="space-y-4 pb-4">
             {dataTypes.map((dataType, index) => (
               <DataTypeToggle
                 key={dataType.id}
@@ -371,10 +373,10 @@ const DataRequest = ({
         </div>
       </div>
 
-      {/* Buttons - Fixed at bottom */}
-      <div className="px-6 pb-8 pt-4 flex-shrink-0 space-y-3">
+      {/* Buttons - Fixed at bottom with guaranteed visibility */}
+      <div className="px-6 pb-6 pt-3 flex-shrink-0 space-y-2 bg-white border-t border-gray-100">
         <div
-          className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors"
+          className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-3 text-sm font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={fetchUserData}
           disabled={isLoadingApi || selectedCount === 0}
         >
@@ -385,15 +387,15 @@ const DataRequest = ({
         </div>
         <div
           onClick={() => onComplete({ cancelled: true })}
-          className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full py-4 text-base font-medium text-center cursor-pointer transition-colors"
+          className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full py-3 text-sm font-medium text-center cursor-pointer transition-colors"
         >
           Decline
         </div>
 
         {/* Error display */}
         {apiError && (
-          <div className="mt-4 p-3 rounded-lg text-center bg-red-50 border border-red-200 text-red-600">
-            <p className="text-sm">{apiError}</p>
+          <div className="mt-3 p-3 rounded-lg text-center bg-red-50 border border-red-200 text-red-600">
+            <p className="text-xs">{apiError}</p>
           </div>
         )}
       </div>
