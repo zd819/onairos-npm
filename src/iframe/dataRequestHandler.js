@@ -64,13 +64,28 @@ function createDynamicPopupContent(data) {
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
             background-color: #f9fafb;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .min-h-screen {
+            min-height: 100vh;
+            max-height: 100vh;
+        }
+        .flex-1 {
+            flex: 1;
+        }
+        .mt-auto {
+            margin-top: auto;
+        }
+        .flex-shrink-0 {
+            flex-shrink: 0;
         }
     </style>
 </head>
 <body>
-    <div class="min-h-screen bg-gray-50 py-8 px-4">
-        <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg">
-            <div class="p-6">
+    <div class="min-h-screen bg-gray-50 py-4 px-4 flex flex-col">
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg flex flex-col flex-1">
+            <div class="p-4 flex-1 flex flex-col">
                 <div class="text-center mb-6">
                     <div class="flex items-center justify-center space-x-2 mb-4">
                         <img src="https://onairos.sirv.com/Images/OnairosBlack.png" alt="Onairos Logo" class="w-8 h-8">
@@ -82,7 +97,7 @@ function createDynamicPopupContent(data) {
                     <p class="text-gray-600">${webpageName} is requesting access to your data</p>
                 </div>
                 
-                <div class="space-y-4 mb-6" id="dataTypes">
+                <div class="space-y-3 mb-4 flex-1" id="dataTypes">
                     ${dataTypes.map(type => `
                         <label class="group relative flex items-start p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 shadow-sm hover:shadow-md data-option">
                             <div class="flex items-center h-5">
@@ -104,8 +119,8 @@ function createDynamicPopupContent(data) {
                     `).join('')}
                 </div>
                 
-                <div class="flex space-x-3 justify-center">
-                    <button id="rejectBtn" class="px-4 py-2 border-2 border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 focus:ring-2 focus:ring-gray-300 text-sm">
+                <div class="flex space-x-3 justify-center mt-auto pt-4">
+                    <button id="rejectBtn" class="px-3 py-2 border-2 border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 focus:ring-2 focus:ring-gray-300 text-sm flex-shrink-0">
                         <span class="flex items-center justify-center">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -113,7 +128,7 @@ function createDynamicPopupContent(data) {
                             Decline
                         </span>
                     </button>
-                    <button id="approveBtn" class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl focus:ring-2 focus:ring-blue-500 text-sm">
+                    <button id="approveBtn" class="px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl focus:ring-2 focus:ring-blue-500 text-sm flex-shrink-0">
                         <span class="flex items-center justify-center">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
