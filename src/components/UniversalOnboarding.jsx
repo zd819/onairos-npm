@@ -11,7 +11,7 @@ const defaultPersonaImages = {
 
 const platforms = [
   { 
-    name: 'Google', 
+    name: 'Gmail', 
     icon: (
       <svg className="w-6 h-6" viewBox="0 0 24 24">
         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -22,6 +22,20 @@ const platforms = [
     ), 
     color: 'bg-white', 
     connector: 'gmail',
+    description: "We use your emails and search patterns to better understand your interests and communication style."
+  },
+  { 
+    name: 'Google', 
+    icon: (
+      <svg className="w-6 h-6" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+    ), 
+    color: 'bg-white', 
+    connector: 'google',
     description: "We use your search, YouTube, and location signals to better understand your interests and routines."
   },
   { 
@@ -33,7 +47,7 @@ const platforms = [
     ), 
     color: 'bg-white', 
     connector: 'reddit',
-    description: "We use your search history to better understand your interests and routines."
+    description: "We use your posts and interactions to better understand your interests and preferences."
   },
   { 
     name: 'Instagram', 
@@ -51,7 +65,7 @@ const platforms = [
     ), 
     color: 'bg-white', 
     connector: 'instagram',
-    description: "We use your search history to better understand your interests and routines."
+    description: "We use your photos and interactions to better understand your visual preferences and lifestyle."
   },
   { 
     name: 'LinkedIn', 
@@ -62,7 +76,18 @@ const platforms = [
     ), 
     color: 'bg-white', 
     connector: 'linkedin',
-    description: "We use your search history to better understand your interests and routines."
+    description: "We use your professional network and content to better understand your career interests."
+  },
+  { 
+    name: 'Pinterest', 
+    icon: (
+      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#E60023">
+        <path d="M12 0C5.373 0 0 5.372 0 12s5.373 12 12 12c6.628 0 12-5.372 12-12S18.628 0 12 0zm0 19c-.721 0-1.418-.109-2.073-.312.286-.465.713-1.227.87-1.835l.437-1.664c.229.436.895.8 1.604.8 2.111 0 3.633-1.941 3.633-4.354 0-2.312-1.895-4.049-4.218-4.049-2.972 0-4.684 1.946-4.684 4.338 0 1.083.424 2.42 1.218 2.847.131.07.201.04.232-.107.023-.106.151-.602.2-.784.067-.25.041-.336-.145-.553-.408-.474-.615-1.088-.615-1.72 0-1.658 1.222-3.259 3.297-3.259 1.798 0 3.064 1.244 3.064 3.018 0 2.019-.864 3.423-2.024 3.423-.633 0-1.106-.537-.954-1.196.181-.788.532-1.637.532-2.204 0-.508-.267-.932-.822-.932-.652 0-1.176.685-1.176 1.602 0 .584.197.98.197.98l-.790 3.396C6.595 16.85 6.017 14.47 6.017 12c0-3.313 2.687-6 6-6s6 2.687 6 6-2.687 6-6 6z"/>
+      </svg>
+    ), 
+    color: 'bg-white', 
+    connector: 'pinterest',
+    description: "We use your pins and boards to better understand your creative interests and style preferences."
   }
 ];
 
@@ -80,7 +105,7 @@ const sdkConfig = {
  * UniversalOnboarding Component - Compact & Enhanced
  * Displays a streamlined onboarding screen for data connections
  */
-export default function UniversalOnboarding({ onComplete, onBack, appIcon, appName = 'App', personaImages: personaImagesProp }) {
+export default function UniversalOnboarding({ onComplete, onBack, appIcon, appName = 'App', personaImages: personaImagesProp, priorityPlatform = null, testMode = false }) {
   // Use provided persona images or fallback to defaults
   const personaImages = personaImagesProp ?? defaultPersonaImages;
   
@@ -418,22 +443,44 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   const connectedCount = Object.values(connectedAccounts).filter(Boolean).length;
   const personaNumber = Math.min(connectedCount + 1, 5); // 0 connections = persona 1, 1 connection = persona 2, etc.
 
+  // Sort platforms to prioritize the specified platform
+  const getSortedPlatforms = () => {
+    if (!priorityPlatform) return platforms;
+    
+    const priorityPlat = platforms.find(p => 
+      p.name.toLowerCase() === priorityPlatform.toLowerCase() || 
+      p.connector.toLowerCase() === priorityPlatform.toLowerCase()
+    );
+    
+    if (!priorityPlat) return platforms;
+    
+    const otherPlatforms = platforms.filter(p => p !== priorityPlat);
+    return [priorityPlat, ...otherPlatforms];
+  };
+
+  const sortedPlatforms = getSortedPlatforms();
+  const isPriorityPlatform = (platform) => {
+    if (!priorityPlatform) return false;
+    return platform.name.toLowerCase() === priorityPlatform.toLowerCase() || 
+           platform.connector.toLowerCase() === priorityPlatform.toLowerCase();
+  };
+
   return (
     <div className="w-full h-full flex flex-col" style={{ height: '90vh', minHeight: 0 }}>
       {/* Content - Flexible center area */}
-      <div className="px-6 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden', paddingTop: 'clamp(16px, 4vw, 32px)' }}>
-        <div className="mb-2 flex-shrink-0 text-center">
-          <h1 className="font-bold text-gray-900 leading-tight" style={{ fontSize: 'clamp(18px, 4.5vw, 24px)', marginBottom: 'clamp(2px, 0.5vw, 4px)', lineHeight: '1.2' }}>Connect app data</h1>
-          <p className="text-gray-600" style={{ fontSize: 'clamp(12px, 3vw, 16px)', lineHeight: '1.3' }}>More connections, better personalization.</p>
-        </div>
+      <div className="px-6 pt-16 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }}>
+        <div className="mb-6 flex-shrink-0">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">Connect app data</h1>
+          <p className="text-gray-600 text-base">More connections, better personalization.</p>
+          </div>
 
-        <div className="flex justify-center flex-shrink-0" style={{ marginBottom: 'clamp(8px, 2vw, 16px)' }}>
-          <div className="overflow-hidden rounded-2xl" style={{ width: 'clamp(150px, 35vw, 200px)', height: 'clamp(150px, 35vw, 200px)' }}>
+        <div className="mb-2 flex justify-center flex-shrink-0">
+          <div className="w-56 h-56 overflow-hidden">
             <img
               src={personaImages[personaNumber]}
               alt={`Persona ${personaNumber}`}
-              width="224"
-              height="224"
+              width="256"
+              height="256"
               className="w-full h-full object-cover"
               onLoad={() => console.log('✅ Persona image loaded successfully!')}
               onError={(e) => {
@@ -448,25 +495,27 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                 e.target.style.display = 'none';
                 e.target.parentElement.style.background = 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)';
               }}
-            />
-          </div>
+          />
         </div>
+      </div>
 
         {/* Scrollable platform list */}
-        <div className="flex-1 overflow-y-auto" style={{ minHeight: '250px', maxHeight: '600px', marginTop: 'clamp(6px, 1.5vw, 12px)' }}>
-          <div className="pb-20" style={{ gap: 'clamp(3px, 0.8vw, 6px)', display: 'flex', flexDirection: 'column' }}>
+        <div className="flex-1 overflow-y-auto mt-4" style={{ minHeight: 0 }}>
+          <div className="space-y-4 pb-4">
             {platforms.map((platform) => {
           const isConnected = connectedAccounts[platform.name] || false;
           const isCurrentlyConnecting = connectingPlatform === platform.name;
           const hasError = connectionErrors[platform.name];
           const isDisabled = isConnecting && !isCurrentlyConnecting;
+          const isPriority = isPriorityPlatform(platform);
           
           return (
             <div 
               key={platform.name}
-                  className="flex items-center rounded-xl hover:bg-gray-50 transition-all duration-200 cursor-pointer"
+                  className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
                   style={{
                     backgroundColor: "#ffffff",
+                    border: "none",
                     outline: "none",
                     gap: 'clamp(6px, 1.5vw, 10px)',
                     padding: 'clamp(6px, 1.5vw, 10px)',
@@ -503,7 +552,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                       }}
                     >
                       {platform.description}
-                    </p>
+                  </p>
                   
                   {/* Error Message */}
                   {hasError && (
@@ -541,7 +590,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
             </div>
           );
         })}
-          </div>
+      </div>
         </div>
       </div>
 
@@ -561,17 +610,19 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </div>
-        <div
-        onClick={() => onComplete({ connectedAccounts: [], totalConnections: 0 })}
-          className="w-full text-gray-500 font-medium text-center cursor-pointer hover:text-gray-700 transition-colors"
-          style={{ 
-            padding: 'clamp(6px, 1.5vw, 10px)', 
-            fontSize: 'clamp(12px, 3vw, 15px)',
-            minHeight: 'clamp(28px, 5vw, 36px)'
-          }}
-      >
-          Skip
-        </div>
+        {connectedCount > 0 && (
+          <div
+            onClick={() => onComplete({ connectedAccounts: [], totalConnections: 0 })}
+            className="w-full text-gray-500 font-medium text-center cursor-pointer hover:text-gray-700 transition-colors"
+            style={{ 
+              padding: 'clamp(6px, 1.5vw, 10px)', 
+              fontSize: 'clamp(12px, 3vw, 15px)',
+              minHeight: 'clamp(28px, 5vw, 36px)'
+            }}
+          >
+            Skip
+          </div>
+        )}
       </div>
     </div>
   );
