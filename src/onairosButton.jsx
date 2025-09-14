@@ -303,10 +303,10 @@ export function OnairosButton({
       case 'email':
         return (
           <div className="h-[min(85vh,700px)]">
-            <EmailAuth 
-              onSuccess={handleEmailAuthSuccess}
-              testMode={testMode} // Use the testMode prop from initialization
-            />
+          <EmailAuth 
+            onSuccess={handleEmailAuthSuccess}
+            testMode={testMode} // Use the testMode prop from initialization
+          />
           </div>
         );
       
@@ -527,30 +527,30 @@ export function OnairosButton({
                     userEmail={userData?.email}
                   />
                 </div>
-              </div>
             </div>
+          </div>
           ) : currentFlow === 'loading' ? (
             // Loading screen
             <LoadingScreen onComplete={handleLoadingComplete} />
-          ) : (
+        ) : (
             // All other flows use PageLayout wrapper
-            <ModalPageLayout
-              visible={showOverlay}
-              onClose={handleCloseOverlay}
+          <ModalPageLayout
+            visible={showOverlay}
+            onClose={handleCloseOverlay}
               showBackButton={currentFlow === 'training'}
-              onBack={() => {
+            onBack={() => {
                 if (currentFlow === 'email') setCurrentFlow('welcome');
-                if (currentFlow === 'onboarding') setCurrentFlow('email');
-                if (currentFlow === 'pin') setCurrentFlow('onboarding'); 
-                if (currentFlow === 'training') setCurrentFlow('pin');
-              }}
-              title={getFlowTitle()}
-              subtitle={getFlowSubtitle()}
-              icon={getFlowIcon()}
-              centerContent={true}
-            >
-              {renderCurrentFlow()}
-            </ModalPageLayout>
+              if (currentFlow === 'onboarding') setCurrentFlow('email');
+              if (currentFlow === 'pin') setCurrentFlow('onboarding'); 
+              if (currentFlow === 'training') setCurrentFlow('pin');
+            }}
+            title={getFlowTitle()}
+            subtitle={getFlowSubtitle()}
+            icon={getFlowIcon()}
+            centerContent={true}
+          >
+            {renderCurrentFlow()}
+          </ModalPageLayout>
           )}
         </>
       )}

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniversalOnboarding Responsive Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .test-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .size-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1001;
+        }
+        
+        .test-controls {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1001;
+        }
+        
+        .test-controls button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+        
+        .test-controls button:hover {
+            background: #2563eb;
+        }
+        
+        .test-controls button.active {
+            background: #10b981;
+        }
+        
+        .visual-tests {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            max-width: 300px;
+            z-index: 1001;
+        }
+        
+        .test-pass {
+            color: #10b981;
+        }
+        
+        .test-fail {
+            color: #ef4444;
+        }
+        
+        .test-warning {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <div class="size-indicator" id="sizeIndicator">
+        <div>Width: <span id="width"></span>px</div>
+        <div>Height: <span id="height"></span>px</div>
+        <div>Ratio: <span id="ratio"></span></div>
+    </div>
+    
+    <div class="test-controls">
+        <div><strong>Desktop Sizes:</strong></div>
+        <button onclick="setSize(1920, 1080)">1920x1080</button>
+        <button onclick="setSize(1680, 1050)">1680x1050</button>
+        <button onclick="setSize(1440, 900)">1440x900</button>
+        <button onclick="setSize(1366, 768)">1366x768</button>
+        <button onclick="setSize(1280, 720)">1280x720</button>
+        <button onclick="setSize(1024, 768)">1024x768</button>
+        <br>
+        <div><strong>Laptop Sizes:</strong></div>
+        <button onclick="setSize(1600, 900)">1600x900</button>
+        <button onclick="setSize(1536, 864)">1536x864</button>
+        <button onclick="setSize(1400, 900)">1400x900</button>
+        <button onclick="setSize(1280, 800)">1280x800</button>
+        <br>
+        <div><strong>Ultrawide:</strong></div>
+        <button onclick="setSize(2560, 1440)">2560x1440</button>
+        <button onclick="setSize(3440, 1440)">3440x1440</button>
+        <br>
+        <button onclick="runVisualTests()" style="background: #8b5cf6;">Run Tests</button>
+        <button onclick="toggleAutoTest()" id="autoTestBtn">Auto Test: OFF</button>
+    </div>
+    
+    <div class="visual-tests" id="visualTests" style="display: none;">
+        <div><strong>Visual Tests:</strong></div>
+        <div id="testResults"></div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Mock persona images
+        const personaImages = [
+            'https://via.placeholder.com/400x400/ff6b6b/ffffff?text=Persona+1',
+            'https://via.placeholder.com/400x400/4ecdc4/ffffff?text=Persona+2',
+            'https://via.placeholder.com/400x400/45b7d1/ffffff?text=Persona+3',
+            'https://via.placeholder.com/400x400/96ceb4/ffffff?text=Persona+4',
+            'https://via.placeholder.com/400x400/feca57/ffffff?text=Persona+5'
+        ];
+        
+        // Mock platforms data
+        const platforms = [
+            { name: 'Gmail', icon: React.createElement('div', { style: { color: '#4285f4', fontWeight: 'bold' } }, 'G') },
+            { name: 'Reddit', icon: React.createElement('div', { style: { color: '#ff4500' } }, 'R') },
+            { name: 'Instagram', icon: React.createElement('div', { style: { color: '#e4405f' } }, 'I') },
+            { name: 'LinkedIn', icon: React.createElement('div', { style: { color: '#0077b5' } }, 'L') },
+            { name: 'Pinterest', icon: React.createElement('div', { style: { color: '#bd081c' } }, 'P') }
+        ];
+        
+        const descriptions = {
+            'Gmail': 'We use your search, YouTube, and location signals.',
+            'Reddit': 'We analyze your posts and comments for interests.',
+            'Instagram': 'We use your photos and stories for insights.',
+            'LinkedIn': 'We use your professional graph and content.',
+            'Pinterest': 'We analyze your pins and boards for interests.'
+        };
+        
+        function UniversalOnboarding({ onComplete, personaImages: personaImagesProp }) {
+            const [connectedAccounts, setConnectedAccounts] = useState({});
+            const [selected, setSelected] = useState('Gmail');
+            const [isConnecting, setIsConnecting] = useState(false);
+            const [connectingPlatform, setConnectingPlatform] = useState(null);
+            
+            // Layout constants
+            const FOOTER_H = 80;
+            const ICONS_H = 60;
+            const PERSONA_LIFT = 0;
+            const SLOT = 60;
+            const CIRCLE = 48;
+            const GAP = 12;
+            const ACTIVE_SCALE = 1.1;
+            
+            const connectedCount = Object.values(connectedAccounts).filter(Boolean).length;
+            const personaNumber = Math.min(connectedCount + 1, 5);
+            const personaSide = Math.min(280, window.innerWidth * 0.4);
+            
+            const handleSwitch = async (name) => {
+                setConnectedAccounts(prev => ({
+                    ...prev,
+                    [name]: !prev[name]
+                }));
+            };
+            
+            return (
+                <div className="w-full h-full flex flex-col relative" style={{ height: '100vh', minHeight: 0, paddingBottom: FOOTER_H + 60 }}>
+                    {/* header */}
+                    <div className="px-6 pt-16 pb-6">
+                        <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
+                        <p className="text-gray-600 text-base">More Connections, Better Personalization.</p>
+                    </div>
+
+                    {/* persona (bg) */}
+                    <div className="px-6 flex-1 flex items-center justify-center" style={{ marginTop: PERSONA_LIFT, zIndex: 1 }}>
+                        <div className="overflow-hidden rounded-[28px]" style={{ width: personaSide, height: personaSide }}>
+                            <img
+                                src={personaImages[personaNumber - 1]}
+                                alt={`Persona ${personaNumber}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    const parent = e.currentTarget.parentElement;
+                                    e.currentTarget.style.display = 'none';
+                                    if (parent) parent.style.background = 'linear-gradient(135deg,#f97316 0%,#ec4899 50%,#8b5cf6 100%)';
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* icons — positioned much higher up, overlapping hero image */}
+                    <div className="px-6 flex-shrink-0" style={{ height: ICONS_H, marginTop: -200, zIndex: 5, position: 'relative' }}>
+                        <div className="h-full flex items-center justify-center">
+                            <div
+                                className="grid w-full box-border"
+                                style={{
+                                    gridTemplateColumns: 'repeat(5, 1fr)',
+                                    columnGap: GAP,
+                                    alignItems: 'center',
+                                    justifyItems: 'center',
+                                    paddingInline: 8,
+                                }}
+                            >
+                                {platforms.map((p) => {
+                                    const on = !!connectedAccounts[p.name];
+                                    const busy = isConnecting && connectingPlatform === p.name;
+                                    const isSel = selected === p.name;
+                                    return (
+                                        <div key={p.name} className="flex items-center justify-center" style={{ width: SLOT, height: SLOT }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelected(p.name);
+                                                    handleSwitch(p.name);
+                                                }}
+                                                className="relative grid place-items-center outline-none"
+                                                style={{ width: SLOT, height: SLOT }}
+                                                title={p.name}
+                                            >
+                                                <div
+                                                    className={`rounded-full border-2 transition-all duration-150 ease-out flex items-center justify-center shadow-lg
+                                                                ${on ? 'border-blue-500 bg-white text-black shadow-blue-500/50' : 'border-gray-300 hover:border-gray-400 bg-white text-black'}`}
+                                                    style={{
+                                                        width: CIRCLE,
+                                                        height: CIRCLE,
+                                                        transform: `scale(${isSel ? ACTIVE_SCALE : 1})`,
+                                                        transformOrigin: 'center',
+                                                        willChange: 'transform',
+                                                        boxShadow: on ? '0 0 0 3px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.4)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                                    }}
+                                                >
+                                                    {busy ? (
+                                                        <div className="animate-spin h-4 w-4 border-2 border-gray-400 rounded-full border-t-transparent" />
+                                                    ) : (
+                                                        <div className="flex items-center justify-center" style={{ width: 18, height: 18 }}>
+                                                            {React.cloneElement(p.icon, { width: 18, height: 18, style: { display: 'block' } })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* info sheet — positioned directly below icons with minimal gap */}
+                    <div className="px-6 flex-shrink-0" style={{ paddingTop: 5, paddingBottom: 20 }}>
+                        <div className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-3" style={{ width: 'min(680px,92%)' }}>
+                            <div className="flex items-center justify-between">
+                                <div className="text-gray-900 font-medium">{selected}</div>
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={!!connectedAccounts[selected]}
+                                    aria-label={`toggle ${selected}`}
+                                    onClick={() => handleSwitch(selected)}
+                                    disabled={isConnecting && connectingPlatform !== selected}
+                                    className={`relative inline-flex items-center transition-colors disabled:opacity-50 ${connectedAccounts[selected] ? 'bg-black' : 'bg-gray-200'} rounded-full`}
+                                    style={{ width: 56, height: 32 }}
+                                >
+                                    <span
+                                        className="absolute bg-white rounded-full shadow"
+                                        style={{
+                                            width: 24,
+                                            height: 24,
+                                            transform: connectedAccounts[selected] ? 'translateX(26px)' : 'translateX(6px)',
+                                            transition: 'transform 160ms ease',
+                                        }}
+                                    />
+                                </button>
+                            </div>
+
+                            <div className="mt-3">
+                                <div className="rounded-2xl bg-gray-50 text-gray-700 text-sm leading-6 px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
+                                    {descriptions[selected] || null}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* footer — fixed at bottom with proper spacing */}
+                    <div className="absolute left-0 right-0 px-6" style={{ bottom: 16, height: FOOTER_H + 20, zIndex: 10 }}>
+                        <div
+                            className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                            onClick={() => {
+                                const connected = Object.entries(connectedAccounts).filter(([, v]) => v).map(([k]) => k);
+                                onComplete?.({ connectedAccounts: connected, totalConnections: connected.length });
+                            }}
+                        >
+                            Update
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+                        <div
+                            onClick={() => onComplete?.({ connectedAccounts: [], totalConnections: 0 })}
+                            className="w-full text-gray-600 text-base font-medium py-2 text-center cursor-pointer hover:text-gray-800 transition-colors"
+                        >
+                            Skip
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        function ModalOverlay({ children, onClose }) {
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
+                    <div 
+                        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 relative overflow-hidden"
+                        style={{ height: '90vh', minHeight: '600px' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <div className="flex items-center gap-3">
+                                <button 
+                                    onClick={onClose}
+                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                                    </svg>
+                                </button>
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900">Onairos Setup</h2>
+                                    <p className="text-sm text-gray-500">Step 2 of 3</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                            </div>
+                        </div>
+                        
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-hidden">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        function App() {
+            const [currentSize, setCurrentSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+            const [autoTest, setAutoTest] = useState(false);
+            const [testResults, setTestResults] = useState([]);
+            const [selectedSize, setSelectedSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+            
+            useEffect(() => {
+                const updateSize = () => {
+                    setCurrentSize({ width: window.innerWidth, height: window.innerHeight });
+                };
+                
+                const handleSizeChange = (event) => {
+                    setSelectedSize({ width: event.detail.width, height: event.detail.height });
+                };
+                
+                const handleStartAutoTest = () => {
+                    setAutoTest(true);
+                };
+                
+                const handleStopAutoTest = () => {
+                    setAutoTest(false);
+                };
+                
+                window.addEventListener('resize', updateSize);
+                window.addEventListener('sizeChange', handleSizeChange);
+                window.addEventListener('startAutoTest', handleStartAutoTest);
+                window.addEventListener('stopAutoTest', handleStopAutoTest);
+                return () => {
+                    window.removeEventListener('resize', updateSize);
+                    window.removeEventListener('sizeChange', handleSizeChange);
+                    window.removeEventListener('startAutoTest', handleStartAutoTest);
+                    window.removeEventListener('stopAutoTest', handleStopAutoTest);
+                };
+            }, []);
+            
+            useEffect(() => {
+                if (autoTest) {
+                    const sizes = [
+                        { width: 1920, height: 1080 },
+                        { width: 1680, height: 1050 },
+                        { width: 1440, height: 900 },
+                        { width: 1366, height: 768 },
+                        { width: 1280, height: 720 },
+                        { width: 1024, height: 768 },
+                        { width: 1600, height: 900 },
+                        { width: 1536, height: 864 },
+                        { width: 1400, height: 900 },
+                        { width: 1280, height: 800 },
+                        { width: 2560, height: 1440 },
+                        { width: 3440, height: 1440 }
+                    ];
+                    
+                    let index = 0;
+                    const interval = setInterval(() => {
+                        if (index < sizes.length) {
+                            const size = sizes[index];
+                            setSelectedSize({ width: size.width, height: size.height });
+                            setSize(size.width, size.height);
+                            setTimeout(() => runVisualTests(), 500);
+                            index++;
+                        } else {
+                            setAutoTest(false);
+                            clearInterval(interval);
+                        }
+                    }, 2000);
+                    
+                    return () => clearInterval(interval);
+                }
+            }, [autoTest]);
+            
+            return (
+                <div className="test-container" style={{ width: selectedSize.width + 'px', height: selectedSize.height + 'px' }}>
+                    {/* Background App Simulation */}
+                    <div className="absolute inset-0 bg-gray-100 p-8">
+                        <div className="max-w-6xl mx-auto">
+                            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                                <h1 className="text-2xl font-bold text-gray-900 mb-2">My App Dashboard</h1>
+                                <p className="text-gray-600">This simulates your actual app where the Onairos modal would appear</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div className="bg-white rounded-lg shadow-sm p-4">
+                                    <h3 className="font-semibold text-gray-900 mb-2">Feature 1</h3>
+                                    <p className="text-gray-600 text-sm">Some content here</p>
+                                </div>
+                                <div className="bg-white rounded-lg shadow-sm p-4">
+                                    <h3 className="font-semibold text-gray-900 mb-2">Feature 2</h3>
+                                    <p className="text-gray-600 text-sm">More content here</p>
+                                </div>
+                                <div className="bg-white rounded-lg shadow-sm p-4">
+                                    <h3 className="font-semibold text-gray-900 mb-2">Feature 3</h3>
+                                    <p className="text-gray-600 text-sm">Even more content</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Modal Overlay */}
+                    <ModalOverlay onClose={() => console.log('Modal closed')}>
+                        <UniversalOnboarding 
+                            onComplete={(data) => console.log('Onboarding completed:', data)}
+                            personaImages={personaImages}
+                        />
+                    </ModalOverlay>
+                </div>
+            );
+        }
+        
+        // Global functions for controls
+        function setSize(width, height) {
+            const container = document.querySelector('.test-container');
+            container.style.width = width + 'px';
+            container.style.height = height + 'px';
+            
+            // Update size indicator
+            document.getElementById('width').textContent = width;
+            document.getElementById('height').textContent = height;
+            document.getElementById('ratio').textContent = (width / height).toFixed(2);
+            
+            // Update active button
+            document.querySelectorAll('.test-controls button').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.includes(`${width}x${height}`)) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Trigger React re-render with new size
+            window.dispatchEvent(new CustomEvent('sizeChange', { detail: { width, height } }));
+        }
+        
+        function runVisualTests() {
+            const results = [];
+            const container = document.querySelector('.test-container');
+            const width = parseInt(container.style.width);
+            const height = parseInt(container.style.height);
+            
+            // Test 1: Icons visibility
+            const icons = document.querySelectorAll('[title]');
+            const iconsVisible = icons.length === 5;
+            results.push({
+                test: 'Icons Count',
+                status: iconsVisible ? 'PASS' : 'FAIL',
+                message: `Found ${icons.length}/5 icons`
+            });
+            
+            // Test 2: Icons positioning (should be high up)
+            const iconContainer = document.querySelector('[style*="marginTop: -200"]');
+            const iconRect = iconContainer?.getBoundingClientRect();
+            const iconTop = iconRect?.top || 0;
+            const iconHeight = iconRect?.height || 0;
+            const iconBottom = iconTop + iconHeight;
+            const viewportHeight = height;
+            const iconPositionRatio = iconBottom / viewportHeight;
+            
+            results.push({
+                test: 'Icons Position',
+                status: iconPositionRatio < 0.6 ? 'PASS' : iconPositionRatio < 0.7 ? 'WARN' : 'FAIL',
+                message: `Icons at ${(iconPositionRatio * 100).toFixed(1)}% of viewport height`
+            });
+            
+            // Test 3: Info box visibility
+            const infoBox = document.querySelector('[style*="min(680px,92%)"]');
+            const infoRect = infoBox?.getBoundingClientRect();
+            const infoVisible = infoRect && infoRect.top > 0 && infoRect.bottom < viewportHeight;
+            
+            results.push({
+                test: 'Info Box Visibility',
+                status: infoVisible ? 'PASS' : 'FAIL',
+                message: infoVisible ? 'Info box fully visible' : 'Info box cut off'
+            });
+            
+            // Test 4: Buttons visibility
+            const updateBtn = document.querySelector('[style*="bg-gray-900"]');
+            const skipBtn = document.querySelector('[style*="text-gray-600"]');
+            const updateRect = updateBtn?.getBoundingClientRect();
+            const skipRect = skipBtn?.getBoundingClientRect();
+            const buttonsVisible = updateRect && skipRect && 
+                                 updateRect.bottom <= viewportHeight && 
+                                 skipRect.bottom <= viewportHeight;
+            
+            results.push({
+                test: 'Buttons Visibility',
+                status: buttonsVisible ? 'PASS' : 'FAIL',
+                message: buttonsVisible ? 'Both buttons visible' : 'Buttons cut off'
+            });
+            
+            // Test 5: Modal height
+            const modal = document.querySelector('[style*="height: 100vh"]');
+            const modalHeight = modal?.offsetHeight || 0;
+            const heightRatio = modalHeight / height;
+            
+            results.push({
+                test: 'Modal Height',
+                status: heightRatio > 0.9 ? 'PASS' : 'WARN',
+                message: `Modal uses ${(heightRatio * 100).toFixed(1)}% of viewport height`
+            });
+            
+            // Test 6: Responsive text sizing
+            const header = document.querySelector('h1');
+            const headerFontSize = parseFloat(getComputedStyle(header).fontSize);
+            const textSizeRatio = headerFontSize / (width / 100);
+            
+            results.push({
+                test: 'Text Scaling',
+                status: textSizeRatio > 0.8 && textSizeRatio < 1.5 ? 'PASS' : 'WARN',
+                message: `Header font size: ${headerFontSize}px (ratio: ${textSizeRatio.toFixed(2)})`
+            });
+            
+            // Test 7: Icon spacing
+            const iconGrid = document.querySelector('[style*="gridTemplateColumns"]');
+            const iconSpacing = iconGrid ? parseFloat(getComputedStyle(iconGrid).columnGap) : 0;
+            const spacingRatio = iconSpacing / (width / 100);
+            
+            results.push({
+                test: 'Icon Spacing',
+                status: spacingRatio > 0.5 && spacingRatio < 2 ? 'PASS' : 'WARN',
+                message: `Icon gap: ${iconSpacing}px (ratio: ${spacingRatio.toFixed(2)})`
+            });
+            
+            setTestResults(results);
+            document.getElementById('visualTests').style.display = 'block';
+            
+            // Log results
+            console.log(`\n=== Visual Tests for ${width}x${height} ===`);
+            results.forEach(result => {
+                console.log(`${result.status}: ${result.test} - ${result.message}`);
+            });
+        }
+        
+        function toggleAutoTest() {
+            const btn = document.getElementById('autoTestBtn');
+            const newState = !btn.textContent.includes('ON');
+            // We need to access the React state, so we'll use a global variable
+            window.autoTestState = newState;
+            btn.textContent = `Auto Test: ${newState ? 'ON' : 'OFF'}`;
+            btn.style.background = newState ? '#10b981' : '#3b82f6';
+            
+            // Trigger the auto test
+            if (newState) {
+                window.dispatchEvent(new CustomEvent('startAutoTest'));
+            } else {
+                window.dispatchEvent(new CustomEvent('stopAutoTest'));
+            }
+        }
+        
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+        
+        // Initialize size indicator
+        setSize(window.innerWidth, window.innerHeight);
+    </script>
+</body>
+</html>
