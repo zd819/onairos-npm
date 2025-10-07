@@ -1,7 +1,10 @@
 import React, { useEffect, useId, useState, useRef } from 'react';
 import Lottie from 'lottie-react';
 import personaAnim from '../../public/persona-anim.json';
-import { Brand as AiBrand } from './icons.jsx';
+const chatgptIcon = 'https://anushkasirv.sirv.com/openai.png';
+const claudeIcon = 'https://anushkasirv.sirv.com/claude-color.png';
+const geminiIcon = 'https://anushkasirv.sirv.com/gemini-color.png';
+const grokIcon = 'https://anushkasirv.sirv.com/grok.png';
 
 const sdkConfig = {
   apiKey: process.env.REACT_APP_ONAIROS_API_KEY || 'onairos_web_sdk_live_key_2024',
@@ -55,16 +58,16 @@ export default function UniversalOnboarding({ onComplete }) {
   const ACTIVE_SCALE = vh < 760 ? 1.12 : 1.22;
 
   const ICONS_H = 84;
-  const ICONS_TOP_OFFSET = Math.max(140, Math.min(200, Math.round(vh * 0.24))); // ~24vh, clamped for all screens
+  const ICONS_TOP_OFFSET = Math.max(160, Math.min(220, Math.round(vh * 0.26))); // ~26vh, clamped for all screens
 
   const igGradId = useId();
 
   // ---- official brand SVGs (compact, consistent viewboxes) ----
   const Brand = {
-    ChatGPT: AiBrand.ChatGPT,
-    Claude: AiBrand.Claude,
-    Gemini: AiBrand.Gemini,
-    Grok: AiBrand.Grok,
+    ChatGPT: <img src={chatgptIcon} alt="ChatGPT" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
+    Claude: <img src={claudeIcon} alt="Claude" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
+    Gemini: <img src={geminiIcon} alt="Gemini" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
+    Grok: <img src={grokIcon} alt="Grok" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
     Instagram: (
       <svg viewBox="0 0 24 24" aria-hidden>
         <defs>
@@ -82,29 +85,29 @@ export default function UniversalOnboarding({ onComplete }) {
       <svg viewBox="0 0 24 24" aria-hidden>
         <path fill="#FF0000" d="M22.54 6.42a3 3 0 0 0-2.11-2.12C18.49 3.75 12 3.75 12 3.75s-6.49 0-8.43.55A3 3 0 0 0 1.46 6.42 31.63 31.63 0 0 0 1 12a31.63 31.63 0 0 0 .46 5.58 3 3 0 0 0 2.11 2.12C5.51 20.25 12 20.25 12 20.25s6.49 0 8.43-.55a3 3 0 0 0 2.11-2.12A31.63 31.63 0 0 0 23 12a31.63 31.63 0 0 0-.46-5.58z"/>
         <path fill="#FFF" d="M10 8.75v6.5l6-3.25-6-3.25z"/>
-      </svg>
-    ),
+        </svg>
+      ),
     Reddit: (
       <svg viewBox="0 0 24 24" aria-hidden>
         <circle cx="12" cy="12" r="12" fill="#FF4500"/>
         <circle cx="8.75" cy="12.5" r="1.25" fill="#FFF"/>
         <circle cx="15.25" cy="12.5" r="1.25" fill="#FFF"/>
         <path fill="#FFF" d="M7.9 15c.8.8 2.3 1.05 4.1 1.05S15.3 15.8 16.1 15c.2-.2.2-.5 0-.7-.2-.2-.5-.2-.7 0-.6.6-1.9.85-3.4.85S9.3 14.9 8.7 14.3c-.2-.2-.5-.2-.7 0-.2.2-.2.5 0 .7z"/>
-      </svg>
-    ),
+        </svg>
+      ),
     LinkedIn: (
       <svg viewBox="0 0 24 24" aria-hidden>
         <rect x="2" y="2" width="20" height="20" rx="3" fill="#0A66C2"/>
         <rect x="5" y="9" width="3" height="10" fill="#FFF"/>
         <circle cx="6.5" cy="6.5" r="1.5" fill="#FFF"/>
         <path fill="#FFF" d="M16.8 19H13.9v-5c0-1.2-.5-1.8-1.4-1.8-.9 0-1.6.6-1.6 1.8V19H8V9h2.8v1.3c.5-.8 1.4-1.5 2.7-1.5 2 0 3.3 1.3 3.3 3.7V19z"/>
-      </svg>
-    ),
+        </svg>
+      ),
     Twitter: (
       <svg viewBox="0 0 24 24" aria-hidden>
         <path fill="#1DA1F2" d="M23.643 4.937c-.835.37-1.732.62-2.675.733.962-.576 1.7-1.49 2.048-2.578-.9.534-1.897.922-2.958 1.13-.85-.904-2.06-1.47-3.4-1.47-2.572 0-4.658 2.086-4.658 4.66 0 .364.042.718.12 1.06-3.873-.195-7.304-2.05-9.602-4.868-.4.69-.63 1.49-.63 2.342 0 1.616.823 3.043 2.072 3.878-.764-.025-1.482-.234-2.11-.583v.06c0 2.257 1.605 4.14 3.737 4.568-.392.106-.803.162-1.227.162-.3 0-.593-.028-.877-.082.593 1.85 2.313 3.198 4.352 3.234-1.595 1.25-3.604 1.995-5.786 1.995-.376 0-.747-.022-1.112-.065 2.062 1.323 4.51 2.093 7.14 2.093 8.57 0 13.255-7.098 13.255-13.254 0-.2-.005-.402-.014-.602.91-.658 1.7-1.477 2.323-2.41z"/>
-      </svg>
-    ),
+        </svg>
+      ),
   };
 
   const aiLinks = {
@@ -115,31 +118,15 @@ export default function UniversalOnboarding({ onComplete }) {
   };
 
   const descriptions = {
-    ChatGPT: (
-      <>we profile your <strong className="font-semibold">prompt style</strong>
-      (tone, length, structure), your <strong className="font-semibold">pinned chats</strong>,
-      and common <strong className="font-semibold">tool uses</strong> (code, browse, data) to bias responses toward how you actually write and work.</>
-    ),
-    Claude: (
-      <>we learn your <strong className="font-semibold">document workflow</strong>
-      (pdfs, long notes, citations), your <strong className="font-semibold">safety/hedging tolerance</strong>,
-      and preferred <strong className="font-semibold">reasoning format</strong> (lists vs narrative) to tune verbosity and structure.</>
-    ),
-    Gemini: (
-      <>we read your <strong className="font-semibold">search-adjacent usage</strong>
-      (follow-up queries, link-click patterns) and <strong className="font-semibold">multimodal habits</strong>
-      to improve grounding and reduce hallucinations on your topics of interest.</>
-    ),
-    Grok: (
-      <>we infer your <strong className="font-semibold">x posting cadence</strong>,
-      <strong className="font-semibold"> reply tone</strong>, and <strong className="font-semibold">meme literacy</strong>
-      to make outputs match your style (spicier when you are, dry when you aren't).</>
-    ),
-    Twitter: <>We use your <strong className="font-semibold">tweets</strong> and <strong className="font-semibold">interests</strong> to understand your preferences.</>,
-    YouTube: <>We use your <strong className="font-semibold">watch history</strong> and <strong className="font-semibold">interactions</strong> to understand your interests and routines.</>,
-    Reddit: <>We use your <strong className="font-semibold">search history</strong> to better understand your interests and routines.</>,
-    Instagram: <>We use your <strong className="font-semibold">photos</strong> and <strong className="font-semibold">interactions</strong> to learn visual preferences.</>,
-    LinkedIn: <>We use your <strong className="font-semibold">professional graph</strong> and <strong className="font-semibold">content</strong> to infer career interests.</>,
+    ChatGPT: <>We analyze your <strong className="font-semibold">prompt style</strong> and <strong className="font-semibold">chat history</strong> to match your writing and thinking patterns.</>,
+    Claude: <>We learn your <strong className="font-semibold">document workflow</strong> and <strong className="font-semibold">reasoning preferences</strong> to tune output format and detail.</>,
+    Gemini: <>We study your <strong className="font-semibold">search patterns</strong> and <strong className="font-semibold">multimodal usage</strong> to improve response accuracy.</>,
+    Grok: <>We adapt to your <strong className="font-semibold">X posting style</strong> and <strong className="font-semibold">meme literacy</strong> to match your tone.</>,
+    Twitter: <>We analyze your <strong className="font-semibold">tweets</strong> and <strong className="font-semibold">interests</strong> to understand your preferences.</>,
+    YouTube: <>We study your <strong className="font-semibold">watch history</strong> and <strong className="font-semibold">interactions</strong> to learn your interests.</>,
+    Reddit: <>We examine your <strong className="font-semibold">search history</strong> and <strong className="font-semibold">discussions</strong> to understand your interests.</>,
+    Instagram: <>We analyze your <strong className="font-semibold">photos</strong> and <strong className="font-semibold">interactions</strong> to learn visual preferences.</>,
+    LinkedIn: <>We study your <strong className="font-semibold">professional graph</strong> and <strong className="font-semibold">content</strong> to understand career interests.</>,
   };
 
   const allPlatforms = [
@@ -285,7 +272,7 @@ export default function UniversalOnboarding({ onComplete }) {
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
-              style={{
+                    style={{
                 gridAutoFlow: 'column',
                 gridTemplateColumns: `repeat(${platforms.length}, minmax(0,1fr))`,
                 columnGap: currentPage === 1 ? GAP_PAGE1 : GAP_PAGE2,
@@ -321,7 +308,7 @@ export default function UniversalOnboarding({ onComplete }) {
                         {busy ? (<div className="animate-spin h-4 w-4 border-2 border-gray-400 rounded-full border-t-transparent" />) : (
                           <div className="flex items-center justify-center" style={{ width: 20, height: 20 }}>
                             {p.icon}
-                          </div>
+                    </div>
                         )}
                       </div>
                     </button>
@@ -333,7 +320,7 @@ export default function UniversalOnboarding({ onComplete }) {
         </div>
 
         {/* dots navigation (no numbers) */}
-        <div className="mt-5 flex items-center justify-center gap-3 select-none">
+        <div className="mt-6 flex items-center justify-center gap-4 select-none">
           {[1,2,3].map(n => (
             <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: 10, height: 10 }}>
               <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-110' : 'bg-gray-300'} transition-transform`} style={{ width: 10, height: 10 }} />
@@ -341,9 +328,9 @@ export default function UniversalOnboarding({ onComplete }) {
           ))}
         </div>
 
-        {/* info sheet — LOWER to match your previous ideal placement */}
-        <div className="px-6 flex-shrink-0" style={{ paddingTop: Math.max(24, Math.min(48, Math.round(vh * 0.06))), paddingBottom: Math.max(80, Math.min(100, Math.round(vh * 0.12))), position: 'relative', zIndex: 20 }}>
-          <div className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-3" style={{ width: 'min(680px,92%)' }}>
+        {/* info sheet — positioned right above the footer */}
+        <div className="px-6 flex-shrink-0" style={{ position: 'absolute', bottom: FOOTER_H + 24, left: 0, right: 0, zIndex: 20 }}>
+          <div className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5" style={{ width: 'min(680px,92%)', maxHeight: vh * 0.2 }}>
             <div className="flex items-center justify-between">
               <div className="text-gray-900 font-medium">{selected}</div>
               <button
