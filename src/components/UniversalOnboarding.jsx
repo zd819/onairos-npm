@@ -58,7 +58,7 @@ export default function UniversalOnboarding({ onComplete }) {
   const ACTIVE_SCALE = vh < 760 ? 1.12 : 1.22;
 
   const ICONS_H = 84;
-  const ICONS_TOP_OFFSET = Math.max(160, Math.min(220, Math.round(vh * 0.26))); // ~26vh, clamped for all screens
+  const ICONS_TOP_OFFSET = Math.max(180, Math.min(240, Math.round(vh * 0.28))); // ~28vh, clamped for all screens
 
   const igGradId = useId();
 
@@ -220,7 +220,8 @@ export default function UniversalOnboarding({ onComplete }) {
   useEffect(() => {
     if (!lottieRef.current) return;
     const totalFrames = (personaAnim.op || 0) - (personaAnim.ip || 0);
-    const progress = connectedCount / allPlatforms.length;
+    const TOTAL_PLATFORMS = 9; // Total number of platforms across all pages
+    const progress = connectedCount / TOTAL_PLATFORMS;
     const target = Math.max(0, Math.floor(progress * totalFrames));
     const start = lastFrameRef.current || 0;
     const duration = 420; const startTs = performance.now();
