@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useState, useRef } from 'react';
 import Lottie from 'lottie-react';
 import personaAnim from '../../public/persona-anim.json';
+import { Brand as AiBrand } from './icons.jsx';
 
 const sdkConfig = {
   apiKey: process.env.REACT_APP_ONAIROS_API_KEY || 'onairos_web_sdk_live_key_2024',
@@ -47,11 +48,11 @@ export default function UniversalOnboarding({ onComplete }) {
   const PERSONA_TOP = 96;
 
   // icon layout (restore tighter spacing on page 1; place the band lower)
-  const SLOT = 60;
+  const SLOT = Math.max(56, Math.min(64, Math.floor(vh * 0.07)));
   const CIRCLE = 42;
   const GAP_PAGE1 = 12;
   const GAP_PAGE2 = 20;
-  const ACTIVE_SCALE = vh < 760 ? 1.18 : 1.35;
+  const ACTIVE_SCALE = vh < 760 ? 1.12 : 1.22;
 
   const ICONS_H = 84;
   const ICONS_TOP_OFFSET = Math.max(140, Math.min(200, Math.round(vh * 0.24))); // ~24vh, clamped for all screens
@@ -60,6 +61,10 @@ export default function UniversalOnboarding({ onComplete }) {
 
   // ---- official brand SVGs (compact, consistent viewboxes) ----
   const Brand = {
+    ChatGPT: AiBrand.ChatGPT,
+    Claude: AiBrand.Claude,
+    Gemini: AiBrand.Gemini,
+    Grok: AiBrand.Grok,
     Instagram: (
       <svg viewBox="0 0 24 24" aria-hidden>
         <defs>
@@ -95,31 +100,70 @@ export default function UniversalOnboarding({ onComplete }) {
         <path fill="#FFF" d="M16.8 19H13.9v-5c0-1.2-.5-1.8-1.4-1.8-.9 0-1.6.6-1.6 1.8V19H8V9h2.8v1.3c.5-.8 1.4-1.5 2.7-1.5 2 0 3.3 1.3 3.3 3.7V19z"/>
       </svg>
     ),
-    Pinterest: (
+    Twitter: (
       <svg viewBox="0 0 24 24" aria-hidden>
-        <circle cx="12" cy="12" r="12" fill="#E60023"/>
-        <path fill="#FFF" d="M12.2 6.5c-3 0-4.7 2-4.7 4.4 0 1.1.6 2.4 1.7 2.8.2.1.4 0 .5-.2.1-.2.4-1.3.5-1.7 0-.2 0-.3-.1-.5-.2-.3-.3-.6-.3-1 0-1.9 1.2-3.2 3.3-3.2 1.6 0 2.7 1.1 2.7 2.7 0 2-.9 3.4-2.1 3.4-.7 0-1.2-.6-1-.1-.1.4.2 1.2.3 1.4.1.2.1.3 0 .5-.3 1-.9 2.8-1 3.1-.1.3-.2.6-.2.9 0 .1 0 .1.1.1 2.9-1 4.8-3.7 4.8-6.7 0-2.9-2-4.9-4.6-4.9z"/>
+        <path fill="#1DA1F2" d="M23.643 4.937c-.835.37-1.732.62-2.675.733.962-.576 1.7-1.49 2.048-2.578-.9.534-1.897.922-2.958 1.13-.85-.904-2.06-1.47-3.4-1.47-2.572 0-4.658 2.086-4.658 4.66 0 .364.042.718.12 1.06-3.873-.195-7.304-2.05-9.602-4.868-.4.69-.63 1.49-.63 2.342 0 1.616.823 3.043 2.072 3.878-.764-.025-1.482-.234-2.11-.583v.06c0 2.257 1.605 4.14 3.737 4.568-.392.106-.803.162-1.227.162-.3 0-.593-.028-.877-.082.593 1.85 2.313 3.198 4.352 3.234-1.595 1.25-3.604 1.995-5.786 1.995-.376 0-.747-.022-1.112-.065 2.062 1.323 4.51 2.093 7.14 2.093 8.57 0 13.255-7.098 13.255-13.254 0-.2-.005-.402-.014-.602.91-.658 1.7-1.477 2.323-2.41z"/>
       </svg>
     ),
-  } ;
+  };
+
+  const aiLinks = {
+    ChatGPT: 'https://chat.openai.com',
+    Claude: 'https://claude.ai',
+    Gemini: 'https://gemini.google.com',
+    Grok: 'https://grok.x.ai',
+  };
 
   const descriptions = {
+    ChatGPT: (
+      <>we profile your <strong className="font-semibold">prompt style</strong>
+      (tone, length, structure), your <strong className="font-semibold">pinned chats</strong>,
+      and common <strong className="font-semibold">tool uses</strong> (code, browse, data) to bias responses toward how you actually write and work.</>
+    ),
+    Claude: (
+      <>we learn your <strong className="font-semibold">document workflow</strong>
+      (pdfs, long notes, citations), your <strong className="font-semibold">safety/hedging tolerance</strong>,
+      and preferred <strong className="font-semibold">reasoning format</strong> (lists vs narrative) to tune verbosity and structure.</>
+    ),
+    Gemini: (
+      <>we read your <strong className="font-semibold">search-adjacent usage</strong>
+      (follow-up queries, link-click patterns) and <strong className="font-semibold">multimodal habits</strong>
+      to improve grounding and reduce hallucinations on your topics of interest.</>
+    ),
+    Grok: (
+      <>we infer your <strong className="font-semibold">x posting cadence</strong>,
+      <strong className="font-semibold"> reply tone</strong>, and <strong className="font-semibold">meme literacy</strong>
+      to make outputs match your style (spicier when you are, dry when you aren't).</>
+    ),
+    Twitter: <>We use your <strong className="font-semibold">tweets</strong> and <strong className="font-semibold">interests</strong> to understand your preferences.</>,
     YouTube: <>We use your <strong className="font-semibold">watch history</strong> and <strong className="font-semibold">interactions</strong> to understand your interests and routines.</>,
     Reddit: <>We use your <strong className="font-semibold">search history</strong> to better understand your interests and routines.</>,
     Instagram: <>We use your <strong className="font-semibold">photos</strong> and <strong className="font-semibold">interactions</strong> to learn visual preferences.</>,
     LinkedIn: <>We use your <strong className="font-semibold">professional graph</strong> and <strong className="font-semibold">content</strong> to infer career interests.</>,
-    Pinterest: <>We use your <strong className="font-semibold">pins</strong> and <strong className="font-semibold">boards</strong> to understand creative tastes.</>,
-  } ;
+  };
 
   const allPlatforms = [
+    // Page 1
     { name: 'Instagram', connector: 'instagram', icon: Brand.Instagram },
     { name: 'YouTube', connector: 'youtube', icon: Brand.YouTube },
-    { name: 'Reddit', connector: 'reddit', icon: Brand.Reddit },
+    { name: 'ChatGPT', connector: 'chatgpt', icon: Brand.ChatGPT, directLink: aiLinks.ChatGPT },
+    // Page 2
+    { name: 'Claude', connector: 'claude', icon: Brand.Claude, directLink: aiLinks.Claude },
+    { name: 'Gemini', connector: 'gemini', icon: Brand.Gemini, directLink: aiLinks.Gemini },
+    { name: 'Twitter', connector: 'twitter', icon: Brand.Twitter },
+    // Page 3
     { name: 'LinkedIn', connector: 'linkedin', icon: Brand.LinkedIn },
-    { name: 'Pinterest', connector: 'pinterest', icon: Brand.Pinterest },
+    { name: 'Reddit', connector: 'reddit', icon: Brand.Reddit },
+    { name: 'Grok', connector: 'grok', icon: Brand.Grok, directLink: aiLinks.Grok },
   ];
 
-  const platforms = currentPage === 1 ? allPlatforms.slice(0, 2) : allPlatforms.slice(2);
+  const getPlatformsForPage = (page) => {
+    if (page === 1) return allPlatforms.slice(0, 3);
+    if (page === 2) return allPlatforms.slice(3, 6);
+    return allPlatforms.slice(6);
+  };
+
+  const platforms = getPlatformsForPage(currentPage);
 
   useEffect(() => {
     const p = localStorage.getItem('onairos_oauth_platform');
@@ -210,8 +254,8 @@ export default function UniversalOnboarding({ onComplete }) {
   const onTouchMove  = (e) => { touchDeltaX.current = e.touches[0].clientX - touchStartX.current; };
   const onTouchEnd   = () => {
     const dx = touchDeltaX.current; const THRESH = 40;
-    if (dx < -THRESH && currentPage === 1) setCurrentPage(2);
-    else if (dx > THRESH && currentPage === 2) setCurrentPage(1);
+    if (dx < -THRESH && currentPage < 3) setCurrentPage(currentPage + 1);
+    else if (dx > THRESH && currentPage > 1) setCurrentPage(currentPage - 1);
   };
 
   return (
@@ -242,9 +286,13 @@ export default function UniversalOnboarding({ onComplete }) {
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
               style={{
-                gridTemplateColumns: currentPage === 1 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                gridAutoFlow: 'column',
+                gridTemplateColumns: `repeat(${platforms.length}, minmax(0,1fr))`,
                 columnGap: currentPage === 1 ? GAP_PAGE1 : GAP_PAGE2,
-                alignItems: 'center', justifyItems: 'center', paddingInline: 8,
+                alignItems: 'center',
+                justifyItems: 'center',
+                paddingInline: 8,
+                overflow: 'hidden',
               }}
             >
               {platforms.map((p, idx) => {
@@ -256,7 +304,14 @@ export default function UniversalOnboarding({ onComplete }) {
                   <div key={p.name} className="transition-all duration-300" style={{ opacity: 0, transform: `translateX(${shift}px)`, animation: 'fadeSlideIn 0.28s forwards', ['--slide-x']: `${shift}px` }}>
                     <button
                       type="button"
-                      onClick={() => { setSelected(p.name); handleSwitch(p.name); }}
+                      onClick={() => { 
+                        setSelected(p.name);
+                        if (p.directLink) {
+                          window.open(p.directLink, '_blank');
+                        } else {
+                          handleSwitch(p.name);
+                        }
+                      }}
                       className="relative grid place-items-center outline-none"
                       style={{ width: SLOT, height: SLOT }}
                       title={p.name}
@@ -279,7 +334,7 @@ export default function UniversalOnboarding({ onComplete }) {
 
         {/* dots navigation (no numbers) */}
         <div className="mt-5 flex items-center justify-center gap-3 select-none">
-          {[1,2].map(n => (
+          {[1,2,3].map(n => (
             <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: 10, height: 10 }}>
               <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-110' : 'bg-gray-300'} transition-transform`} style={{ width: 10, height: 10 }} />
             </button>
@@ -287,7 +342,7 @@ export default function UniversalOnboarding({ onComplete }) {
         </div>
 
         {/* info sheet — LOWER to match your previous ideal placement */}
-        <div className="px-6 flex-shrink-0" style={{ paddingTop: Math.max(24, Math.min(48, Math.round(vh * 0.06))), paddingBottom: Math.max(20, Math.min(32, Math.round(vh * 0.04))) }}>
+        <div className="px-6 flex-shrink-0" style={{ paddingTop: Math.max(24, Math.min(48, Math.round(vh * 0.06))), paddingBottom: Math.max(80, Math.min(100, Math.round(vh * 0.12))), position: 'relative', zIndex: 20 }}>
           <div className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-3" style={{ width: 'min(680px,92%)' }}>
             <div className="flex items-center justify-between">
               <div className="text-gray-900 font-medium">{selected}</div>
@@ -313,7 +368,7 @@ export default function UniversalOnboarding({ onComplete }) {
         </div>
 
         {/* footer — fixed near bottom; no change to persona */}
-        <div className="absolute left-0 right-0 px-6" style={{ bottom: 0, height: FOOTER_H + 20, paddingBottom: 16, background: 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))' }}>
+        <div className="absolute left-0 right-0 px-6" style={{ bottom: 0, height: FOOTER_H + 20, paddingBottom: 16, background: 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
           <div className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" onClick={() => {
             const connected = Object.entries(connectedAccounts).filter(([, v]) => v).map(([k]) => k);
             onComplete?.({ connectedAccounts: connected, totalConnections: connected.length });

@@ -108,6 +108,7 @@ const baseConfig = {
       "path": require.resolve("path-browserify"),
       "vm": require.resolve("vm-browserify"),
       "process": require.resolve("process/browser"),
+      "tty": require.resolve("tty-browserify"),
       "fs": false,
       "net": false,
       "tls": false,
