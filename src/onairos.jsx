@@ -31,9 +31,19 @@ export {
   TRAIT_CATEGORIES
 } from './utils/responseFormatter.js';
 
-// Initialize SDK functionality (if needed)
-export const initializeApiKey = async (config) => {
-  // SDK initialization logic would go here
-  console.log('🔧 SDK initialized with config:', config);
-  return Promise.resolve();
-};
+// Initialize SDK functionality with standardized API key validation
+export { 
+  initializeApiKey,
+  isSDKInitialized,
+  getSDKState,
+  getApiKey,
+  getSDKConfig,
+  resetSDK
+} from './utils/sdkInitialization.js';
+
+// Export API key validation utilities
+export {
+  validateApiKey,
+  ApiKeyType,
+  ErrorCodes
+} from './utils/apiKeyValidation.js';
