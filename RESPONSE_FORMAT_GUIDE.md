@@ -87,15 +87,35 @@ const { Analyst, Diplomat, Sentinel } = result.apiResponse.InferenceResult.perso
     includeArray: true        // Keep array (default: true)
   }}
   onComplete={(result) => {
-    const inference = result.apiResponse.InferenceResult;
-    
-    // Access by array index (legacy way)
-    const analystByIndex = inference.traits[0];
-    
-    // Access by name (new way) 
-    const analystByName = inference.personalityDict.Analyst;
-    
-    console.log('Same value:', analystByIndex === analystByName); // true
+    try {
+      // ✅ Safe access with optional chaining and fallbacks
+      const inference = result?.apiResponse?.InferenceResult;
+      
+      if (!inference) {
+        console.warn('No inference data received');
+        return;
+      }
+      
+      // ✅ Check if personality data exists before accessing
+      if (inference.personalityDict) {
+        // Access by name (recommended way)
+        const { Analyst, Diplomat, Architect } = inference.personalityDict;
+        console.log('Personality scores:', { Analyst, Diplomat, Architect });
+        
+        // Use the data in your app
+        updateUserProfile(inference.personalityDict);
+      }
+      
+      // ✅ Fallback to array format if dictionary not available
+      if (inference.traits && Array.isArray(inference.traits)) {
+        const analystScore = inference.traits[0];
+        console.log('Analyst score (legacy):', analystScore);
+      }
+      
+    } catch (error) {
+      console.error('Error processing Onairos response:', error);
+      // Handle error gracefully - maybe show user feedback
+    }
   }}
 />
 ```

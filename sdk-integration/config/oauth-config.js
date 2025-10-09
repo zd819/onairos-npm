@@ -93,6 +93,32 @@ export const oauthConfig = {
     }
   },
 
+  // Gmail OAuth Configuration
+  gmail: {
+    clientId: process.env.GMAIL_CLIENT_ID || process.env.YOUTUBE_CLIENT_ID,
+    clientSecret: process.env.GMAIL_CLIENT_SECRET || process.env.YOUTUBE_CLIENT_SECRET,
+    redirectUri: process.env.GMAIL_REDIRECT_URI || 'https://api2.onairos.uk/gmail/callback',
+    scopes: [
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.metadata',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+      'openid'
+    ],
+    additionalParams: {
+      access_type: 'offline',
+      prompt: 'consent',
+      include_granted_scopes: true
+    },
+    endpoints: {
+      auth: 'https://accounts.google.com/o/oauth2/v2/auth',
+      token: 'https://oauth2.googleapis.com/token',
+      revoke: 'https://oauth2.googleapis.com/revoke',
+      userInfo: 'https://www.googleapis.com/oauth2/v2/userinfo',
+      api: 'https://www.googleapis.com/gmail/v1'
+    }
+  },
+
   // Apple OAuth Configuration
   apple: {
     clientId: process.env.APPLE_CLIENT_ID,
