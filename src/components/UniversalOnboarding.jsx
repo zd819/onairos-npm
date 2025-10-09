@@ -1,628 +1,371 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useId, useState, useRef } from 'react';
+import Lottie from 'lottie-react';
+import personaAnim from '../../public/persona-anim.json';
+const chatgptIcon = 'https://anushkasirv.sirv.com/openai.png';
+const claudeIcon = 'https://anushkasirv.sirv.com/claude-color.png';
+const geminiIcon = 'https://anushkasirv.sirv.com/gemini-color.png';
+const grokIcon = 'https://anushkasirv.sirv.com/grok.png';
 
-// Default persona images - using public folder paths for consumer compatibility
-const defaultPersonaImages = {
-  1: 'https://anushkasirv.sirv.com/persona1.png',
-  2: 'https://anushkasirv.sirv.com/persona2.png', 
-  3: 'https://anushkasirv.sirv.com/persona3.png',
-  4: 'https://anushkasirv.sirv.com/persona4.png',
-  5: 'https://anushkasirv.sirv.com/persona5.png',
-};
-
-const platforms = [
-  { 
-    name: 'Gmail', 
-    icon: (
-      <svg className="w-6 h-6" viewBox="0 0 24 24">
-        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-      </svg>
-    ), 
-    color: 'bg-white', 
-    connector: 'gmail',
-    description: "We use your emails and search patterns to better understand your interests and communication style."
-  },
-  { 
-    name: 'Google', 
-    icon: (
-      <svg className="w-6 h-6" viewBox="0 0 24 24">
-        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-      </svg>
-    ), 
-    color: 'bg-white', 
-    connector: 'google',
-    description: "We use your search, YouTube, and location signals to better understand your interests and routines."
-  },
-  { 
-    name: 'Reddit', 
-    icon: (
-      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#FF4500">
-        <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z" />
-      </svg>
-    ), 
-    color: 'bg-white', 
-    connector: 'reddit',
-    description: "We use your posts and interactions to better understand your interests and preferences."
-  },
-  { 
-    name: 'Instagram', 
-    icon: (
-      <svg className="w-6 h-6" viewBox="0 0 24 24">
-        <defs>
-          <radialGradient id="instagram-gradient" cx="0.5" cy="1" r="1">
-            <stop offset="0%" stopColor="#FD5949" />
-            <stop offset="50%" stopColor="#D6249F" />
-            <stop offset="100%" stopColor="#285AEB" />
-          </radialGradient>
-        </defs>
-        <path fill="url(#instagram-gradient)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.073-1.689-.073-4.849 0-3.204.013-3.583.072-4.948.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-      </svg>
-    ), 
-    color: 'bg-white', 
-    connector: 'instagram',
-    description: "We use your photos and interactions to better understand your visual preferences and lifestyle."
-  },
-  { 
-    name: 'LinkedIn', 
-    icon: (
-      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#0077B5">
-        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-      </svg>
-    ), 
-    color: 'bg-white', 
-    connector: 'linkedin',
-    description: "We use your professional network and content to better understand your career interests."
-  },
-  { 
-    name: 'Pinterest', 
-    icon: (
-      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#E60023">
-        <path d="M12 0C5.373 0 0 5.372 0 12s5.373 12 12 12c6.628 0 12-5.372 12-12S18.628 0 12 0zm0 19c-.721 0-1.418-.109-2.073-.312.286-.465.713-1.227.87-1.835l.437-1.664c.229.436.895.8 1.604.8 2.111 0 3.633-1.941 3.633-4.354 0-2.312-1.895-4.049-4.218-4.049-2.972 0-4.684 1.946-4.684 4.338 0 1.083.424 2.42 1.218 2.847.131.07.201.04.232-.107.023-.106.151-.602.2-.784.067-.25.041-.336-.145-.553-.408-.474-.615-1.088-.615-1.72 0-1.658 1.222-3.259 3.297-3.259 1.798 0 3.064 1.244 3.064 3.018 0 2.019-.864 3.423-2.024 3.423-.633 0-1.106-.537-.954-1.196.181-.788.532-1.637.532-2.204 0-.508-.267-.932-.822-.932-.652 0-1.176.685-1.176 1.602 0 .584.197.98.197.98l-.790 3.396C6.595 16.85 6.017 14.47 6.017 12c0-3.313 2.687-6 6-6s6 2.687 6 6-2.687 6-6 6z"/>
-      </svg>
-    ), 
-    color: 'bg-white', 
-    connector: 'pinterest',
-    description: "We use your pins and boards to better understand your creative interests and style preferences."
-  }
-];
-
-// Enhanced SDK configuration
 const sdkConfig = {
   apiKey: process.env.REACT_APP_ONAIROS_API_KEY || 'onairos_web_sdk_live_key_2024',
   baseUrl: process.env.REACT_APP_ONAIROS_BASE_URL || 'https://api2.onairos.uk',
-  sdkType: 'web', // web, mobile, desktop
+  sdkType: 'web',
   enableHealthMonitoring: true,
   enableAutoRefresh: true,
-  enableConnectionValidation: true
+  enableConnectionValidation: true,
 };
 
-/**
- * UniversalOnboarding Component - Compact & Enhanced
- * Displays a streamlined onboarding screen for data connections
- */
-export default function UniversalOnboarding({ onComplete, onBack, appIcon, appName = 'App', personaImages: personaImagesProp, priorityPlatform = null, testMode = false }) {
-  // Use provided persona images or fallback to defaults
-  const personaImages = personaImagesProp ?? defaultPersonaImages;
-  
+const fadeSlideInKeyframes = `
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateX(var(--slide-x)); }
+  to { opacity: 1; transform: translateX(0); }
+}
+`;
+
+export default function UniversalOnboarding({ onComplete }) {
+  const lottieRef = useRef(null);
+  const lastFrameRef = useRef(0);
+  const rafRef = useRef(null);
+
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState(null);
-  const [connectionErrors, setConnectionErrors] = useState({});
-  const [connectionHealth, setConnectionHealth] = useState({});
-  const [healthScore, setHealthScore] = useState(0);
+  const [selected, setSelected] = useState('Instagram');
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Mobile device detection
-  const isMobileDevice = () => {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-           (window.innerWidth <= 768);
-  };
+  // swipe state
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
 
-  // Handle mobile OAuth return
+  const [vh, setVh] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 800));
   useEffect(() => {
-    const handleOAuthReturn = () => {
-      const platform = localStorage.getItem('onairos_oauth_platform');
-      if (platform) {
-        console.log(`📱 OAuth return detected for: ${platform}`);
-        
-        // Clear OAuth state
-        localStorage.removeItem('onairos_oauth_platform');
-        localStorage.removeItem('onairos_oauth_return');
-        
-        // Mark as connected
-        setConnectedAccounts(prev => ({
-          ...prev,
-          [platform]: true
-        }));
-        
-        // Clear any errors
-        setConnectionErrors(prev => ({
-          ...prev,
-          [platform]: null
-        }));
-        
-        console.log(`✅ ${platform} marked as connected from OAuth return`);
-      }
-    };
-
-    handleOAuthReturn();
+    const onResize = () => setVh(window.innerHeight);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const connectToPlatform = async (platformName) => {
-    console.log(`🚀 connectToPlatform called for: ${platformName}`);
-    
-    const platform = platforms.find(p => p.name === platformName);
-    if (!platform?.connector) {
-      console.error(`❌ No connector found for platform: ${platformName}`);
-      return false;
-    }
+  const FOOTER_H = 88;
 
+  // persona stays as requested (background, unchanged placement)
+  const personaSide = Math.min(vh * 0.52, 500);
+  const PERSONA_TOP = 96;
+
+  // icon layout (restore tighter spacing on page 1; place the band lower)
+  const SLOT = Math.max(56, Math.min(64, Math.floor(vh * 0.07)));
+  const CIRCLE = 42;
+  const GAP_PAGE1 = 12;
+  const GAP_PAGE2 = 20;
+  const ACTIVE_SCALE = vh < 760 ? 1.12 : 1.22;
+
+  const ICONS_H = 84;
+  const ICONS_TOP_OFFSET = Math.max(180, Math.min(240, Math.round(vh * 0.28))); // ~28vh, clamped for all screens
+
+  const igGradId = useId();
+
+  // ---- official brand SVGs (compact, consistent viewboxes) ----
+  const Brand = {
+    ChatGPT: <img src={chatgptIcon} alt="ChatGPT" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
+    Claude: <img src={claudeIcon} alt="Claude" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
+    Gemini: <img src={geminiIcon} alt="Gemini" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
+    Grok: <img src={grokIcon} alt="Grok" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
+    Instagram: (
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <defs>
+          <radialGradient id={igGradId} cx="0.5" cy="1" r="1">
+            <stop offset="0%" stopColor="#FDBB4B"/>
+            <stop offset="40%" stopColor="#E95950"/>
+            <stop offset="70%" stopColor="#BC2A8D"/>
+            <stop offset="100%" stopColor="#4C68D7"/>
+          </radialGradient>
+        </defs>
+        <path fill={`url(#${igGradId})`} d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 5.5A4.5 4.5 0 1 0 16.5 12 4.5 4.5 0 0 0 12 7.5zm0 7.4A2.9 2.9 0 1 1 14.9 12 2.9 2.9 0 0 1 12 14.9Zm5.35-8.25a1.15 1.15 0 1 0 1.15 1.15 1.15 1.15 0 0 0-1.15-1.15Z"/>
+      </svg>
+    ),
+    YouTube: (
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <path fill="#FF0000" d="M22.54 6.42a3 3 0 0 0-2.11-2.12C18.49 3.75 12 3.75 12 3.75s-6.49 0-8.43.55A3 3 0 0 0 1.46 6.42 31.63 31.63 0 0 0 1 12a31.63 31.63 0 0 0 .46 5.58 3 3 0 0 0 2.11 2.12C5.51 20.25 12 20.25 12 20.25s6.49 0 8.43-.55a3 3 0 0 0 2.11-2.12A31.63 31.63 0 0 0 23 12a31.63 31.63 0 0 0-.46-5.58z"/>
+        <path fill="#FFF" d="M10 8.75v6.5l6-3.25-6-3.25z"/>
+        </svg>
+      ),
+    Reddit: (
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <circle cx="12" cy="12" r="12" fill="#FF4500"/>
+        <circle cx="8.75" cy="12.5" r="1.25" fill="#FFF"/>
+        <circle cx="15.25" cy="12.5" r="1.25" fill="#FFF"/>
+        <path fill="#FFF" d="M7.9 15c.8.8 2.3 1.05 4.1 1.05S15.3 15.8 16.1 15c.2-.2.2-.5 0-.7-.2-.2-.5-.2-.7 0-.6.6-1.9.85-3.4.85S9.3 14.9 8.7 14.3c-.2-.2-.5-.2-.7 0-.2.2-.2.5 0 .7z"/>
+        </svg>
+      ),
+    LinkedIn: (
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <rect x="2" y="2" width="20" height="20" rx="3" fill="#0A66C2"/>
+        <rect x="5" y="9" width="3" height="10" fill="#FFF"/>
+        <circle cx="6.5" cy="6.5" r="1.5" fill="#FFF"/>
+        <path fill="#FFF" d="M16.8 19H13.9v-5c0-1.2-.5-1.8-1.4-1.8-.9 0-1.6.6-1.6 1.8V19H8V9h2.8v1.3c.5-.8 1.4-1.5 2.7-1.5 2 0 3.3 1.3 3.3 3.7V19z"/>
+        </svg>
+      ),
+    Twitter: (
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <path fill="#1DA1F2" d="M23.643 4.937c-.835.37-1.732.62-2.675.733.962-.576 1.7-1.49 2.048-2.578-.9.534-1.897.922-2.958 1.13-.85-.904-2.06-1.47-3.4-1.47-2.572 0-4.658 2.086-4.658 4.66 0 .364.042.718.12 1.06-3.873-.195-7.304-2.05-9.602-4.868-.4.69-.63 1.49-.63 2.342 0 1.616.823 3.043 2.072 3.878-.764-.025-1.482-.234-2.11-.583v.06c0 2.257 1.605 4.14 3.737 4.568-.392.106-.803.162-1.227.162-.3 0-.593-.028-.877-.082.593 1.85 2.313 3.198 4.352 3.234-1.595 1.25-3.604 1.995-5.786 1.995-.376 0-.747-.022-1.112-.065 2.062 1.323 4.51 2.093 7.14 2.093 8.57 0 13.255-7.098 13.255-13.254 0-.2-.005-.402-.014-.602.91-.658 1.7-1.477 2.323-2.41z"/>
+        </svg>
+      ),
+  };
+
+  const aiLinks = {
+    ChatGPT: 'https://chat.openai.com',
+    Claude: 'https://claude.ai',
+    Gemini: 'https://gemini.google.com',
+    Grok: 'https://grok.x.ai',
+  };
+
+  const descriptions = {
+    ChatGPT: <>We analyze your <strong className="font-semibold">prompt style</strong> and <strong className="font-semibold">chat history</strong> to match your writing and thinking patterns.</>,
+    Claude: <>We learn your <strong className="font-semibold">document workflow</strong> and <strong className="font-semibold">reasoning preferences</strong> to tune output format and detail.</>,
+    Gemini: <>We study your <strong className="font-semibold">search patterns</strong> and <strong className="font-semibold">multimodal usage</strong> to improve response accuracy.</>,
+    Grok: <>We adapt to your <strong className="font-semibold">X posting style</strong> and <strong className="font-semibold">meme literacy</strong> to match your tone.</>,
+    Twitter: <>We analyze your <strong className="font-semibold">tweets</strong> and <strong className="font-semibold">interests</strong> to understand your preferences.</>,
+    YouTube: <>We study your <strong className="font-semibold">watch history</strong> and <strong className="font-semibold">interactions</strong> to learn your interests.</>,
+    Reddit: <>We examine your <strong className="font-semibold">search history</strong> and <strong className="font-semibold">discussions</strong> to understand your interests.</>,
+    Instagram: <>We analyze your <strong className="font-semibold">photos</strong> and <strong className="font-semibold">interactions</strong> to learn visual preferences.</>,
+    LinkedIn: <>We study your <strong className="font-semibold">professional graph</strong> and <strong className="font-semibold">content</strong> to understand career interests.</>,
+  };
+
+  const allPlatforms = [
+    // Page 1
+    { name: 'Instagram', connector: 'instagram', icon: Brand.Instagram },
+    { name: 'YouTube', connector: 'youtube', icon: Brand.YouTube },
+    { name: 'ChatGPT', connector: 'chatgpt', icon: Brand.ChatGPT, directLink: aiLinks.ChatGPT },
+    // Page 2
+    { name: 'Claude', connector: 'claude', icon: Brand.Claude, directLink: aiLinks.Claude },
+    { name: 'Gemini', connector: 'gemini', icon: Brand.Gemini, directLink: aiLinks.Gemini },
+    { name: 'Twitter', connector: 'twitter', icon: Brand.Twitter },
+    // Page 3
+    { name: 'LinkedIn', connector: 'linkedin', icon: Brand.LinkedIn },
+    { name: 'Reddit', connector: 'reddit', icon: Brand.Reddit },
+    { name: 'Grok', connector: 'grok', icon: Brand.Grok, directLink: aiLinks.Grok },
+  ];
+
+  const getPlatformsForPage = (page) => {
+    if (page === 1) return allPlatforms.slice(0, 3);
+    if (page === 2) return allPlatforms.slice(3, 6);
+    return allPlatforms.slice(6);
+  };
+
+  const platforms = getPlatformsForPage(currentPage);
+
+  useEffect(() => {
+    const p = localStorage.getItem('onairos_oauth_platform');
+    if (p) {
+      localStorage.removeItem('onairos_oauth_platform');
+      localStorage.removeItem('onairos_oauth_return');
+      setConnectedAccounts((s) => ({ ...s, [p]: true }));
+    }
+  }, []);
+
+  async function connectToPlatform(name) {
+    const plat = allPlatforms.find((p) => p.name === name);
+    if (!plat) return false;
     try {
       setIsConnecting(true);
-      setConnectingPlatform(platformName);
-      
-      // Clear any previous errors
-      setConnectionErrors(prev => ({
-        ...prev,
-        [platformName]: null
-      }));
-      
-      console.log(`🔗 Starting OAuth connection for ${platformName}...`);
-      
-      const username = localStorage.getItem('username') || localStorage.getItem('onairosUser')?.email || 'user@example.com';
-      
-      // Enhanced authorize endpoint with SDK type
-      const authorizeUrl = `${sdkConfig.baseUrl}/${platform.connector}/authorize`;
-      
-      const response = await fetch(authorizeUrl, {
-        method: 'POST',
-        headers: {
-          'x-api-key': sdkConfig.apiKey,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          session: {
-            username: username
-          }
-        })
+      setConnectingPlatform(name);
+      const username = localStorage.getItem('username') || (JSON.parse(localStorage.getItem('onairosUser') || '{}')?.email) || 'user@example.com';
+
+      const res = await fetch(`${sdkConfig.baseUrl}/${plat.connector}/authorize`, {
+        method: 'POST', headers: { 'x-api-key': sdkConfig.apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: { username } }),
       });
+      if (!res.ok) throw new Error('auth failed');
+      const data = await res.json();
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+      const candidates = (
+        {
+          youtube: ['youtubeURL','youtubeUrl','youtube_url'],
+          linkedin: ['linkedinURL','linkedinUrl','linkedin_url'],
+          reddit: ['redditURL','redditUrl','reddit_url'],
+          pinterest: ['pinterestURL','pinterestUrl','pinterest_url'],
+          instagram: ['instagramURL','instagramUrl','instagram_url'],
+          github: ['githubURL','githubUrl','github_url'],
+          facebook: ['facebookURL','facebookUrl','facebook_url'],
+          gmail: ['gmailURL','gmailUrl','gmail_url'],
+        }[plat.connector]
+      ) || [`${plat.connector}URL`, `${plat.connector}Url`, `${plat.connector}_url`, 'platformURL', 'authUrl', 'url'];
 
-             const responseData = await response.json();
-       console.log(`📋 ${platformName} OAuth response:`, responseData);
-       
-       // Check for platform-specific URL keys with multiple fallbacks
-       const platformUrlKeys = {
-         'youtube': ['youtubeURL', 'youtubeUrl', 'youtube_url'],
-         'linkedin': ['linkedinURL', 'linkedinUrl', 'linkedin_url'], 
-         'reddit': ['redditURL', 'redditUrl', 'reddit_url'],
-         'pinterest': ['pinterestURL', 'pinterestUrl', 'pinterest_url'],
-         'instagram': ['instagramURL', 'instagramUrl', 'instagram_url'],
-         'github': ['githubURL', 'githubUrl', 'github_url'],
-         'facebook': ['facebookURL', 'facebookUrl', 'facebook_url'],
-         'gmail': ['gmailURL', 'gmailUrl', 'gmail_url']
-       };
-       
-       const possibleKeys = platformUrlKeys[platform.connector] || [
-         `${platform.connector}URL`,
-         `${platform.connector}Url`, 
-         `${platform.connector}_url`,
-         'platformURL',
-         'authUrl', 
-         'url'
-       ];
-       
-       let oauthUrl = null;
-       let usedKey = null;
-       
-       // Try each possible key
-       for (const key of possibleKeys) {
-         if (responseData[key]) {
-           oauthUrl = responseData[key];
-           usedKey = key;
-           break;
-         }
-       }
-       
-       if (!oauthUrl) {
-         console.error(`❌ No OAuth URL found for ${platformName}:`);
-         console.error(`Expected one of:`, possibleKeys);
-         console.error(`Response keys:`, Object.keys(responseData));
-         console.error(`Full response:`, responseData);
-         throw new Error(`No OAuth URL found. Backend should return one of: ${possibleKeys.join(', ')}`);
-       }
-       
-       console.log(`✅ Found OAuth URL for ${platformName} using key: ${usedKey}`);
-        
-      if (isMobileDevice()) {
-        // Mobile: Use redirect flow
-        localStorage.setItem('onairos_oauth_platform', platformName);
-        localStorage.setItem('onairos_oauth_return', window.location.href);
-        window.location.href = oauthUrl;
-        return true;
-      } else {
-        // Desktop: Use popup flow with enhanced monitoring
-        const popup = window.open(
-          oauthUrl,
-          `${platform.connector}_oauth`,
-          'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
-        );
-        
-        if (!popup) {
-          throw new Error('Popup blocked. Please allow popups and try again.');
-        }
+      let oauthUrl = null; for (const k of candidates) if (data[k]) { oauthUrl = data[k]; break; }
+      if (!oauthUrl) throw new Error('no url');
 
-                 // Enhanced popup monitoring with onairos.uk detection
-         let hasNavigatedToOnairos = false;
-         const checkInterval = setInterval(() => {
-           try {
-             // Try to detect if popup has navigated to onairos.uk (indicates success)
-             if (popup.location && popup.location.hostname === 'onairos.uk') {
-               hasNavigatedToOnairos = true;
-               console.log(`🔄 ${platformName} popup navigated to onairos.uk - treating as success`);
-               
-               // Close the popup since it shows "not found"
-               popup.close();
-               return; // Let the popup.closed check handle the rest
-             }
-           } catch (e) {
-             // Cross-origin error is expected when popup navigates to onairos.uk
-             // This actually indicates the OAuth likely succeeded
-             if (!hasNavigatedToOnairos) {
-               hasNavigatedToOnairos = true;
-               console.log(`🔄 ${platformName} popup navigated (cross-origin) - likely to onairos.uk`);
-             }
-           }
-           
-           try {
-             // Check if popup is closed
-             if (popup.closed) {
-               clearInterval(checkInterval);
-               
-               // Check for success or error signals from callback page
-               const successFlag = localStorage.getItem(`onairos_${platformName}_success`);
-               const errorFlag = localStorage.getItem(`onairos_${platformName}_error`);
-               const timestamp = localStorage.getItem(`onairos_${platformName}_timestamp`);
-               
-               // Only process recent signals (within 30 seconds)
-               const isRecentSignal = timestamp && (Date.now() - parseInt(timestamp) < 30000);
-               
-               if (successFlag && isRecentSignal) {
-                 // Success flow from callback page
-                 console.log(`✅ ${platformName} OAuth completed successfully (callback page)`);
-                 localStorage.removeItem(`onairos_${platformName}_success`);
-                 localStorage.removeItem(`onairos_${platformName}_timestamp`);
-                 
-                 setConnectedAccounts(prev => ({
-                   ...prev,
-                   [platformName]: true
-                 }));
-                 setConnectionErrors(prev => ({
-                   ...prev,
-                   [platformName]: null
-                 }));
-                 
-               } else if (errorFlag && isRecentSignal) {
-                 // Error flow from callback page
-                 console.log(`❌ ${platformName} OAuth failed:`, errorFlag);
-                 localStorage.removeItem(`onairos_${platformName}_error`);
-                 localStorage.removeItem(`onairos_${platformName}_timestamp`);
-                 
-                 setConnectionErrors(prev => ({
-                   ...prev,
-                   [platformName]: errorFlag
-                 }));
-                 
-               } else if (hasNavigatedToOnairos) {
-                 // Popup navigated to onairos.uk - assume success
-                 console.log(`✅ ${platformName} OAuth likely successful (navigated to onairos.uk)`);
-                 setConnectedAccounts(prev => ({
-                   ...prev,
-                   [platformName]: true
-                 }));
-                 setConnectionErrors(prev => ({
-                   ...prev,
-                   [platformName]: null
-                 }));
-                 
-               } else {
-                 // No signal and no onairos navigation - assume user cancelled
-                 console.log(`⚠️ ${platformName} OAuth cancelled or no response`);
-                 setConnectionErrors(prev => ({
-                   ...prev,
-                   [platformName]: 'Connection was cancelled'
-                 }));
-               }
-               
-               setIsConnecting(false);
-               setConnectingPlatform(null);
-             }
-           } catch (error) {
-             // Cross-origin error when popup navigates away - this is normal
-             // console.log(`🔄 Popup navigated away for ${platformName}`);
-           }
-         }, 1000);
+      const popup = window.open(oauthUrl, `${plat.connector}_oauth`, 'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no');
+      if (!popup) throw new Error('popup blocked');
 
-                 // Auto-close popup if it shows onairos.uk "not found" page after 10 seconds
-         setTimeout(() => {
-           try {
-             if (!popup.closed && popup.location && popup.location.hostname === 'onairos.uk') {
-               console.log(`🚪 Auto-closing ${platformName} popup showing onairos.uk (not found)`);
-               popup.close();
-             }
-           } catch (e) {
-             // Cross-origin error is expected - try to close anyway if it's been 10 seconds
-             if (!popup.closed && hasNavigatedToOnairos) {
-               console.log(`🚪 Auto-closing ${platformName} popup (cross-origin, likely onairos.uk)`);
-               popup.close();
-             }
-           }
-         }, 10000);
+      let touched = false; const it = setInterval(() => {
+        try { if (popup.location && popup.location.hostname === 'onairos.uk') { touched = true; popup.close(); } } catch { if (!touched) touched = true; }
+        try { if (popup.closed) { clearInterval(it); setConnectedAccounts((s) => ({ ...s, [name]: true })); setIsConnecting(false); setConnectingPlatform(null); } } catch {}
+      }, 800);
 
-         // Final timeout after 5 minutes
-         setTimeout(() => {
-           if (!popup.closed) {
-             popup.close();
-             clearInterval(checkInterval);
-             setConnectionErrors(prev => ({
-               ...prev,
-               [platformName]: 'Connection timeout'
-             }));
-             setIsConnecting(false);
-             setConnectingPlatform(null);
-           }
-         }, 300000);
-
-        return true;
-      }
-    } catch (error) {
-      console.error(`❌ Error connecting to ${platformName}:`, error);
-      setConnectionErrors(prev => ({
-        ...prev,
-        [platformName]: error.message
-      }));
-      setIsConnecting(false);
-      setConnectingPlatform(null);
-      return false;
+      setTimeout(() => { try { if (!popup.closed && touched) popup.close(); } catch {} }, 10000);
+      setTimeout(() => { if (!popup.closed) { popup.close(); clearInterval(it); setIsConnecting(false); setConnectingPlatform(null); } }, 300000);
+      return true;
+    } catch {
+      setIsConnecting(false); setConnectingPlatform(null); return false;
     }
-  };
+  }
 
-  const handleToggle = async (platformName) => {
-    console.log(`🔥 TOGGLE CLICKED: ${platformName}`);
-    
-    if (isConnecting && connectingPlatform !== platformName) {
-      console.log(`⚠️ Already connecting to ${connectingPlatform}, ignoring click on ${platformName}`);
-      return;
-    }
-    
-    const isConnected = connectedAccounts[platformName];
-    
-    if (isConnected) {
-      // Disconnect
-      console.log(`🔌 Disconnecting from ${platformName}...`);
-      setConnectedAccounts(prev => ({
-        ...prev,
-        [platformName]: false
-      }));
-      setConnectionErrors(prev => ({
-        ...prev,
-        [platformName]: null
-      }));
-    } else {
-      // Connect
-      await connectToPlatform(platformName);
-    }
-  };
-
-  const handleContinue = () => {
-    const connected = Object.entries(connectedAccounts)
-      .filter(([platform, isConnected]) => isConnected)
-      .map(([platform]) => platform);
-    
-    onComplete({
-      connectedAccounts: connected,
-      totalConnections: connected.length,
-      healthScore: healthScore,
-      connectionHealth: connectionHealth,
-      sdkVersion: '2.1.7',
-      enhancedFeatures: {
-        healthMonitoring: sdkConfig.enableHealthMonitoring,
-        autoRefresh: sdkConfig.enableAutoRefresh,
-        connectionValidation: sdkConfig.enableConnectionValidation
-      }
-    });
+  const handleSwitch = async (name) => {
+    if (isConnecting && connectingPlatform !== name) return;
+    const on = !!connectedAccounts[name];
+    if (on) setConnectedAccounts((s) => ({ ...s, [name]: false }));
+    else await connectToPlatform(name);
   };
 
   const connectedCount = Object.values(connectedAccounts).filter(Boolean).length;
-  const personaNumber = Math.min(connectedCount + 1, 5); // 0 connections = persona 1, 1 connection = persona 2, etc.
 
-  // Sort platforms to prioritize the specified platform
-  const getSortedPlatforms = () => {
-    if (!priorityPlatform) return platforms;
-    
-    const priorityPlat = platforms.find(p => 
-      p.name.toLowerCase() === priorityPlatform.toLowerCase() || 
-      p.connector.toLowerCase() === priorityPlatform.toLowerCase()
-    );
-    
-    if (!priorityPlat) return platforms;
-    
-    const otherPlatforms = platforms.filter(p => p !== priorityPlat);
-    return [priorityPlat, ...otherPlatforms];
-  };
+  useEffect(() => {
+    if (!lottieRef.current) return;
+    const totalFrames = (personaAnim.op || 0) - (personaAnim.ip || 0);
+    const TOTAL_PLATFORMS = 9; // Total number of platforms across all pages
+    const progress = connectedCount / TOTAL_PLATFORMS;
+    const target = Math.max(0, Math.floor(progress * totalFrames));
+    const start = lastFrameRef.current || 0;
+    const duration = 420; const startTs = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - startTs) / duration);
+      const eased = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+      const frame = Math.floor(start + (target - start) * eased);
+      lottieRef.current.goToAndStop(frame, true);
+      if (t < 1) rafRef.current = requestAnimationFrame(step); else lastFrameRef.current = target;
+    };
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(step);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [connectedCount]);
 
-  const sortedPlatforms = getSortedPlatforms();
-  const isPriorityPlatform = (platform) => {
-    if (!priorityPlatform) return false;
-    return platform.name.toLowerCase() === priorityPlatform.toLowerCase() || 
-           platform.connector.toLowerCase() === priorityPlatform.toLowerCase();
+  // swipe handlers for smooth paging
+  const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; touchDeltaX.current = 0; };
+  const onTouchMove  = (e) => { touchDeltaX.current = e.touches[0].clientX - touchStartX.current; };
+  const onTouchEnd   = () => {
+    const dx = touchDeltaX.current; const THRESH = 40;
+    if (dx < -THRESH && currentPage < 3) setCurrentPage(currentPage + 1);
+    else if (dx > THRESH && currentPage > 1) setCurrentPage(currentPage - 1);
   };
 
   return (
-    <div className="w-full h-full flex flex-col" style={{ height: '90vh', minHeight: 0 }}>
-      {/* Content - Flexible center area */}
-      <div className="px-6 pt-16 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }}>
-        <div className="mb-6 flex-shrink-0">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">Connect app data</h1>
-          <p className="text-gray-600 text-base">More connections, better personalization.</p>
-          </div>
+    <div className="w-full h-full relative" style={{ height: Math.min('90vh', Math.max(600, Math.min(720, vh * 0.9))), minHeight: 580, maxHeight: 720 }}>
+      <style>{fadeSlideInKeyframes}</style>
 
-        <div className="mb-2 flex justify-center flex-shrink-0">
-          <div className="w-56 h-56 overflow-hidden">
-            <img
-              src={personaImages[personaNumber]}
-              alt={`Persona ${personaNumber}`}
-              width="256"
-              height="256"
-              className="w-full h-full object-cover"
-              onLoad={() => console.log('✅ Persona image loaded successfully!')}
-              onError={(e) => {
-                console.log('❌ Persona image failed to load:', personaImages[personaNumber]);
-                console.log('Connected count:', connectedCount);
-                console.log('Persona number:', personaNumber);
-                console.log('All persona URLs:', personaImages);
-                console.log('Current location:', window.location.href);
-                console.log('Trying to load from:', personaImages[personaNumber]);
-                
-                // Fallback to gradient if image fails to load
-                e.target.style.display = 'none';
-                e.target.parentElement.style.background = 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)';
-              }}
-          />
+      {/* persona as background (unchanged) */}
+      <div aria-hidden style={{ position: 'absolute', left: '50%', top: PERSONA_TOP, transform: 'translateX(-50%)', width: personaSide, height: personaSide, zIndex: 0, pointerEvents: 'none', opacity: 0.95 }}>
+        <div className="overflow-hidden rounded-[28px] w-full h-full">
+          <Lottie lottieRef={lottieRef} animationData={personaAnim} autoplay={false} loop={false} style={{ width: '100%', height: '100%' }} />
         </div>
       </div>
 
-        {/* Scrollable platform list */}
-        <div className="flex-1 overflow-y-auto mt-4" style={{ minHeight: 0 }}>
-          <div className="space-y-4 pb-4">
-            {platforms.map((platform) => {
-          const isConnected = connectedAccounts[platform.name] || false;
-          const isCurrentlyConnecting = connectingPlatform === platform.name;
-          const hasError = connectionErrors[platform.name];
-          const isDisabled = isConnecting && !isCurrentlyConnecting;
-          const isPriority = isPriorityPlatform(platform);
-          
-          return (
-            <div 
-              key={platform.name}
-                  className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
-                  style={{
-                    backgroundColor: "#ffffff",
-                    border: "none",
-                    outline: "none",
-                    gap: 'clamp(6px, 1.5vw, 10px)',
-                    padding: 'clamp(6px, 1.5vw, 10px)',
-                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-                    marginBottom: 'clamp(3px, 0.8vw, 6px)'
-                  }}
-              onClick={() => !isDisabled && handleToggle(platform.name)}
+      {/* content above persona */}
+      <div className="relative z-10 h-full flex flex-col">
+        {/* header (unchanged visuals) */}
+        <div className="px-6 pt-16 pb-4 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
+          <p className="text-gray-600 text-base">More Connections, Better Personalization.</p>
+        </div>
+
+        {/* icons band — placed LOWER per request */}
+        <div className="px-6 flex-shrink-0" style={{ height: ICONS_H, marginTop: ICONS_TOP_OFFSET }}>
+          <div className="h-full flex items-center justify-center">
+            <div
+              className="grid w-full box-border relative"
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+                    style={{
+                gridAutoFlow: 'column',
+                gridTemplateColumns: `repeat(${platforms.length}, minmax(0,1fr))`,
+                columnGap: currentPage === 1 ? GAP_PAGE1 : GAP_PAGE2,
+                alignItems: 'center',
+                justifyItems: 'center',
+                paddingInline: 8,
+                overflow: 'hidden',
+              }}
             >
-                  <div className="bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-gray-200" style={{ width: 'clamp(28px, 6vw, 36px)', height: 'clamp(28px, 6vw, 36px)' }}>
-                  {isCurrentlyConnecting ? (
-                      <div className="animate-spin h-5 w-5 border-2 border-gray-400 rounded-full border-t-transparent"></div>
-                  ) : (
-                    platform.icon
-                  )}
-                    </div>
-                  <div className="flex-1 min-w-0 pr-4">
-                    <h3
-                      className="font-semibold"
-                      style={{
-                        color: "#111827",
-                        fontSize: 'clamp(12px, 2.8vw, 15px)',
-                        marginBottom: 'clamp(1px, 0.3vw, 3px)',
-                        lineHeight: '1.2'
+              {platforms.map((p, idx) => {
+                const on = !!connectedAccounts[p.name];
+                const busy = isConnecting && connectingPlatform === p.name;
+                const isSel = selected === p.name;
+                const shift = (currentPage === 1 ? idx : idx - 2) * 14;
+                return (
+                  <div key={p.name} className="transition-all duration-300" style={{ opacity: 0, transform: `translateX(${shift}px)`, animation: 'fadeSlideIn 0.28s forwards', ['--slide-x']: `${shift}px` }}>
+                    <button
+                      type="button"
+                      onClick={() => { 
+                        setSelected(p.name);
+                        if (p.directLink) {
+                          window.open(p.directLink, '_blank');
+                        } else {
+                          handleSwitch(p.name);
+                        }
                       }}
+                      className="relative grid place-items-center outline-none"
+                      style={{ width: SLOT, height: SLOT }}
+                      title={p.name}
                     >
-                      {platform.name}
-                    </h3>
-                    <p
-                      className="leading-tight"
-                      style={{
-                        color: "#6B7280",
-                        fontSize: 'clamp(10px, 2.2vw, 12px)',
-                        lineHeight: '1.3'
-                      }}
-                    >
-                      {platform.description}
-                  </p>
-                  
-                  {/* Error Message */}
-                  {hasError && (
-                    <p className="text-xs text-red-600 mt-1">
-                      {hasError}
-                    </p>
-                  )}
-                </div>
-                  <div className="flex-shrink-0">
-                    <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!isDisabled) handleToggle(platform.name);
-                  }}
-                      className={`relative inline-flex items-center rounded-full transition-all duration-300 ease-in-out cursor-pointer ${
-                        isConnected ? "bg-blue-500" : "bg-gray-300"
-                      } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                      style={{ 
-                        height: 'clamp(20px, 4vw, 26px)', 
-                        width: 'clamp(40px, 8vw, 52px)',
-                        boxShadow: isConnected ? '0 2px 4px rgba(59, 130, 246, 0.3)' : '0 1px 2px rgba(0, 0, 0, 0.1)'
-                      }}
-                >
-                  <span
-                        className={`inline-block rounded-full bg-white transition-all duration-300 ease-in-out shadow-lg ${
-                          isConnected ? "translate-x-6" : "translate-x-0.5"
-                    }`}
-                        style={{ 
-                          height: 'clamp(16px, 3.5vw, 20px)', 
-                          width: 'clamp(16px, 3.5vw, 20px)'
-                        }}
-                  />
+                      <div className={`rounded-full border-3 transition-all duration-150 ease-out flex items-center justify-center shadow-lg ${on ? 'border-blue-600 bg-white text-black shadow-blue-500/70' : 'border-gray-300 hover:border-gray-400 bg-white text-black'}`}
+                           style={{ width: CIRCLE, height: CIRCLE, transform: `scale(${isSel ? ACTIVE_SCALE : 1})`, transformOrigin: 'center' }}>
+                        {busy ? (<div className="animate-spin h-4 w-4 border-2 border-gray-400 rounded-full border-t-transparent" />) : (
+                          <div className="flex items-center justify-center" style={{ width: 20, height: 20 }}>
+                            {p.icon}
                     </div>
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* dots navigation (no numbers) */}
+        <div className="mt-6 flex items-center justify-center gap-4 select-none">
+          {[1,2,3].map(n => (
+            <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: 10, height: 10 }}>
+              <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-110' : 'bg-gray-300'} transition-transform`} style={{ width: 10, height: 10 }} />
+            </button>
+          ))}
+        </div>
+
+        {/* info sheet — positioned right above the footer */}
+        <div className="px-6 flex-shrink-0" style={{ position: 'absolute', bottom: FOOTER_H + 24, left: 0, right: 0, zIndex: 20 }}>
+          <div className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5" style={{ width: 'min(680px,92%)', maxHeight: vh * 0.2 }}>
+            <div className="flex items-center justify-between">
+              <div className="text-gray-900 font-medium">{selected}</div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!!connectedAccounts[selected]}
+                aria-label={`toggle ${selected}`}
+                onClick={() => handleSwitch(selected)}
+                disabled={isConnecting && connectingPlatform !== selected}
+                className={`relative inline-flex items-center transition-colors disabled:opacity-50 ${connectedAccounts[selected] ? 'bg-black' : 'bg-gray-200'} rounded-full`}
+                style={{ width: 56, height: 32 }}
+              >
+                <span className="absolute bg-white rounded-full shadow" style={{ width: 24, height: 24, transform: connectedAccounts[selected] ? 'translateX(26px)' : 'translateX(6px)', transition: 'transform 160ms ease' }} />
+              </button>
+            </div>
+            <div className="mt-3">
+              <div className="rounded-2xl bg-gray-50 text-gray-700 text-sm leading-6 px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
+                {descriptions[selected] || null}
               </div>
             </div>
-          );
-        })}
-      </div>
-        </div>
-      </div>
-
-      {/* Buttons - Fixed at bottom */}
-      <div className="flex-shrink-0" style={{ padding: 'clamp(8px, 2vw, 16px) clamp(16px, 4vw, 24px)', minHeight: 'auto', display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.5vw, 10px)' }}>
-        <div
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 shadow-lg hover:shadow-xl"
-          style={{ 
-            padding: 'clamp(10px, 2.5vw, 14px)', 
-            fontSize: 'clamp(13px, 3.2vw, 16px)',
-            minHeight: 'clamp(36px, 7vw, 44px)'
-          }}
-          onClick={handleContinue}
-        >
-          Update
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-        {connectedCount > 0 && (
-          <div
-            onClick={() => onComplete({ connectedAccounts: [], totalConnections: 0 })}
-            className="w-full text-gray-500 font-medium text-center cursor-pointer hover:text-gray-700 transition-colors"
-            style={{ 
-              padding: 'clamp(6px, 1.5vw, 10px)', 
-              fontSize: 'clamp(12px, 3vw, 15px)',
-              minHeight: 'clamp(28px, 5vw, 36px)'
-            }}
-          >
-            Skip
           </div>
-        )}
+        </div>
+
+        {/* footer — fixed near bottom; no change to persona */}
+        <div className="absolute left-0 right-0 px-6" style={{ bottom: 0, height: FOOTER_H + 20, paddingBottom: 16, background: 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
+          <div className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" onClick={() => {
+            const connected = Object.entries(connectedAccounts).filter(([, v]) => v).map(([k]) => k);
+            onComplete?.({ connectedAccounts: connected, totalConnections: connected.length });
+          }}>
+            Update
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </div>
+          <div onClick={() => onComplete?.({ connectedAccounts: [], totalConnections: 0 })} className="w-full text-gray-600 text-base font-medium py-2 text-center cursor-pointer hover:text-gray-800 transition-colors">Skip</div>
+        </div>
       </div>
     </div>
   );

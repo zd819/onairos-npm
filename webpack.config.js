@@ -81,11 +81,18 @@ const baseConfig = {
         generator: {
           filename: 'static/[hash][ext][query]'
         }
+      },
+      {
+        test: /\.json$/,
+        type: 'json',
+        include: [
+          path.resolve(__dirname, 'public')
+        ]
       }
     ]
   },
   resolve: {
-    extensions: ['.js', '.jsx', '.mjs'],
+    extensions: ['.js', '.jsx', '.mjs', '.json'],
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
@@ -101,6 +108,7 @@ const baseConfig = {
       "path": require.resolve("path-browserify"),
       "vm": require.resolve("vm-browserify"),
       "process": require.resolve("process/browser"),
+      "tty": require.resolve("tty-browserify"),
       "fs": false,
       "net": false,
       "tls": false,
@@ -166,6 +174,10 @@ module.exports = [
           },
           {
             from: path.resolve(__dirname, 'src', 'assets', 'persona*.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', '*.json'),
             to: path.resolve(__dirname, 'dist', '[name][ext]')
           }
         ]

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import Lottie from 'lottie-react';
+import rainAnim from '../../public/rain-anim.json';
 
 export default function LoadingScreen({ onComplete }) {
   const [currentStep, setCurrentStep] = useState(0);
@@ -48,22 +50,37 @@ export default function LoadingScreen({ onComplete }) {
         <div className="px-6 pt-6 pb-4 flex-shrink-0">
         </div>
 
-        {/* Content - Centered loading state */}
-        <div className="flex-1 flex flex-col justify-center items-center px-6">
-          <div className="text-center mb-12">
-            <h1 className="font-bold text-gray-900 leading-tight" style={{ fontSize: 'clamp(16px, 4vw, 20px)', marginBottom: 'clamp(24px, 6vw, 48px)' }}>
-              {currentState.message}
-              {currentState.message !== "Complete!" && (
-                <span className="inline-block w-8 text-left">{".".repeat(dotCount)}</span>
-              )}
-            </h1>
+        {/* Content - Rain animation and loading state */}
+        <div className="flex-1 flex flex-col px-6">
+          {/* Rain Animation */}
+          <div className="flex-1 flex items-center justify-center">
+            <div style={{ width: '100%', maxWidth: '400px', aspectRatio: '1' }}>
+              <Lottie
+                animationData={rainAnim}
+                loop={true}
+                autoplay={true}
+                style={{ width: '100%', height: '100%' }}
+              />
+            </div>
+          </div>
 
-            <div className="mx-auto" style={{ width: 'clamp(200px, 50vw, 300px)' }}>
-              <div className="w-full h-2 bg-gray-200 rounded-full">
-                <div
-                  className="h-2 bg-gray-900 rounded-full transition-all duration-1000 ease-out"
-                  style={{ width: `${currentState.progress}%` }}
-                ></div>
+          {/* Loading State - Positioned at bottom */}
+          <div className="flex-shrink-0 pb-12">
+            <div className="text-center">
+              <h1 className="font-bold text-gray-900 leading-tight mb-6" style={{ fontSize: 'clamp(16px, 4vw, 20px)' }}>
+                {currentState.message}
+                {currentState.message !== "Complete!" && (
+                  <span className="inline-block w-8 text-left">{".".repeat(dotCount)}</span>
+                )}
+              </h1>
+
+              <div className="mx-auto" style={{ width: 'clamp(200px, 50vw, 300px)' }}>
+                <div className="w-full h-2 bg-gray-200 rounded-full">
+                  <div
+                    className="h-2 bg-gray-900 rounded-full transition-all duration-1000 ease-out"
+                    style={{ width: `${currentState.progress}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
           </div>
