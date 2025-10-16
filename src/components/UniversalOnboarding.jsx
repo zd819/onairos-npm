@@ -165,6 +165,16 @@ export default function UniversalOnboarding({ onComplete }) {
     const plat = allPlatforms.find((p) => p.name === name);
     if (!plat) return false;
     try {
+      // For direct-link platforms (no OAuth), mark connected immediately and return
+      if (plat.directLink) {
+        setConnectedAccounts((s) => ({ ...s, [name]: true }));
+        setIsConnecting(false);
+        setConnectingPlatform(null);
+        return true;
+      }
+
+      // Immediately reflect selection in UI without spinner while starting OAuth
+      setConnectedAccounts((s) => ({ ...s, [name]: true }));
       setIsConnecting(true);
       setConnectingPlatform(name);
       const username = localStorage.getItem('username') || (JSON.parse(localStorage.getItem('onairosUser') || '{}')?.email) || 'user@example.com';
@@ -197,13 +207,15 @@ export default function UniversalOnboarding({ onComplete }) {
 
       let touched = false; const it = setInterval(() => {
         try { if (popup.location && popup.location.hostname === 'onairos.uk') { touched = true; popup.close(); } } catch { if (!touched) touched = true; }
-        try { if (popup.closed) { clearInterval(it); setConnectedAccounts((s) => ({ ...s, [name]: true })); setIsConnecting(false); setConnectingPlatform(null); } } catch {}
+        try { if (popup.closed) { clearInterval(it); setIsConnecting(false); setConnectingPlatform(null); } } catch {}
       }, 800);
 
       setTimeout(() => { try { if (!popup.closed && touched) popup.close(); } catch {} }, 10000);
       setTimeout(() => { if (!popup.closed) { popup.close(); clearInterval(it); setIsConnecting(false); setConnectingPlatform(null); } }, 300000);
       return true;
     } catch {
+      // On failure, revert the optimistic toggle
+      setConnectedAccounts((s) => ({ ...s, [name]: false }));
       setIsConnecting(false); setConnectingPlatform(null); return false;
     }
   }
@@ -285,7 +297,7 @@ export default function UniversalOnboarding({ onComplete }) {
             >
               {platforms.map((p, idx) => {
                 const on = !!connectedAccounts[p.name];
-                const busy = isConnecting && connectingPlatform === p.name;
+                const busy = false; // keep icon static visually per request
                 const isSel = selected === p.name;
                 const shift = (currentPage === 1 ? idx : idx - 2) * 14;
                 return (
@@ -306,11 +318,9 @@ export default function UniversalOnboarding({ onComplete }) {
                     >
                       <div className={`rounded-full border-3 transition-all duration-150 ease-out flex items-center justify-center shadow-lg ${on ? 'border-blue-600 bg-white text-black shadow-blue-500/70' : 'border-gray-300 hover:border-gray-400 bg-white text-black'}`}
                            style={{ width: CIRCLE, height: CIRCLE, transform: `scale(${isSel ? ACTIVE_SCALE : 1})`, transformOrigin: 'center' }}>
-                        {busy ? (<div className="animate-spin h-4 w-4 border-2 border-gray-400 rounded-full border-t-transparent" />) : (
-                          <div className="flex items-center justify-center" style={{ width: 20, height: 20 }}>
-                            {p.icon}
-                    </div>
-                        )}
+                        <div className="flex items-center justify-center" style={{ width: 20, height: 20 }}>
+                          {p.icon}
+                        </div>
                       </div>
                     </button>
                   </div>
@@ -320,11 +330,11 @@ export default function UniversalOnboarding({ onComplete }) {
           </div>
         </div>
 
-        {/* dots navigation (no numbers) */}
-        <div className="mt-6 flex items-center justify-center gap-4 select-none">
+        {/* dots navigation (no numbers) - directly under icons, above card */}
+        <div className="relative flex items-center justify-center gap-4 select-none" style={{ marginTop: 20, zIndex: 25 }}>
           {[1,2,3].map(n => (
-            <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: 10, height: 10 }}>
-              <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-110' : 'bg-gray-300'} transition-transform`} style={{ width: 10, height: 10 }} />
+            <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: 12, height: 12 }}>
+              <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-110' : 'bg-gray-300'} transition-transform`} style={{ width: 12, height: 12 }} />
             </button>
           ))}
         </div>
