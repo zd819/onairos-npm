@@ -83,12 +83,11 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
           'Authorization': `Bearer ${apiKey}`
         };
 
-        const response = await doFetchWithRetry('https://api2.onairos.uk/email/verification', {
+        const response = await doFetchWithRetry('https://api2.onairos.uk/email/verify', {
           method: 'POST',
           headers,
           body: JSON.stringify({ 
-            email: (email || '').trim().toLowerCase(), 
-            action: 'request' 
+            email: (email || '').trim().toLowerCase()
           }),
         });
 
@@ -204,16 +203,30 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         if (code === '123456' || code.length === 6) {
           setStep('success');
           setTimeout(() => {
-            // Simulate new user for design testing
+            // Simulate new user for design testing using new response format
             const simulatedResponse = { 
               email, 
               verified: true, 
               token: 'test-token-' + Date.now(),
               userName: email.split('@')[0],
-              existingUser: false, // Always simulate new user for full flow testing
-              accountInfo: null,
+              // New response format
               isNewUser: true,
+              userState: 'new',
               flowType: 'onboarding',
+              user: {
+                userName: email.split('@')[0],
+                email: email,
+                verified: true,
+                creationDate: new Date().toISOString(),
+                lastLogin: new Date().toISOString()
+              },
+              enochInstructions: {
+                recommendedFlow: 'onboarding',
+                nextActionTitle: 'Get Started'
+              },
+              // Legacy fields for backward compatibility
+              existingUser: false,
+              accountInfo: null,
               adminMode: false,
               userCreated: true,
               accountDetails: {
@@ -238,12 +251,11 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
           'Authorization': `Bearer ${apiKey}`
         };
 
-        const response = await doFetchWithRetry('https://api2.onairos.uk/email/verification', {
+        const response = await doFetchWithRetry('https://api2.onairos.uk/email/verify/confirm', {
           method: 'POST',
           headers,
           body: JSON.stringify({ 
             email: (email || '').trim().toLowerCase(), 
-            action: 'verify',
             code 
           }),
         });
@@ -255,26 +267,38 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         const data = await response.json();
         
         if (!data.success) {
-          throw new Error(data.error || 'Verification failed');
+          // Handle error with attempts remaining if available
+          const errorMessage = data.error || 'Verification failed';
+          if (data.attemptsRemaining !== undefined) {
+            throw new Error(`${errorMessage} (${data.attemptsRemaining} attempts remaining)`);
+          } else {
+            throw new Error(errorMessage);
+          }
         }
 
         console.log('📧 Email verification response:', data);
 
         setStep('success');
         setTimeout(() => {
-          // Pass complete API response for flow determination
+          // Pass complete API response using new format
           onSuccess({ 
             email, 
             verified: true, 
-            token: data.token || data.jwtToken,
-            userName: data.userName,
-            existingUser: data.existingUser,
-            accountInfo: data.accountInfo,
-            isNewUser: !data.existingUser, // Set based on API response
-            flowType: data.existingUser ? 'dataRequest' : 'onboarding',
+            token: data.token,
+            userName: data.userName || data.user?.userName,
+            // New response format fields
+            isNewUser: data.isNewUser,
+            userState: data.userState,
+            flowType: data.flowType,
+            user: data.user,
+            existingUserData: data.existingUserData,
+            enochInstructions: data.enochInstructions,
+            // Legacy fields for backward compatibility
+            existingUser: !data.isNewUser,
+            accountInfo: data.existingUserData,
             adminMode: data.adminMode,
             userCreated: data.userCreated,
-            accountDetails: data.accountDetails
+            accountDetails: data.accountDetails || data.user
           });
         }, 1000);
       }

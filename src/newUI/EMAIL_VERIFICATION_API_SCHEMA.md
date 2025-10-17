@@ -15,14 +15,13 @@ https://api2.onairos.uk
 
 ### Endpoint
 ```
-POST /email/verification
+POST /email/verify
 ```
 
 ### Request
 ```json
 {
-  "email": "user@example.com",
-  "action": "request"
+  "email": "user@example.com"
 }
 ```
 
@@ -30,16 +29,11 @@ POST /email/verification
 ```json
 {
   "success": true,
-  "message": "Email verification sent successfully",
-  "requestId": "req-1641123456789-abc123xyz",
-  
-  // Admin mode only:
-  "adminMode": true,
-  "debugCode": "123456",
-  "adminInstructions": {
-    "message": "Admin mode is enabled",
-    "verification": "Use any 6-digit code (e.g., 123456) to verify this email"
-  }
+  "message": "Verification code generated (testing mode - check server logs)",
+  "testingMode": true,
+  "emailSent": false,
+  "note": "Any code will be accepted for verification in testing mode",
+  "expiresIn": "30 minutes"
 }
 ```
 
@@ -49,79 +43,112 @@ POST /email/verification
 
 ### Endpoint
 ```
-POST /email/verification
+POST /email/verify/confirm
 ```
 
 ### Request
 ```json
 {
   "email": "user@example.com",
-  "action": "verify",
   "code": "123456"
 }
 ```
 
-### Response
+### Response (New User)
 ```json
 {
   "success": true,
-  "message": "Email verified successfully",
-  "existingUser": false,
-  "accountInfo": null,  // null for new users
+  "isNewUser": true,
+  "userState": "new",
+  "flowType": "onboarding",
   "token": "eyJhbGciOiJIUzI1NiIs...",
-  "jwtToken": "eyJhbGciOiJIUzI1NiIs...",  // Same as token (backward compatibility)
-  "userName": "user123",
-  
-  // Admin mode only:
-  "adminMode": true,
-  "userCreated": true,
-  "accountDetails": {
+  "user": {
     "userId": "341",
     "userName": "test44",
     "email": "test44@gmail.com",
     "verified": true,
     "creationDate": "2025-01-09T06:22:58.000Z",
     "lastLogin": "2025-01-09T06:22:58.000Z"
+  },
+  "enochInstructions": {
+    "recommendedFlow": "onboarding",
+    "nextActionTitle": "Get Started"
   }
 }
 ```
 
-### Response for Existing Users
+### Response (Existing User)
 ```json
 {
   "success": true,
-  "message": "Email verified successfully",
-  "existingUser": true,
-  "accountInfo": {
-    "existingUserData": {
-      "summary": {
-        "connectionsCount": 3,
-        "traitsCount": 25,
-        "hasPersonalityData": true,
-        "hasTrainedModel": true,
-        "hasAvatar": false
-      },
-      "connections": [
-        {
-          "platform": "YouTube",
-          "status": "active", 
-          "connectedAt": "2024-01-15T10:30:00.000Z",
-          "hasData": true,
-          "displayName": "YouTube"
-        },
-        {
-          "platform": "LinkedIn",
-          "status": "active",
-          "connectedAt": "2024-02-20T14:22:00.000Z", 
-          "hasData": true,
-          "displayName": "LinkedIn"
-        }
-      ]
-    }
-  },
+  "isNewUser": false,
+  "userState": "returning", 
+  "flowType": "returning_user",
   "token": "eyJhbGciOiJIUzI1NiIs...",
-  "jwtToken": "eyJhbGciOiJIUzI1NiIs...",  // Same as token (backward compatibility)
-  "userName": "john_doe"
+  "user": {
+    "userId": "123",
+    "userName": "existinguser",
+    "email": "user@example.com",
+    "verified": true,
+    "creationDate": "2024-01-15T10:30:00.000Z",
+    "lastLogin": "2025-01-09T06:22:58.000Z"
+  },
+  "existingUserData": {
+    "hasExistingData": true,
+    "summary": {
+      "connectionsCount": 3,
+      "traitsCount": 5,
+      "hasPersonalityData": true
+    },
+    "connections": [
+      {
+        "platform": "YouTube",
+        "status": "active", 
+        "connectedAt": "2024-01-15T10:30:00.000Z",
+        "hasData": true,
+        "displayName": "YouTube"
+      },
+      {
+        "platform": "LinkedIn",
+        "status": "active",
+        "connectedAt": "2024-02-20T14:22:00.000Z", 
+        "hasData": true,
+          "displayName": "LinkedIn"
+      }
+    ]
+  },
+  "enochInstructions": {
+    "skipOnboarding": true,
+    "recommendedFlow": "dashboard",
+    "nextActionTitle": "View Your Data"
+  }
+}
+```
+
+```
+
+### Error Responses
+```json
+// Wrong Code
+{
+  "success": false,
+  "error": "Invalid verification code",
+  "code": 400,
+  "attemptsRemaining": 2
+}
+
+// Missing Data
+{
+  "success": false,
+  "error": "Email and code are required",
+  "code": 400
+}
+
+// Expired Code
+{
+  "success": false,
+  "error": "Verification code has expired. Please request a new code.",
+  "code": 400
 }
 ```
 
@@ -153,20 +180,19 @@ POST /email/verification
 ### JavaScript/React Native
 ```javascript
 // Step 1: Request code
-const requestCode = await fetch('/email/verification', {
+const requestCode = await fetch('/email/verify', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${API_KEY}`
   },
   body: JSON.stringify({
-    email: 'user@example.com',
-    action: 'request'
+    email: 'user@example.com'
   })
 });
 
 // Step 2: Verify code and get JWT
-const verifyCode = await fetch('/email/verification', {
+const verifyCode = await fetch('/email/verify/confirm', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -174,7 +200,6 @@ const verifyCode = await fetch('/email/verification', {
   },
   body: JSON.stringify({
     email: 'user@example.com',
-    action: 'verify',
     code: '123456'
   })
 });
@@ -235,8 +260,9 @@ const response = await fetch('/store-pin/mobile', {
 
 ## Key Points
 
-1. **Single Endpoint**: Use `/email/verification` with different `action` values
-2. **JWT Returns**: Both `token` and `jwtToken` fields contain the same JWT
-3. **Admin Mode**: Use `OnairosIsAUnicorn2025` API key, accept any 6-digit code
+1. **Two Endpoints**: Use `/email/verify` for requesting codes and `/email/verify/confirm` for verification
+2. **New Response Format**: Returns `isNewUser`, `userState`, `flowType`, and `enochInstructions` for better flow control
+3. **Testing Mode**: Use testing mode for development, accepts any 6-digit code
 4. **Token Usage**: Include JWT in `Authorization: Bearer ${token}` for user requests
-5. **Expiration**: JWT tokens last 7 days 
+5. **Error Handling**: Includes `attemptsRemaining` for better UX
+6. **Expiration**: JWT tokens last 7 days 
