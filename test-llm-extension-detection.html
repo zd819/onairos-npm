@@ -88,8 +88,33 @@
         </div>
 
         <div class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">User Information</h2>
+            <div class="p-4 bg-gray-50 rounded-lg">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Username/Email</label>
+                        <input type="text" id="username" value="john.doe@example.com" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+                        <input type="text" id="userId" value="user_12345" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Session Token</label>
+                        <input type="text" id="sessionToken" value="sess_abc123xyz" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="updateUserInfo()" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                            Update User Info
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-8">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Test Controls</h2>
-            <div class="flex gap-4">
+            <div class="flex flex-wrap gap-4">
                 <button onclick="simulateExtensionInstalled()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
                     Simulate Extension Installed
                 </button>
@@ -98,6 +123,9 @@
                 </button>
                 <button onclick="testAllPlatforms()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                     Test All Platforms
+                </button>
+                <button onclick="testUserInfoExtraction()" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                    Test URL User Info
                 </button>
             </div>
         </div>
@@ -189,6 +217,11 @@
         let extensionDetected = false;
         let connectedPlatforms = new Set();
         let currentModalPlatform = null;
+        let currentUserInfo = {
+            username: 'john.doe@example.com',
+            userId: 'user_12345',
+            sessionToken: 'sess_abc123xyz'
+        };
 
         // Logging utility
         function addLog(message, type = 'info') {
@@ -247,26 +280,106 @@
         // Handle LLM platform connection
         async function connectToLLM(platform) {
             addLog(`🤖 Attempting to connect to ${platform.name}...`);
+            addLog(`👤 User: ${currentUserInfo.username} (ID: ${currentUserInfo.userId})`);
             
             const hasExtension = await detectOnairosExtension();
             
             if (hasExtension) {
-                // Extension detected - open LLM platform
+                // Extension detected - open LLM platform with user info
                 addLog(`✅ Extension detected, opening ${platform.name}`, 'success');
                 
+                // Build URL with user parameters
+                const url = new URL(platform.url);
+                url.searchParams.set('onairos_user', encodeURIComponent(currentUserInfo.username));
+                url.searchParams.set('onairos_id', encodeURIComponent(currentUserInfo.userId));
+                url.searchParams.set('onairos_session', encodeURIComponent(currentUserInfo.sessionToken));
+                url.searchParams.set('onairos_platform', platform.id);
+                url.searchParams.set('onairos_source', 'npm_connector');
+                url.searchParams.set('onairos_timestamp', Date.now().toString());
+                
+                const finalUrl = url.toString();
+                addLog(`🔗 Opening ${platform.name} with user context:`);
+                addLog(`   URL: ${finalUrl}`, 'info');
+                
                 // Simulate opening in new tab
-                addLog(`🔗 Opening ${platform.url} in new tab`);
-                // window.open(platform.url, '_blank'); // Uncomment for real usage
+                // window.open(finalUrl, '_blank'); // Uncomment for real usage
+                
+                // Simulate sending user info to extension
+                sendUserInfoToExtension(currentUserInfo, platform.id);
                 
                 // Mark as connected
                 connectedPlatforms.add(platform.id);
                 updatePlatformUI(platform.id, true);
                 
-                addLog(`✅ ${platform.name} connected successfully!`, 'success');
+                addLog(`✅ ${platform.name} connected successfully with user context!`, 'success');
             } else {
                 // Extension not detected - show install prompt
                 addLog(`❌ Extension not detected for ${platform.name}`, 'warning');
                 showExtensionInstallModal(platform);
+            }
+        }
+
+        // Simulate sending user info to extension
+        function sendUserInfoToExtension(userInfo, platform) {
+            if (window.onairos && window.onairos.isOnairos) {
+                const message = {
+                    source: 'onairos_npm_connector',
+                    type: 'USER_INFO',
+                    data: {
+                        ...userInfo,
+                        platform: platform,
+                        timestamp: new Date().toISOString(),
+                        connectorVersion: '3.4.1'
+                    }
+                };
+                
+                // Simulate postMessage to extension
+                addLog(`📤 Sending user info to extension: ${JSON.stringify(message.data)}`, 'info');
+                
+                // In real implementation: window.postMessage(message, '*');
+                return true;
+            } else {
+                addLog(`⚠️ Cannot send user info - extension not available`, 'warning');
+                return false;
+            }
+        }
+
+        // Update user information
+        function updateUserInfo() {
+            currentUserInfo = {
+                username: document.getElementById('username').value,
+                userId: document.getElementById('userId').value,
+                sessionToken: document.getElementById('sessionToken').value
+            };
+            
+            addLog(`👤 Updated user info: ${JSON.stringify(currentUserInfo)}`, 'success');
+        }
+
+        // Test URL user info extraction
+        function testUserInfoExtraction() {
+            const testUrl = `https://chatgpt.com/?onairos_user=${encodeURIComponent(currentUserInfo.username)}&onairos_id=${encodeURIComponent(currentUserInfo.userId)}&onairos_session=${encodeURIComponent(currentUserInfo.sessionToken)}&onairos_platform=chatgpt&onairos_source=npm_connector&onairos_timestamp=${Date.now()}`;
+            
+            addLog(`🧪 Testing URL user info extraction...`);
+            addLog(`   Test URL: ${testUrl}`, 'info');
+            
+            // Simulate extracting user info from URL
+            try {
+                const url = new URL(testUrl);
+                const params = url.searchParams;
+                
+                const extractedInfo = {
+                    username: params.get('onairos_user') ? decodeURIComponent(params.get('onairos_user')) : null,
+                    userId: params.get('onairos_id') ? decodeURIComponent(params.get('onairos_id')) : null,
+                    sessionToken: params.get('onairos_session') ? decodeURIComponent(params.get('onairos_session')) : null,
+                    platform: params.get('onairos_platform') || null,
+                    source: params.get('onairos_source') || null,
+                    timestamp: params.get('onairos_timestamp') || null
+                };
+                
+                addLog(`📋 Extracted user info: ${JSON.stringify(extractedInfo)}`, 'success');
+                addLog(`✅ URL user info extraction test passed!`, 'success');
+            } catch (error) {
+                addLog(`❌ URL extraction test failed: ${error.message}`, 'error');
             }
         }
 

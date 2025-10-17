@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { openLLMWithExtensionCheck, detectOnairosExtension } from '../utils/extensionDetection';
+import { openLLMWithExtensionCheck, detectOnairosExtension, getUserInfoFromStorage } from '../utils/extensionDetection';
 import ExtensionInstallPrompt from './ExtensionInstallPrompt';
 
 /**
@@ -35,7 +35,36 @@ const LLMConnectorManager = ({
     try {
       console.log(`🤖 Attempting to connect to ${platform}...`);
 
-      // Use the extension detection utility
+      // Prepare user information for the browser extension
+      // First try to get comprehensive user info from localStorage
+      const storedUserInfo = getUserInfoFromStorage();
+      
+      const userInfo = {
+        // Use stored info as primary source, fallback to props
+        username: storedUserInfo.username || username,
+        userId: storedUserInfo.userId || storedUserInfo.username || username,
+        email: storedUserInfo.email,
+        sessionToken: storedUserInfo.sessionToken,
+        jwtToken: storedUserInfo.jwtToken,
+        
+        // User metadata
+        isNewUser: storedUserInfo.isNewUser,
+        verified: storedUserInfo.verified,
+        onboardingComplete: storedUserInfo.onboardingComplete,
+        pinCreated: storedUserInfo.pinCreated,
+        
+        // Account details
+        accountInfo: storedUserInfo.accountInfo,
+        connectedAccounts: storedUserInfo.connectedAccounts,
+        
+        // Add additional context
+        source: 'onairos_npm_connector',
+        connectorVersion: '3.4.2', // Updated version from package.json
+        timestamp: new Date().toISOString(),
+        platform: platform
+      };
+
+      // Use the extension detection utility with user info
       const success = await openLLMWithExtensionCheck(
         platform,
         (missingPlatform) => {
@@ -43,7 +72,8 @@ const LLMConnectorManager = ({
           console.log(`❌ Extension missing for ${missingPlatform}, showing install prompt`);
           setCurrentPlatform(missingPlatform);
           setShowInstallPrompt(true);
-        }
+        },
+        userInfo
       );
 
       if (success) {
