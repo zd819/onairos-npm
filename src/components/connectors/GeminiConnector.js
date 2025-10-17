@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
-import { useLLMConnectorManager } from '../LLMConnectorManager';
 
-class ChatGPTConnector extends Component {
+class GeminiConnector extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -11,7 +10,7 @@ class ChatGPTConnector extends Component {
     };
     this.handleClose = this.handleClose.bind(this);
     this.handleOpen = this.handleOpen.bind(this);
-    this.chatGPTConnect = this.chatGPTConnect.bind(this);
+    this.geminiConnect = this.geminiConnect.bind(this);
     this.setConnected = this.setConnected.bind(this);
     this.setDisconnected = this.setDisconnected.bind(this);
   }
@@ -19,7 +18,7 @@ class ChatGPTConnector extends Component {
   setConnected() {
     this.setState({ connected: true });
     if (this.props.onConnectionChange) {
-      this.props.onConnectionChange('ChatGPT', true);
+      this.props.onConnectionChange('Gemini', true);
     }
     this.handleClose();
   }
@@ -27,7 +26,7 @@ class ChatGPTConnector extends Component {
   setDisconnected() {
     this.setState({ connected: false });
     if (this.props.onConnectionChange) {
-      this.props.onConnectionChange('ChatGPT', false);
+      this.props.onConnectionChange('Gemini', false);
     }
     this.handleClose();
   }
@@ -43,14 +42,14 @@ class ChatGPTConnector extends Component {
     }
   }
 
-  async chatGPTConnect() {
+  async geminiConnect() {
     // Use the LLM Connector Manager if available, otherwise fallback to old behavior
     const llmManager = this.props.llmConnectorManager;
     
     if (llmManager) {
       // New behavior: Use extension detection
       llmManager.connectToLLM(
-        'chatgpt',
+        'gemini',
         (platform) => {
           // Success callback
           console.log(`✅ ${platform} connected via extension`);
@@ -67,24 +66,24 @@ class ChatGPTConnector extends Component {
       this.setState({ isConnecting: true });
       
       try {
-        console.log('🤖 Opening ChatGPT in new tab (fallback mode)...');
+        console.log('🤖 Opening Gemini in new tab (fallback mode)...');
         
-        const chatGPTWindow = window.open('https://chatgpt.com', '_blank');
+        const geminiWindow = window.open('https://gemini.google.com', '_blank');
         
-        if (!chatGPTWindow) {
+        if (!geminiWindow) {
           throw new Error('Popup blocked. Please allow popups for this site.');
         }
 
         setTimeout(() => {
-          console.log('✅ ChatGPT connection simulated (fallback)');
+          console.log('✅ Gemini connection simulated (fallback)');
           this.setConnected();
           this.setState({ isConnecting: false });
         }, 1000);
 
       } catch (error) {
-        console.error('❌ ChatGPT connection error:', error);
+        console.error('❌ Gemini connection error:', error);
         this.setState({ isConnecting: false });
-        alert('Failed to open ChatGPT. Please ensure popups are allowed and try again.');
+        alert('Failed to open Gemini. Please ensure popups are allowed and try again.');
       }
     }
   }
@@ -100,8 +99,8 @@ class ChatGPTConnector extends Component {
           <div className="p-6">
             <div className="flex items-center mb-4">
               <img 
-                src="/chatgpt-icon.png" 
-                alt="ChatGPT" 
+                src="/gemini-color.png" 
+                alt="Gemini" 
                 className="w-8 h-8 mr-3"
                 onError={(e) => {
                   // Fallback to emoji if image fails to load
@@ -109,38 +108,38 @@ class ChatGPTConnector extends Component {
                   e.target.nextSibling.style.display = 'inline';
                 }}
               />
-              <span className="text-2xl mr-3" style={{display: 'none'}}>🤖</span>
+              <span className="text-2xl mr-3" style={{display: 'none'}}>💎</span>
               <h2 className="text-xl font-bold text-gray-900">
-                Connect to ChatGPT
+                Connect to Gemini
               </h2>
             </div>
             
             <div className="space-y-4 text-gray-700">
               <p>
-                This will open ChatGPT in a new tab where you can interact with the AI assistant.
+                This will open Gemini in a new tab where you can interact with Google's advanced AI assistant.
               </p>
               
               <div>
-                <p className="font-medium mb-2">What you can do with ChatGPT:</p>
+                <p className="font-medium mb-2">What you can do with Gemini:</p>
                 <ul className="list-disc ml-6 space-y-1">
-                  <li>Ask questions and get intelligent responses</li>
-                  <li>Get help with writing and editing</li>
-                  <li>Brainstorm ideas and solutions</li>
-                  <li>Learn about various topics</li>
-                  <li>Get coding assistance</li>
+                  <li>Ask questions and get comprehensive answers</li>
+                  <li>Analyze images, documents, and multimedia content</li>
+                  <li>Get help with research and fact-checking</li>
+                  <li>Work on creative projects and brainstorming</li>
+                  <li>Receive coding assistance and technical help</li>
                 </ul>
               </div>
               
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-blue-800 text-sm font-medium">
-                  <strong>Note:</strong> ChatGPT will open in a new tab. You can return to this page anytime.
+                  <strong>Note:</strong> Gemini will open in a new tab. You can return to this page anytime.
                 </p>
               </div>
               
               <p className="text-sm">
-                By connecting to ChatGPT, you'll be redirected to{' '}
-                <a href="https://chatgpt.com" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
-                  chatgpt.com
+                By connecting to Gemini, you'll be redirected to{' '}
+                <a href="https://gemini.google.com" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
+                  gemini.google.com
                 </a>
               </p>
             </div>
@@ -154,11 +153,11 @@ class ChatGPTConnector extends Component {
                 Cancel
               </button>
               <button
-                onClick={this.chatGPTConnect}
+                onClick={this.geminiConnect}
                 disabled={this.state.isConnecting}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {this.state.isConnecting ? 'Opening...' : 'Open ChatGPT'}
+                {this.state.isConnecting ? 'Opening...' : 'Open Gemini'}
               </button>
             </div>
           </div>
@@ -168,4 +167,4 @@ class ChatGPTConnector extends Component {
   }
 }
 
-export default ChatGPTConnector;
+export default GeminiConnector;

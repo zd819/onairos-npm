@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useState, useRef } from 'react';
 import Lottie from 'lottie-react';
 import personaAnim from '../../public/persona-anim.json';
+import LLMConnectorManager from './LLMConnectorManager';
 const chatgptIcon = 'https://anushkasirv.sirv.com/openai.png';
 const claudeIcon = 'https://anushkasirv.sirv.com/claude-color.png';
 const geminiIcon = 'https://anushkasirv.sirv.com/gemini-color.png';
@@ -22,7 +23,7 @@ const fadeSlideInKeyframes = `
 }
 `;
 
-export default function UniversalOnboarding({ onComplete }) {
+export default function UniversalOnboarding({ onComplete, llmConnectorManager }) {
   const lottieRef = useRef(null);
   const lastFrameRef = useRef(0);
   const rafRef = useRef(null);
@@ -208,11 +209,40 @@ export default function UniversalOnboarding({ onComplete }) {
     }
   }
 
-  const handleSwitch = async (name) => {
+  const handleSwitch = async (name, llmConnectorManager = null) => {
     if (isConnecting && connectingPlatform !== name) return;
     const on = !!connectedAccounts[name];
-    if (on) setConnectedAccounts((s) => ({ ...s, [name]: false }));
-    else await connectToPlatform(name);
+    
+    if (on) {
+      // Disconnect
+      setConnectedAccounts((s) => ({ ...s, [name]: false }));
+    } else {
+      // Connect
+      const platform = allPlatforms.find(p => p.name === name);
+      
+      // Check if this is an LLM platform that should use extension detection
+      if (platform && platform.directLink && llmConnectorManager) {
+        // Use LLM Connector Manager for AI platforms
+        const platformKey = platform.connector; // 'chatgpt', 'claude', 'gemini', 'grok'
+        
+        llmConnectorManager.connectToLLM(
+          platformKey,
+          (connectedPlatform) => {
+            // Success callback
+            console.log(`✅ ${connectedPlatform} connected via extension`);
+            setConnectedAccounts((s) => ({ ...s, [name]: true }));
+          },
+          (errorPlatform, error) => {
+            // Error callback
+            console.error(`❌ ${errorPlatform} connection error:`, error);
+            // Don't show alert here as LLM Connector Manager handles UI
+          }
+        );
+      } else {
+        // Use traditional OAuth flow for social media platforms
+        await connectToPlatform(name);
+      }
+    }
   };
 
   const connectedCount = Object.values(connectedAccounts).filter(Boolean).length;
@@ -247,8 +277,17 @@ export default function UniversalOnboarding({ onComplete }) {
   };
 
   return (
-    <div className="w-full h-full relative" style={{ height: Math.min('90vh', Math.max(600, Math.min(720, vh * 0.9))), minHeight: 580, maxHeight: 720 }}>
-      <style>{fadeSlideInKeyframes}</style>
+    <LLMConnectorManager 
+      onConnectionChange={(platform, connected) => {
+        // Handle connection changes from LLM Connector Manager
+        const platformName = platform.charAt(0).toUpperCase() + platform.slice(1); // 'chatgpt' -> 'ChatGPT'
+        const displayName = platformName === 'Chatgpt' ? 'ChatGPT' : platformName;
+        setConnectedAccounts((s) => ({ ...s, [displayName]: connected }));
+      }}
+      username={localStorage.getItem('username') || (JSON.parse(localStorage.getItem('onairosUser') || '{}')?.email) || 'user@example.com'}
+    >
+      <div className="w-full h-full relative" style={{ height: Math.min('90vh', Math.max(600, Math.min(720, vh * 0.9))), minHeight: 580, maxHeight: 720 }}>
+        <style>{fadeSlideInKeyframes}</style>
 
       {/* persona as background (unchanged) */}
       <div aria-hidden style={{ position: 'absolute', left: '50%', top: PERSONA_TOP, transform: 'translateX(-50%)', width: personaSide, height: personaSide, zIndex: 0, pointerEvents: 'none', opacity: 0.95 }}>
@@ -294,11 +333,7 @@ export default function UniversalOnboarding({ onComplete }) {
                       type="button"
                       onClick={() => { 
                         setSelected(p.name);
-                        if (p.directLink) {
-                          window.open(p.directLink, '_blank');
-                        } else {
-                          handleSwitch(p.name);
-                        }
+                        handleSwitch(p.name, llmConnectorManager);
                       }}
                       className="relative grid place-items-center outline-none"
                       style={{ width: SLOT, height: SLOT }}
@@ -368,5 +403,6 @@ export default function UniversalOnboarding({ onComplete }) {
         </div>
       </div>
     </div>
+    </LLMConnectorManager>
   );
 }

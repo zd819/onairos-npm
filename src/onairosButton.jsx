@@ -217,12 +217,24 @@ export function OnairosButton({
       }
     }
 
+    // Enhanced user data formatting for better display
+    const { logFormattedUserData } = require('./utils/userDataFormatter');
+    
+    // Add user data to the result for comprehensive formatting
+    const completeResult = {
+      ...formattedResult,
+      userData: updatedUserData
+    };
+
+    // Log formatted user data for better readability
+    const enhancedResult = logFormattedUserData(completeResult);
+
     // Call onComplete callback if provided
-    console.log('🔥 Calling onComplete callback with:', formattedResult);
+    console.log('🔥 Calling onComplete callback with enhanced result');
     if (onComplete) {
       try {
-        onComplete(formattedResult);
-        console.log('🔥 onComplete callback executed successfully');
+        onComplete(enhancedResult);
+        console.log('🔥 onComplete callback executed successfully with enhanced formatting');
       } catch (error) {
         console.error('🔥 Error in onComplete callback:', error);
       }

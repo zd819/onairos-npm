@@ -1,3 +1,9 @@
+Using this llm instruction file (@llm.txt) and the Onairos package this is located in (@onairos) 
+install and setup Onairos so that we have the onairos button setup in the onbaording and the intialization 
+and everything else is setup, including tthe callback function for us to export the data from onairos easily
+
+The following is depth description Onairos package
+
 # Onairos NPM Package - LLM Context
 
 ## Package Overview
