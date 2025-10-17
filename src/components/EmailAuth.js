@@ -40,6 +40,31 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
     setIsLoading(true);
 
     try {
+      const doFetchWithRetry = async (url, options, attempts = 3) => {
+        let lastErr;
+        for (let i = 0; i < attempts; i++) {
+          try {
+            const res = await fetch(url, options);
+            if (!res.ok) {
+              // Capture response body for better diagnostics
+              try {
+                const body = await res.json();
+                lastErr = new Error(body?.error || `HTTP ${res.status}`);
+              } catch {
+                lastErr = new Error(`HTTP ${res.status}`);
+              }
+            } else {
+              return res;
+            }
+          } catch (err) {
+            lastErr = err;
+          }
+          // backoff: 400ms, 800ms
+          await new Promise(r => setTimeout(r, 400 * (i + 1)));
+        }
+        throw lastErr || new Error('Network error');
+      };
+
       if (testMode) {
         // Test mode: Skip API call completely, simulate instant success
         console.log('🧪 Test mode: Simulating email verification request for:', email);
@@ -51,15 +76,18 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       } else {
         // Production mode: Use proper email verification API from schema
         const apiKey = window.onairosApiKey || 'test-key';
-        
-        const response = await fetch('https://api2.onairos.uk/email/verification', {
+        const headers = {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          // Keep Authorization for backwards compatibility
+          'Authorization': `Bearer ${apiKey}`
+        };
+
+        const response = await doFetchWithRetry('https://api2.onairos.uk/email/verification', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
+          headers,
           body: JSON.stringify({ 
-            email, 
+            email: (email || '').trim().toLowerCase(), 
             action: 'request' 
           }),
         });
@@ -80,7 +108,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       }
     } catch (error) {
       console.error('Email request error:', error);
-      setError(error.message);
+      setError('Couldn’t send code. Please try again.');
       setIsLoading(false);
     }
   };
@@ -146,6 +174,29 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
     setIsLoading(true);
 
     try {
+      const doFetchWithRetry = async (url, options, attempts = 3) => {
+        let lastErr;
+        for (let i = 0; i < attempts; i++) {
+          try {
+            const res = await fetch(url, options);
+            if (!res.ok) {
+              try {
+                const body = await res.json();
+                lastErr = new Error(body?.error || `HTTP ${res.status}`);
+              } catch {
+                lastErr = new Error(`HTTP ${res.status}`);
+              }
+            } else {
+              return res;
+            }
+          } catch (err) {
+            lastErr = err;
+          }
+          await new Promise(r => setTimeout(r, 400 * (i + 1)));
+        }
+        throw lastErr || new Error('Network error');
+      };
+
       if (testMode) {
         // Test mode: Skip API call completely, simulate verification
         console.log('🧪 Test mode: Simulating code verification for:', email, 'with code:', code);
@@ -181,15 +232,17 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       } else {
         // Production mode: Use real email verification API from schema
         const apiKey = window.onairosApiKey || 'test-key';
-        
-        const response = await fetch('https://api2.onairos.uk/email/verification', {
+        const headers = {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'Authorization': `Bearer ${apiKey}`
+        };
+
+        const response = await doFetchWithRetry('https://api2.onairos.uk/email/verification', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
+          headers,
           body: JSON.stringify({ 
-            email, 
+            email: (email || '').trim().toLowerCase(), 
             action: 'verify',
             code 
           }),
@@ -227,7 +280,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       }
     } catch (error) {
       console.error('Email verification error:', error);
-      setError(error.message || 'Invalid code. Please try again.');
+      setError('Invalid code. Please try again.');
       setIsLoading(false);
     }
   };

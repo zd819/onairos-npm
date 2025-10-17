@@ -72,8 +72,12 @@ export function OnairosButton({
 
   const openTerminal = async () => {
     try {
-      console.log('🔥 openTerminal called');
-        setShowOverlay(true);
+      console.log('🔥 openTerminal called - resetting flow');
+      // ALWAYS reset flow on open to start fresh every time
+      setCurrentFlow('welcome');
+      setUserData(null);
+      try { localStorage.removeItem('onairosUser'); } catch {}
+      setShowOverlay(true);
     } catch (error) {
       console.error('Error in openTerminal:', error);
     }
@@ -82,6 +86,10 @@ export function OnairosButton({
   const handleCloseOverlay = () => {
     setShowOverlay(false);
     setError(null);
+    // Reset flow and session so next open starts fresh
+    setCurrentFlow('welcome');
+    try { localStorage.removeItem('onairosUser'); } catch {}
+    setUserData(null);
   };
 
   // Handle clicks on the backdrop to close modal
@@ -200,7 +208,8 @@ export function OnairosButton({
 
     // Close overlay immediately
     console.log('🔥 Closing overlay after data request completion');
-    setShowOverlay(false);
+    // Use centralized close to also reset flow and session
+    handleCloseOverlay();
 
     // Format response if requested and API response is present
     let formattedResult = requestResult;

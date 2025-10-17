@@ -45,6 +45,13 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // Reset flow on every page load/refresh
+  useEffect(() => {
+    // Clear any persisted OAuth state on mount
+    localStorage.removeItem('onairos_oauth_platform');
+    localStorage.removeItem('onairos_oauth_return');
+  }, []);
+
   const FOOTER_H = 88;
 
   // persona stays as requested (background, unchanged placement)
@@ -59,18 +66,17 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
   const ACTIVE_SCALE = vh < 760 ? 1.12 : 1.22;
 
   const ICONS_H = 84;
-  const ICONS_TOP_OFFSET = Math.max(180, Math.min(240, Math.round(vh * 0.28))); // ~28vh, clamped for all screens
 
   const igGradId = useId();
 
   // ---- official brand SVGs (compact, consistent viewboxes) ----
   const Brand = {
-    ChatGPT: <img src={chatgptIcon} alt="ChatGPT" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
-    Claude: <img src={claudeIcon} alt="Claude" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
-    Gemini: <img src={geminiIcon} alt="Gemini" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
-    Grok: <img src={grokIcon} alt="Grok" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
+    ChatGPT: <img src={chatgptIcon} alt="ChatGPT" style={{ width: 22, height: 22, objectFit: 'contain' }} />,
+    Claude: <img src={claudeIcon} alt="Claude" style={{ width: 22, height: 22, objectFit: 'contain' }} />,
+    Gemini: <img src={geminiIcon} alt="Gemini" style={{ width: 22, height: 22, objectFit: 'contain' }} />,
+    Grok: <img src={grokIcon} alt="Grok" style={{ width: 22, height: 22, objectFit: 'contain' }} />,
     Instagram: (
-      <svg viewBox="0 0 24 24" aria-hidden>
+      <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
         <defs>
           <radialGradient id={igGradId} cx="0.5" cy="1" r="1">
             <stop offset="0%" stopColor="#FDBB4B"/>
@@ -83,13 +89,13 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
       </svg>
     ),
     YouTube: (
-      <svg viewBox="0 0 24 24" aria-hidden>
+      <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
         <path fill="#FF0000" d="M22.54 6.42a3 3 0 0 0-2.11-2.12C18.49 3.75 12 3.75 12 3.75s-6.49 0-8.43.55A3 3 0 0 0 1.46 6.42 31.63 31.63 0 0 0 1 12a31.63 31.63 0 0 0 .46 5.58 3 3 0 0 0 2.11 2.12C5.51 20.25 12 20.25 12 20.25s6.49 0 8.43-.55a3 3 0 0 0 2.11-2.12A31.63 31.63 0 0 0 23 12a31.63 31.63 0 0 0-.46-5.58z"/>
         <path fill="#FFF" d="M10 8.75v6.5l6-3.25-6-3.25z"/>
         </svg>
       ),
     Reddit: (
-      <svg viewBox="0 0 24 24" aria-hidden>
+      <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
         <circle cx="12" cy="12" r="12" fill="#FF4500"/>
         <circle cx="8.75" cy="12.5" r="1.25" fill="#FFF"/>
         <circle cx="15.25" cy="12.5" r="1.25" fill="#FFF"/>
@@ -97,7 +103,7 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
         </svg>
       ),
     LinkedIn: (
-      <svg viewBox="0 0 24 24" aria-hidden>
+      <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
         <rect x="2" y="2" width="20" height="20" rx="3" fill="#0A66C2"/>
         <rect x="5" y="9" width="3" height="10" fill="#FFF"/>
         <circle cx="6.5" cy="6.5" r="1.5" fill="#FFF"/>
@@ -105,7 +111,7 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
         </svg>
       ),
     Twitter: (
-      <svg viewBox="0 0 24 24" aria-hidden>
+      <svg viewBox="0 0 24 24" aria-hidden style={{ width: 22, height: 22 }}>
         <path fill="#1DA1F2" d="M23.643 4.937c-.835.37-1.732.62-2.675.733.962-.576 1.7-1.49 2.048-2.578-.9.534-1.897.922-2.958 1.13-.85-.904-2.06-1.47-3.4-1.47-2.572 0-4.658 2.086-4.658 4.66 0 .364.042.718.12 1.06-3.873-.195-7.304-2.05-9.602-4.868-.4.69-.63 1.49-.63 2.342 0 1.616.823 3.043 2.072 3.878-.764-.025-1.482-.234-2.11-.583v.06c0 2.257 1.605 4.14 3.737 4.568-.392.106-.803.162-1.227.162-.3 0-.593-.028-.877-.082.593 1.85 2.313 3.198 4.352 3.234-1.595 1.25-3.604 1.995-5.786 1.995-.376 0-.747-.022-1.112-.065 2.062 1.323 4.51 2.093 7.14 2.093 8.57 0 13.255-7.098 13.255-13.254 0-.2-.005-.402-.014-.602.91-.658 1.7-1.477 2.323-2.41z"/>
         </svg>
       ),
@@ -222,34 +228,41 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
   }
 
   const handleSwitch = async (name, llmConnectorManager = null) => {
+    // Don't allow toggling other platforms while one is connecting
     if (isConnecting && connectingPlatform !== name) return;
+    
     const on = !!connectedAccounts[name];
     
     if (on) {
-      // Disconnect
+      // Disconnect - always allow immediate toggle off
+      console.log(`🔄 Disconnecting ${name}`);
       setConnectedAccounts((s) => ({ ...s, [name]: false }));
+      setIsConnecting(false);
+      setConnectingPlatform(null);
     } else {
       // Connect
+      console.log(`🔄 Connecting ${name}`);
       const platform = allPlatforms.find(p => p.name === name);
       
       // Check if this is an LLM platform that should use extension detection
-      if (platform && platform.directLink && llmConnectorManager) {
-        // Use LLM Connector Manager for AI platforms
-        const platformKey = platform.connector; // 'chatgpt', 'claude', 'gemini', 'grok'
+      if (platform && platform.directLink) {
+        // For AI platforms: open their website and auto-toggle
+        window.open(platform.directLink, '_blank');
+        setConnectedAccounts((s) => ({ ...s, [name]: true }));
         
-        llmConnectorManager.connectToLLM(
-          platformKey,
-          (connectedPlatform) => {
-            // Success callback
-            console.log(`✅ ${connectedPlatform} connected via extension`);
-            setConnectedAccounts((s) => ({ ...s, [name]: true }));
-          },
-          (errorPlatform, error) => {
-            // Error callback
-            console.error(`❌ ${errorPlatform} connection error:`, error);
-            // Don't show alert here as LLM Connector Manager handles UI
-          }
-        );
+        // Also try LLM Connector Manager if available
+        if (llmConnectorManager) {
+          const platformKey = platform.connector;
+          llmConnectorManager.connectToLLM(
+            platformKey,
+            (connectedPlatform) => {
+              console.log(`✅ ${connectedPlatform} connected via extension`);
+            },
+            (errorPlatform, error) => {
+              console.error(`❌ ${errorPlatform} connection error:`, error);
+            }
+          );
+        }
       } else {
         // Use traditional OAuth flow for social media platforms
         await connectToPlatform(name);
@@ -289,73 +302,71 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
   };
 
   return (
-    <LLMConnectorManager 
+    <LLMConnectorManager
       onConnectionChange={(platform, connected) => {
-        // Handle connection changes from LLM Connector Manager
-        const platformName = platform.charAt(0).toUpperCase() + platform.slice(1); // 'chatgpt' -> 'ChatGPT'
+        const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
         const displayName = platformName === 'Chatgpt' ? 'ChatGPT' : platformName;
         setConnectedAccounts((s) => ({ ...s, [displayName]: connected }));
       }}
       username={localStorage.getItem('username') || (JSON.parse(localStorage.getItem('onairosUser') || '{}')?.email) || 'user@example.com'}
     >
-      <div className="w-full h-full relative" style={{ height: Math.min('90vh', Math.max(600, Math.min(720, vh * 0.9))), minHeight: 580, maxHeight: 720 }}>
-        <style>{fadeSlideInKeyframes}</style>
-
-      {/* persona as background (unchanged) */}
-      <div aria-hidden style={{ position: 'absolute', left: '50%', top: PERSONA_TOP, transform: 'translateX(-50%)', width: personaSide, height: personaSide, zIndex: 0, pointerEvents: 'none', opacity: 0.95 }}>
-        <div className="overflow-hidden rounded-[28px] w-full h-full">
-          <Lottie lottieRef={lottieRef} animationData={personaAnim} autoplay={false} loop={false} style={{ width: '100%', height: '100%' }} />
+      <style dangerouslySetInnerHTML={{ __html: fadeSlideInKeyframes }} />
+      <div
+        className="relative w-full h-full grid overflow-hidden"
+        style={{
+          height: Math.min('90vh', Math.max(600, Math.min(720, vh * 0.9))),
+          minHeight: 580,
+          maxHeight: 720,
+          gridTemplateRows: 'auto 1fr auto',
+        }}
+      >
+        {/* persona bg */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: PERSONA_TOP,
+            transform: 'translateX(-50%)',
+            width: personaSide,
+            height: personaSide,
+            zIndex: 0,
+            pointerEvents: 'none',
+            opacity: 0.95,
+          }}
+        >
+          <div className="overflow-hidden rounded-[28px] w-full h-full">
+            <Lottie
+              lottieRef={lottieRef}
+              animationData={personaAnim}
+              autoplay={false}
+              loop={false}
+              style={{ width: '100%', height: '100%' }}
+            />
         </div>
       </div>
 
-      {/* content above persona */}
-      <div className="relative z-10 h-full flex flex-col">
-        {/* header (unchanged visuals) */}
-        <div className="px-6 pt-16 pb-4 text-center">
+        {/* header */}
+        <div className="px-6 pt-16 pb-4 text-center z-10">
           <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
           <p className="text-gray-600 text-base">More Connections, Better Personalization.</p>
         </div>
 
-        {/* icons band — placed LOWER per request */}
-        <div className="px-6 flex-shrink-0" style={{ height: ICONS_H, marginTop: ICONS_TOP_OFFSET }}>
-          <div className="h-full flex items-center justify-center">
-            <div
-              className="grid w-full box-border relative"
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-                    style={{
-                gridAutoFlow: 'column',
-                gridTemplateColumns: `repeat(${platforms.length}, minmax(0,1fr))`,
-                columnGap: currentPage === 1 ? GAP_PAGE1 : GAP_PAGE2,
-                alignItems: 'center',
-                justifyItems: 'center',
-                paddingInline: 8,
-                overflow: 'hidden',
-              }}
-            >
+        {/* middle scrollable */}
+        <div className="min-h-0 overflow-y-auto px-6 flex flex-col" style={{ zIndex: 10, position: 'relative' }}>
+          <div className="flex-1" />
+          {/* icons */}
+          <div className="w-full mb-3" style={{ zIndex: 15, position: 'relative' }}>
+            <div className="grid w-full" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{ height: ICONS_H, gridAutoFlow: 'column', gridTemplateColumns: `repeat(${platforms.length}, minmax(0,1fr))`, columnGap: currentPage === 1 ? GAP_PAGE1 : GAP_PAGE2, alignItems: 'center', justifyItems: 'center', paddingInline: 8 }}>
               {platforms.map((p, idx) => {
                 const on = !!connectedAccounts[p.name];
-                const busy = false; // keep icon static visually per request
                 const isSel = selected === p.name;
                 const shift = (currentPage === 1 ? idx : idx - 2) * 14;
                 return (
-                  <div key={p.name} className="transition-all duration-300" style={{ opacity: 0, transform: `translateX(${shift}px)`, animation: 'fadeSlideIn 0.28s forwards', ['--slide-x']: `${shift}px` }}>
-                    <button
-                      type="button"
-                      onClick={() => { 
-                        setSelected(p.name);
-                        handleSwitch(p.name, llmConnectorManager);
-                      }}
-                      className="relative grid place-items-center outline-none"
-                      style={{ width: SLOT, height: SLOT }}
-                      title={p.name}
-                    >
-                      <div className={`rounded-full border-3 transition-all duration-150 ease-out flex items-center justify-center shadow-lg ${on ? 'border-blue-600 bg-white text-black shadow-blue-500/70' : 'border-gray-300 hover:border-gray-400 bg-white text-black'}`}
-                           style={{ width: CIRCLE, height: CIRCLE, transform: `scale(${isSel ? ACTIVE_SCALE : 1})`, transformOrigin: 'center' }}>
-                        <div className="flex items-center justify-center" style={{ width: 20, height: 20 }}>
-                          {p.icon}
-                        </div>
+                  <div key={p.name} style={{ opacity: 0, transform: `translateX(${shift}px)`, animation: 'fadeSlideIn 0.28s forwards', ['--slide-x']: `${shift}px` }}>
+                    <button type="button" onClick={() => { setSelected(p.name); handleSwitch(p.name, llmConnectorManager); }} className="grid place-items-center outline-none" style={{ width: SLOT, height: SLOT }} title={p.name}>
+                      <div className={`rounded-full border-3 flex items-center justify-center shadow transition-all ${on ? 'border-blue-600 shadow-blue-500/50' : 'border-gray-300 hover:border-gray-400'} bg-white`} style={{ width: CIRCLE, height: CIRCLE, transform: `scale(${isSel ? ACTIVE_SCALE : 1})` }}>
+                        {p.icon}
                       </div>
                     </button>
                   </div>
@@ -363,56 +374,37 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
               })}
             </div>
           </div>
-        </div>
-
-        {/* dots navigation (no numbers) - directly under icons, above card */}
-        <div className="relative flex items-center justify-center gap-4 select-none" style={{ marginTop: 20, zIndex: 25 }}>
-          {[1,2,3].map(n => (
-            <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: 12, height: 12 }}>
-              <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-110' : 'bg-gray-300'} transition-transform`} style={{ width: 12, height: 12 }} />
-            </button>
-          ))}
-        </div>
-
-        {/* info sheet — positioned right above the footer */}
-        <div className="px-6 flex-shrink-0" style={{ position: 'absolute', bottom: FOOTER_H + 24, left: 0, right: 0, zIndex: 20 }}>
-          <div className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5" style={{ width: 'min(680px,92%)', maxHeight: vh * 0.2 }}>
+          {/* dots */}
+          <div className="flex justify-center gap-4 mb-3">
+            {[1, 2, 3].map((n) => (
+              <button key={n} onClick={() => setCurrentPage(n)} style={{ width: 12, height: 12 }}>
+                <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-110' : 'bg-gray-300'} transition-transform`} style={{ width: 12, height: 12 }} />
+              </button>
+                ))}
+              </div>
+          {/* card */}
+          <div className="rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5 mx-auto mb-2" style={{ width: 'min(420px,90%)' }}>
             <div className="flex items-center justify-between">
-              <div className="text-gray-900 font-medium">{selected}</div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={!!connectedAccounts[selected]}
-                aria-label={`toggle ${selected}`}
-                onClick={() => handleSwitch(selected)}
-                disabled={isConnecting && connectingPlatform !== selected}
-                className={`relative inline-flex items-center transition-colors disabled:opacity-50 ${connectedAccounts[selected] ? 'bg-black' : 'bg-gray-200'} rounded-full`}
-                style={{ width: 56, height: 32 }}
-              >
-                <span className="absolute bg-white rounded-full shadow" style={{ width: 24, height: 24, transform: connectedAccounts[selected] ? 'translateX(26px)' : 'translateX(6px)', transition: 'transform 160ms ease' }} />
+              <div className="text-gray-900 font-medium text-sm">{selected}</div>
+              <button type="button" role="switch" aria-checked={!!connectedAccounts[selected]} onClick={() => handleSwitch(selected, llmConnectorManager)} disabled={isConnecting && connectingPlatform !== selected} className={`relative inline-flex items-center transition-colors ${connectedAccounts[selected] ? 'bg-black' : 'bg-gray-200'} rounded-full`} style={{ width: 44, height: 26 }}>
+                <span className="absolute bg-white rounded-full shadow" style={{ width: 18, height: 18, transform: connectedAccounts[selected] ? 'translateX(20px)' : 'translateX(5px)', transition: 'transform 160ms ease' }} />
               </button>
             </div>
-            <div className="mt-3">
-              <div className="rounded-2xl bg-gray-50 text-gray-700 text-sm leading-6 px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
-                {descriptions[selected] || null}
-              </div>
+            <div className="mt-1.5 text-xs text-gray-700 leading-4 bg-gray-50 rounded-xl px-3 py-2">
+              {descriptions[selected] || null}
             </div>
           </div>
         </div>
 
-        {/* footer — fixed near bottom; no change to persona */}
-        <div className="absolute left-0 right-0 px-6" style={{ bottom: 0, height: FOOTER_H + 20, paddingBottom: 16, background: 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
-          <div className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" onClick={() => {
-            const connected = Object.entries(connectedAccounts).filter(([, v]) => v).map(([k]) => k);
-            onComplete?.({ connectedAccounts: connected, totalConnections: connected.length });
-          }}>
+        {/* footer anchored */}
+        <div className="px-6 pb-4 pt-3 bg-gradient-to-t from-white via-white/90 to-transparent z-20">
+          <div className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" onClick={() => { const connected = Object.entries(connectedAccounts).filter(([, v]) => v).map(([k]) => k); onComplete?.({ connectedAccounts: connected, totalConnections: connected.length }); }}>
             Update
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </div>
           <div onClick={() => onComplete?.({ connectedAccounts: [], totalConnections: 0 })} className="w-full text-gray-600 text-base font-medium py-2 text-center cursor-pointer hover:text-gray-800 transition-colors">Skip</div>
         </div>
       </div>
-    </div>
     </LLMConnectorManager>
   );
 }
