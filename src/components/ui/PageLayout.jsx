@@ -166,10 +166,12 @@ const ModalPageLayout = ({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 1000,
+    zIndex: 2147483647,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    transition: 'opacity 200ms ease',
+    willChange: 'opacity',
     ...backdropStyle
   };
 
@@ -186,6 +188,9 @@ const ModalPageLayout = ({
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+    transform: 'translateY(0)',
+    transition: 'transform 220ms ease, opacity 220ms ease',
+    willChange: 'transform, opacity',
     ...modalStyle
   };
 

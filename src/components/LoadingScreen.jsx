@@ -43,7 +43,7 @@ export default function LoadingScreen({ onComplete }) {
   const currentState = loadingStates[currentStep];
 
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center p-6" style={{ zIndex: 2147483647, pointerEvents: 'auto' }}>
       {/* Modal - Full height from bottom */}
       <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
         {/* Header */}
