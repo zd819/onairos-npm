@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { COLORS } from '../theme/colors.js';
 
-export default function TrainingComponent({ onComplete, userEmail, appName = 'App', testMode = true }) {
+export default function TrainingComponent({ onComplete, userEmail, appName = 'App', testMode = false }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);

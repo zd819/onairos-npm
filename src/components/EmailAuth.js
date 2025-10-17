@@ -3,7 +3,7 @@ import { Mail, ArrowRight, Check } from 'lucide-react';
 import PrimaryButton from './ui/PrimaryButton.jsx';
 import { COLORS } from '../theme/colors.js';
 
-export default function EmailAuth({ onSuccess, testMode = true }) {
+export default function EmailAuth({ onSuccess, testMode = false }) {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState('email'); // 'email' | 'code' | 'success'

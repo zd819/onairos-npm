@@ -34,7 +34,7 @@ const platforms = [
   { name: 'Gmail', icon: '📧', color: 'bg-red-500', connector: 'gmail' }
 ];
 
-export default function UniversalOnboarding({ onComplete, appIcon, appName = 'App', username, testMode = true }) {
+export default function UniversalOnboarding({ onComplete, appIcon, appName = 'App', username, testMode = false }) {
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeConnector, setActiveConnector] = useState(null);

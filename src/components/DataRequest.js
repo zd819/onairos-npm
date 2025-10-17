@@ -98,7 +98,7 @@ const DataTypeToggle = ({ dataType, isEnabled, onToggle, isLast }) => {
 
 const DataRequest = ({ 
   userEmail = 'user@example.com', 
-  testMode = true, 
+  testMode = false, 
   onComplete, 
   autoFetch = true,
   appName = 'Test App',

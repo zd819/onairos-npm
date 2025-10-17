@@ -15,7 +15,7 @@ export function OnairosButton({
   inferenceData = null, 
   onComplete = null, 
   autoFetch = true, // Auto-enabled for seamless testing experience
-  testMode = true, // Auto-enabled for design testing - set to false for production
+  testMode = false, // Production mode by default - set to true for testing
   proofMode = false, 
   textLayout = 'below', 
   textColor = 'white',
