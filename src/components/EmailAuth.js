@@ -2,8 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Mail, ArrowRight, Check } from 'lucide-react';
 import PrimaryButton from './ui/PrimaryButton.jsx';
 import { COLORS } from '../theme/colors.js';
+import { API_CONFIG } from '../config/api-config.js';
 
 export default function EmailAuth({ onSuccess, testMode = false }) {
+  // Component identification
+  console.log('📧 EmailAuth (onairos/src/components) initialized');
+  console.log('🔧 API Config:', API_CONFIG.getDebugInfo());
+  console.log('🧪 Test Mode:', testMode);
+  
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState('email'); // 'email' | 'code' | 'success'
@@ -76,6 +82,13 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       } else {
         // Production mode: Use proper email verification API from schema
         const apiKey = window.onairosApiKey || 'test-key';
+        const apiUrl = API_CONFIG.getEmailVerifyUrl();
+        
+        console.log('🚀 LIVE API CALL - Email Request');
+        console.log('📋 API Key:', apiKey ? `${apiKey.substring(0, 8)}...` : 'NOT SET');
+        console.log('🌐 URL:', apiUrl);
+        console.log('📧 Email:', email);
+        
         const headers = {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
@@ -83,7 +96,8 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
           'Authorization': `Bearer ${apiKey}`
         };
 
-        const response = await doFetchWithRetry('https://api2.onairos.uk/email/verify', {
+        
+        const response = await doFetchWithRetry(apiUrl, {
           method: 'POST',
           headers,
           body: JSON.stringify({ 
@@ -245,13 +259,21 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       } else {
         // Production mode: Use real email verification API from schema
         const apiKey = window.onairosApiKey || 'test-key';
+        const apiUrl = API_CONFIG.getEmailVerifyConfirmUrl();
+        
+        console.log('🚀 LIVE API CALL - Code Verification');
+        console.log('📋 API Key:', apiKey ? `${apiKey.substring(0, 8)}...` : 'NOT SET');
+        console.log('🌐 URL:', apiUrl);
+        console.log('📧 Email:', email);
+        console.log('🔢 Code:', code);
+        
         const headers = {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
           'Authorization': `Bearer ${apiKey}`
         };
-
-        const response = await doFetchWithRetry('https://api2.onairos.uk/email/verify/confirm', {
+        
+        const response = await doFetchWithRetry(apiUrl, {
           method: 'POST',
           headers,
           body: JSON.stringify({ 
