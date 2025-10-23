@@ -7,7 +7,7 @@ const geminiIcon = 'https://anushkasirv.sirv.com/gemini-color.png';
 const grokIcon = 'https://anushkasirv.sirv.com/grok.png';
 
 const sdkConfig = {
-  apiKey: process.env.REACT_APP_ONAIROS_API_KEY || 'onairos_web_sdk_live_key_2024',
+  apiKey: process.env.REACT_APP_ONAIROS_API_KEY || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey',
   baseUrl: process.env.REACT_APP_ONAIROS_BASE_URL || 'https://api2.onairos.uk',
   sdkType: 'web',
   enableHealthMonitoring: true,

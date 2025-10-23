@@ -72,7 +72,17 @@ export function OnairosButton({
 
   const openTerminal = async () => {
     try {
+<<<<<<< Updated upstream
       console.log('🔥 openTerminal called');
+=======
+      console.log('🔥 openTerminal called - resetting flow');
+      console.log('🔥 testMode prop:', testMode);
+      console.log('🔥 window.onairosApiKey:', window.onairosApiKey);
+      // ALWAYS reset flow on open to start fresh every time
+      setCurrentFlow('welcome');
+      setUserData(null);
+      try { localStorage.removeItem('onairosUser'); } catch {}
+>>>>>>> Stashed changes
         setShowOverlay(true);
     } catch (error) {
       console.error('Error in openTerminal:', error);
@@ -155,7 +165,7 @@ export function OnairosButton({
     setCurrentFlow('pin');
   };
 
-  const handlePinSetupComplete = (pinData) => {
+  const handlePinSetupComplete = async (pinData) => {
     console.log('PIN setup completed:', pinData);
     const updatedUserData = {
       ...userData,
@@ -164,6 +174,46 @@ export function OnairosButton({
     };
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
+    
+    // Trigger training job if user has connected accounts
+    if (updatedUserData.connectedAccounts && updatedUserData.connectedAccounts.length > 0) {
+      console.log('🎓 Triggering training job for connected accounts:', updatedUserData.connectedAccounts);
+      
+      try {
+        // Use local backend for training if available, otherwise skip
+        const trainingBaseUrl = (typeof window !== 'undefined' && window.onairosTrainingUrl) || 'http://localhost:3001';
+        const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'OnairosIsAUnicorn2025';
+        
+        console.log('🎓 Training endpoint:', `${trainingBaseUrl}/training-queue/queue`);
+        
+        // Use the training-queue endpoint to queue the training job
+        const response = await fetch(`${trainingBaseUrl}/training-queue/queue`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            username: updatedUserData.userName || updatedUserData.email?.split('@')[0],
+            modelType: 'FinalMLP',
+            connectedAccounts: updatedUserData.connectedAccounts,
+            priority: 'normal',
+            source: 'web_sdk'
+          })
+        });
+        
+        if (response.ok) {
+          const trainingData = await response.json();
+          console.log('🎓 Training job queued successfully:', trainingData);
+        } else {
+          const errorText = await response.text();
+          console.warn('⚠️ Training job failed to queue (this is expected if training endpoint is not available):', response.status, errorText);
+        }
+      } catch (error) {
+        console.warn('⚠️ Training endpoint not available (this is expected in production):', error.message);
+      }
+    }
     
     // Move to loading flow
     setCurrentFlow('loading');

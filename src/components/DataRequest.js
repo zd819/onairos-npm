@@ -345,14 +345,14 @@ const DataRequest = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
           <div className="w-12 h-12 bg-white rounded-xl shadow-lg flex items-center justify-center border border-gray-100">
-            <span className="text-xl font-serif font-bold text-black">E</span>
+            <span className="text-xl font-serif font-bold text-black">B</span>
           </div>
         </div>
 
         {/* Title Section */}
         <div className="mb-4 flex-shrink-0">
           <h1 className="text-xl font-bold text-gray-900 mb-2 text-balance leading-tight">
-            Enoch wants to personalize your experience
+            {appName} wants to personalize your experience
           </h1>
           <p className="text-gray-600 text-sm">Choose what to share:</p>
         </div>
