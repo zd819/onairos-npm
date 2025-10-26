@@ -193,26 +193,44 @@ const DataRequest = ({
           
           setTimeout(() => {
             const simulatedApiData = {
-              success: true,
-              message: "Data request simulated successfully",
-              data: {
-                personalityScores: {
-                  openness: 0.75,
-                  conscientiousness: 0.68,
-                  extraversion: 0.82,
-                  agreeableness: 0.71,
-                  neuroticism: 0.43
-                },
-                insights: [
-                  "You show high creativity and openness to new experiences",
-                  "Strong social tendencies with good interpersonal skills",
-                  "Well-organized approach to tasks and goals"
-                ],
-                dataProcessed: approvedData,
-                timestamp: new Date().toISOString(),
-                testMode: true
+              InferenceResult: {
+                output: Array.from({ length: 16 }, () => [Math.random()]),
+                traits: {
+                  personality_traits: {
+                    positive_traits: {
+                      creativity: 85.5,
+                      empathy: 78.2,
+                      leadership: 72.8,
+                      analytical_thinking: 88.9,
+                      communication: 81.3
+                    },
+                    traits_to_improve: {
+                      patience: 45.2,
+                      time_management: 52.7,
+                      delegation: 38.9
+                    }
+                  }
+                }
+              },
+              persona: {
+                id: 1,
+                name: "Test Persona",
+                description: "Simulated persona for testing"
+              },
+              inference_metadata: {
+                size_used: "Large",
+                total_outputs: 16,
+                persona_applied: "Test Persona"
               }
             };
+
+            // Log detailed test mode response with explanations
+            const { logOnairosResponse } = require('../utils/apiResponseLogger');
+            console.log('🧪 Test Mode: Simulated API Response');
+            logOnairosResponse(simulatedApiData, 'TEST_MODE', { 
+              detailed: true, 
+              showRawData: false 
+            });
 
             const result = {
               ...baseResult,
@@ -222,7 +240,7 @@ const DataRequest = ({
             };
 
             setIsLoadingApi(false);
-            console.log('🧪 Test mode: Simulated data request completed:', result);
+            console.log('🧪 Test mode: Simulated data request completed');
             console.log('🔥 DataRequest: onComplete function type:', typeof onComplete);
             if (onComplete && typeof onComplete === 'function') {
               onComplete(result);
@@ -259,7 +277,14 @@ const DataRequest = ({
             }
 
             const apiData = await apiResponse.json();
-            console.log('🔥 API Response:', apiData);
+            
+            // Log detailed API response with explanations
+            const { logOnairosResponse } = require('../utils/apiResponseLogger');
+            console.log('🔥 Raw API Response received from backend');
+            logOnairosResponse(apiData, apiEndpoint, { 
+              detailed: true, 
+              showRawData: false // Set to true to see raw JSON
+            });
 
             const result = {
               ...baseResult,

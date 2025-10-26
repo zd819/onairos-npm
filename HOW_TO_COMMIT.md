@@ -2,7 +2,7 @@
 
 Due to a terminal pager issue, please run these commands manually in a **fresh PowerShell or Git Bash window**:
 
-## Option 1: Using PowerShell (Recommended)
+## Commit 1: Enhanced Email Auth Flow
 
 ```powershell
 cd "c:\Users\Peter Lim M L\Documents\Imperial\npm\onairos"
@@ -12,6 +12,20 @@ git add src/onairosButton.jsx
 
 # Commit with the prepared message
 git commit -F COMMIT_MESSAGE.txt
+
+# Verify the commit
+git log -1 --stat
+```
+
+## Commit 2: API Response Logging
+
+```powershell
+# Stage the new files
+git add src/utils/apiResponseLogger.js
+git add src/components/DataRequest.js
+
+# Commit with the prepared message
+git commit -F COMMIT_MESSAGE_API_LOGGING.txt
 
 # Verify the commit
 git log -1 --stat
