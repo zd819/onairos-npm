@@ -1,0 +1,122 @@
+[33mf660f7a[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: reset: moving to HEAD
+[33mf660f7a[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{1}: checkout: moving from anushka-refactor to main
+[33mb86e262[m[33m ([m[1;31morigin/anushka-refactor[m[33m, [m[1;32manushka-refactor[m[33m)[m HEAD@{2}: checkout: moving from main to anushka-refactor
+[33mf660f7a[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{3}: reset: moving to HEAD
+[33mf660f7a[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{4}: commit: 3.6.0
+[33m65d4665[m HEAD@{5}: commit (merge): Merge branch 'feature/manual-toggle'
+[33m1c89846[m HEAD@{6}: commit: Training and email API fix
+[33ma7e2f67[m HEAD@{7}: checkout: moving from feature/manual-toggle to main
+[33mdd8f5fc[m[33m ([m[1;31morigin/feature/manual-toggle[m[33m, [m[1;32mfeature/manual-toggle[m[33m)[m HEAD@{8}: checkout: moving from main to feature/manual-toggle
+[33ma7e2f67[m HEAD@{9}: reset: moving to HEAD
+[33ma7e2f67[m HEAD@{10}: checkout: moving from feature/manual-toggle to main
+[33mdd8f5fc[m[33m ([m[1;31morigin/feature/manual-toggle[m[33m, [m[1;32mfeature/manual-toggle[m[33m)[m HEAD@{11}: commit: Fixed API key
+[33m2eb8fc2[m HEAD@{12}: commit: "version": "3.5.1",
+[33mdc76724[m HEAD@{13}: commit: "version": "3.5.0",
+[33ma4ddc96[m HEAD@{14}: checkout: moving from main to feature/manual-toggle
+[33ma7e2f67[m HEAD@{15}: reset: moving to HEAD
+[33ma7e2f67[m HEAD@{16}: checkout: moving from anushka-refactor to main
+[33mb3a122d[m HEAD@{17}: checkout: moving from main to anushka-refactor
+[33ma7e2f67[m HEAD@{18}: commit: Test mode fasle
+[33m747b474[m HEAD@{19}: commit (merge): Merge branch 'anushka-refactor'
+[33m3dc3d41[m HEAD@{20}: commit: Browser extension and backend llm data
+[33m1a7f5f1[m HEAD@{21}: commit: v3.4.2: Enhanced onComplete callback with structured user data formatting
+[33mb852c71[m HEAD@{22}: commit: v3.4.0: Standardized API Key Validation, ChatGPT Connector, Gmail OAuth Fix
+[33m2fbaa92[m HEAD@{23}: commit (merge): Merge branch 'anushka-refactor'
+[33m953c781[m HEAD@{24}: checkout: moving from anushka-refactor to main
+[33m7b9f54e[m HEAD@{25}: checkout: moving from main to anushka-refactor
+[33m953c781[m HEAD@{26}: commit: API key validation
+[33m3cec108[m HEAD@{27}: checkout: moving from anushka-refactor to main
+[33m7b9f54e[m HEAD@{28}: checkout: moving from main to anushka-refactor
+[33m3cec108[m HEAD@{29}: commit: Platform/Chatgpt changes
+[33m70cabdb[m HEAD@{30}: commit: 3.1.22 with new response guide
+[33mcf6e707[m HEAD@{31}: pull --ff --recurse-submodules --progress origin: Fast-forward
+[33mb646d95[m HEAD@{32}: checkout: moving from anushka-refactor to main
+[33mc738cb5[m HEAD@{33}: checkout: moving from main to anushka-refactor
+[33mb646d95[m HEAD@{34}: reset: moving to HEAD
+[33mb646d95[m HEAD@{35}: pull --ff --recurse-submodules --progress origin: Fast-forward
+[33m35bb593[m HEAD@{36}: checkout: moving from anushka-refactor to main
+[33mb86d01e[m HEAD@{37}: reset: moving to HEAD
+[33mb86d01e[m HEAD@{38}: checkout: moving from main to anushka-refactor
+[33m35bb593[m HEAD@{39}: commit: UI changes
+[33m40ec9d0[m HEAD@{40}: commit: Fixed UI before final version
+[33m55e39ac[m HEAD@{41}: pull --ff --recurse-submodules --progress origin: Fast-forward
+[33m7a24459[m[33m ([m[1;31morigin/anushka-wip[m[33m)[m HEAD@{42}: commit: fixed final button, build for test mode
+[33m47ee79e[m HEAD@{43}: commit: test mode build files
+[33m0c8ba44[m HEAD@{44}: commit: more test mode changes
+[33m2a5c0b8[m HEAD@{45}: commit: V3.1.13 revamp with test mode
+[33m1a709db[m HEAD@{46}: pull --ff --recurse-submodules --progress origin: Fast-forward
+[33m0b21c12[m HEAD@{47}: reset: moving to HEAD
+[33m0b21c12[m HEAD@{48}: reset: moving to 0b21c124aa8cbc719216c6622633ffedc9249a1b
+[33m910d24f[m HEAD@{49}: reset: moving to 910d24f697b1d7d88a35bfd1ed88f8855f303693
+[33m0e2a804[m HEAD@{50}: reset: moving to HEAD
+[33m0e2a804[m HEAD@{51}: checkout: moving from Sdk-v2.0.0 to main
+[33mfdd4ed1[m[33m ([m[1;31morigin/Sdk-v2.0.0[m[33m, [m[1;32mSdk-v2.0.0[m[33m)[m HEAD@{52}: commit: v3.1.12
+[33mbcd1b59[m HEAD@{53}: commit: Laravel and Dict output
+[33mface384[m[33m ([m[1;33mtag: v2.1.5[m[33m)[m HEAD@{54}: commit: v2.1.5: Mobile browser compatibility + OAuth debugging
+[33mab22f7e[m[33m ([m[1;31morigin/remove-othent[m[33m, [m[1;32mremove-othent[m[33m)[m HEAD@{55}: checkout: moving from remove-othent to Sdk-v2.0.0
+[33mab22f7e[m[33m ([m[1;31morigin/remove-othent[m[33m, [m[1;32mremove-othent[m[33m)[m HEAD@{56}: commit: Before revamp, version 1.0.0
+[33mbcd1f09[m HEAD@{57}: commit: Revamp and running
+[33m0b21c12[m HEAD@{58}: checkout: moving from main to remove-othent
+[33m0e2a804[m HEAD@{59}: commit: Fix?
+[33m910d24f[m HEAD@{60}: commit: Revamp
+[33m0b21c12[m HEAD@{61}: commit: Onairos migration + LLM Sdk
+[33m6f541c7[m HEAD@{62}: checkout: moving from remove-extension to main
+[33meec1613[m[33m ([m[1;32mremove-extension[m[33m)[m HEAD@{63}: reset: moving to HEAD
+[33meec1613[m[33m ([m[1;32mremove-extension[m[33m)[m HEAD@{64}: commit: Migration
+[33m6f541c7[m HEAD@{65}: checkout: moving from main to remove-extension
+[33m6f541c7[m HEAD@{66}: commit: Current Browser Extension
+[33md0f5a11[m HEAD@{67}: commit: Mobile (React Native) Overlay
+[33m87af368[m HEAD@{68}: commit: isMobile initial logic
+[33m65dc296[m HEAD@{69}: commit: More changes to mobile version
+[33mcf2e686[m HEAD@{70}: commit: Live (Testing Telegram)
+[33m321b08c[m HEAD@{71}: commit: Othent Solution v1
+[33m8984c66[m HEAD@{72}: commit: Onairos UMD Default Export
+[33m7051266[m HEAD@{73}: commit: Updated UMD
+[33m8466964[m HEAD@{74}: commit: Fixing Polyfills for non-node env
+[33meec6b7f[m HEAD@{75}: commit: Umd build file and scripts
+[33m3c4ea17[m HEAD@{76}: commit: Onairos umd
+[33m3f7473a[m HEAD@{77}: commit: Removed conflicting babel
+[33m25565ff[m HEAD@{78}: commit: Fixing Confirm and Last Checks
+[33mbc3a157[m HEAD@{79}: commit: Mobile Browser Live - v.0.1.259
+[33m9df6632[m HEAD@{80}: commit: "version": "0.1.250",
+[33m3cef5a2[m HEAD@{81}: commit: Working - "version": "0.1.247",
+[33m80364bb[m HEAD@{82}: commit: Cloudfare build debug test
+[33m0ddbb6c[m HEAD@{83}: commit: Debugging
+[33m034f78b[m HEAD@{84}: commit: Update onairos.jsx
+[33m3a23f37[m HEAD@{85}: commit: "version": "0.1.244",
+[33m9ce37bf[m HEAD@{86}: commit: Fixed Layout- version": "0.1.243
+[33m217c300[m HEAD@{87}: commit: Live 0.1.239
+[33m049e514[m HEAD@{88}: commit: Mobile overlay
+[33ma46217a[m HEAD@{89}: commit: 0.1.191 - Telegram Temp
+[33mafc2b18[m HEAD@{90}: commit: 0.1.190 - Telegram
+[33m2aa9b92[m HEAD@{91}: commit: Cloudfare Dist
+[33ma7040aa[m HEAD@{92}: commit: "version": "0.1.181"
+[33m0686e7a[m HEAD@{93}: commit: Updated othent and logs
+[33ma24a829[m HEAD@{94}: commit: version: 0.1.163
+[33m2e50cf3[m HEAD@{95}: commit: Build ES Module too
+[33m8a79adf[m HEAD@{96}: commit: Working "0.1.160
+[33mdee9705[m HEAD@{97}: commit: v0.1.158
+[33m7890a23[m HEAD@{98}: commit: v 0.1.158
+[33meab6dca[m HEAD@{99}: commit: Validate domain and check extension
+[33m6723db0[m HEAD@{100}: commit: VICOTRY - missing874 chunk
+[33m3ebb507[m HEAD@{101}: commit: Producing Chunks, missing numbered chunks
+[33m7cf779e[m HEAD@{102}: commit: New BUild and Files
+[33mc03f326[m HEAD@{103}: commit: anonymous
+[33mca62ee0[m HEAD@{104}: commit: Dynamic Importing Othent and Crypto-js
+[33mdb6338b[m HEAD@{105}: commit: 1.24
+[33mc03c797[m HEAD@{106}: commit: onairos 1.23
+[33m877da13[m HEAD@{107}: commit: Live : New Pin and Othent System
+[33mfaf4e8e[m HEAD@{108}: commit: Test Version
+[33macbaa2b[m HEAD@{109}: commit: Removing Othent Temporarily
+[33mfd5cd94[m HEAD@{110}: commit: UseState Error Fix
+[33mb9b0803[m HEAD@{111}: pull --ff --recurse-submodules --progress origin: Merge made by the 'ort' strategy.
+[33me0fb1c8[m HEAD@{112}: commit: Onairos v0.1.7
+[33m015d915[m HEAD@{113}: commit: Onairos v0.1.4
+[33m65c8092[m HEAD@{114}: commit: New Verification Version
+[33m186cf34[m HEAD@{115}: commit: Fix : Icon Size once imported
+[33m60dbc03[m HEAD@{116}: commit: Updated ReadMe
+[33m26fd24c[m HEAD@{117}: commit: 0.0.4
+[33md723c44[m HEAD@{118}: commit: README.md
+[33mb23d679[m HEAD@{119}: commit: Package version 0.0.1
+[33mec57c43[m HEAD@{120}: commit: Working Onairos NPM package
+[33m6637c7b[m HEAD@{121}: commit (initial): Initial commit
