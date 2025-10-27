@@ -72,9 +72,6 @@ export function OnairosButton({
 
   const openTerminal = async () => {
     try {
-<<<<<<< Updated upstream
-      console.log('🔥 openTerminal called');
-=======
       console.log('🔥 openTerminal called - resetting flow');
       console.log('🔥 testMode prop:', testMode);
       console.log('🔥 window.onairosApiKey:', window.onairosApiKey);
@@ -82,8 +79,7 @@ export function OnairosButton({
       setCurrentFlow('welcome');
       setUserData(null);
       try { localStorage.removeItem('onairosUser'); } catch {}
->>>>>>> Stashed changes
-        setShowOverlay(true);
+      setShowOverlay(true);
     } catch (error) {
       console.error('Error in openTerminal:', error);
     }
