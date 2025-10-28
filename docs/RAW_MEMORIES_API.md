@@ -3,25 +3,31 @@
 ## Overview
 The RAW Memories feature allows developers to request access to users' LLM conversation data from platforms like ChatGPT, Claude, and other AI assistants. This provides rich contextual data about user preferences, communication patterns, and AI interaction history.
 
-## Usage
+**Note**: Basic profile data (name, email, account details) is always included in all requests.
 
-### Basic Implementation
+## Usage Modes
+
+### Mode 1: RAW Data Only
+Request only LLM conversation data + basic profile data. Shows only LLM connections (ChatGPT, Claude, Gemini, etc.) in the connection flow.
+
 ```javascript
 <OnairosButton 
-  requestData={['rawMemories']}  // Only request LLM data
-  rawMemoriesOnly={true}         // Hide other data request options
+  requestData={['rawMemories']}  // LLM data + basic (always included)
+  rawMemoriesOnly={true}         // Show only LLM connections
   webpageName="Your App"
   onComplete={handleRawMemories}
 />
 ```
 
-### Advanced Implementation
+### Mode 2: RAW Data + Normal Data Requests
+Request LLM conversation data plus additional user insights (traits, sentiment analysis, preferences). Shows all connection options.
+
 ```javascript
 <OnairosButton 
-  requestData={['rawMemories', 'basic']}  // Request both LLM data and basic data
-  rawMemoriesOnly={false}                 // Show all data request options
+  requestData={['rawMemories', 'personality', 'preferences']}  // LLM + traits + preferences + basic
+  rawMemoriesOnly={false}        // Show all data request options (default)
   rawMemoriesConfig={{
-    platforms: ['chatgpt', 'claude', 'gemini'],  // Specific platforms
+    platforms: ['chatgpt', 'claude', 'gemini'],  // Specific LLM platforms
     dateRange: {
       from: '2024-01-01',
       to: '2024-12-31'
@@ -38,10 +44,13 @@ The RAW Memories feature allows developers to request access to users' LLM conve
 
 ### `requestData` Array
 - **`'rawMemories'`** - Include LLM conversation data in the request
+- **`'personality'`** - Include AI-analyzed personality traits and behavioral patterns
+- **`'preferences'`** - Include user preferences, interests, and settings
+- **Basic data is always included** (name, email, profile information)
 
 ### `rawMemoriesOnly` Boolean
-- **`true`** - Only show LLM data sources on connections page, hide other data options
-- **`false`** - Show all available data request options (default)
+- **`true`** - Only show LLM data sources (ChatGPT, Claude, Gemini, Grok) on connections page
+- **`false`** - Show all available data request options including social media platforms (default)
 
 ### `rawMemoriesConfig` Object (Optional)
 ```javascript
@@ -64,6 +73,11 @@ The RAW Memories feature allows developers to request access to users' LLM conve
 {
   success: true,
   data: {
+    basic: {
+      name: string,
+      email: string,
+      profileInfo: object
+    },
     rawMemories: {
       conversations: Conversation[],
       metadata: {
@@ -80,7 +94,9 @@ The RAW Memories feature allows developers to request access to users' LLM conve
         }
       }
     },
-    // ... other requested data types
+    // Additional data types if requested (personality, preferences)
+    personality?: object,
+    preferences?: object
   }
 }
 ```
@@ -260,8 +276,8 @@ function MyApp() {
 
   return (
     <OnairosButton 
-      requestData={['rawMemories']}
-      rawMemoriesOnly={true}
+      requestData={['rawMemories']}  // Gets LLM data + basic profile (always included)
+      rawMemoriesOnly={true}         // Shows only LLM connections in UI
       rawMemoriesConfig={{
         platforms: ['chatgpt', 'claude'],
         includeMetadata: true,

@@ -23,7 +23,12 @@ const fadeSlideInKeyframes = `
 }
 `;
 
-export default function UniversalOnboarding({ onComplete, llmConnectorManager }) {
+export default function UniversalOnboarding({ 
+  onComplete, 
+  llmConnectorManager, 
+  rawMemoriesOnly = false, 
+  rawMemoriesConfig = null 
+}) {
   const lottieRef = useRef(null);
   const lastFrameRef = useRef(0);
   const rafRef = useRef(null);
@@ -152,9 +157,22 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
   ];
 
   const getPlatformsForPage = (page) => {
-    if (page === 1) return allPlatforms.slice(0, 3);
-    if (page === 2) return allPlatforms.slice(3, 6);
-    return allPlatforms.slice(6);
+    let availablePlatforms = allPlatforms;
+    
+    // Filter platforms based on rawMemoriesOnly mode
+    if (rawMemoriesOnly) {
+      // Show only LLM platforms (those with directLink)
+      availablePlatforms = allPlatforms.filter(platform => platform.directLink);
+      
+      // For RAW memories only mode, show all LLM platforms on page 1
+      if (page === 1) return availablePlatforms;
+      return []; // No other pages needed for LLM-only mode
+    }
+    
+    // Normal mode - show all platforms across pages
+    if (page === 1) return availablePlatforms.slice(0, 3);
+    if (page === 2) return availablePlatforms.slice(3, 6);
+    return availablePlatforms.slice(6);
   };
 
   const platforms = getPlatformsForPage(currentPage);
@@ -213,7 +231,7 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
       if (!popup) throw new Error('popup blocked');
 
       let touched = false; const it = setInterval(() => {
-        try { if (popup.location && popup.location.hostname === 'onairos.uk') { touched = true; popup.close(); } } catch { if (!touched) touched = true; }
+        try { if (popup.location && popup.location.hostname === 'onairos.uk') { touched = true; /* Don't auto-close here - let the OAuth callback page handle it */ } } catch { if (!touched) touched = true; }
         try { if (popup.closed) { clearInterval(it); setIsConnecting(false); setConnectingPlatform(null); } } catch {}
       }, 800);
 
@@ -297,7 +315,8 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
   const onTouchMove  = (e) => { touchDeltaX.current = e.touches[0].clientX - touchStartX.current; };
   const onTouchEnd   = () => {
     const dx = touchDeltaX.current; const THRESH = 40;
-    if (dx < -THRESH && currentPage < 3) setCurrentPage(currentPage + 1);
+    const maxPages = rawMemoriesOnly ? 1 : 3; // Only 1 page for LLM-only mode
+    if (dx < -THRESH && currentPage < maxPages) setCurrentPage(currentPage + 1);
     else if (dx > THRESH && currentPage > 1) setCurrentPage(currentPage - 1);
   };
 
@@ -348,8 +367,12 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
 
         {/* header */}
         <div className="px-6 pt-16 pb-4 text-center z-10">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
-          <p className="text-gray-600 text-base">More Connections, Better Personalization.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">
+            {rawMemoriesOnly ? 'Connect AI Assistants' : 'Connect App Data'}
+          </h1>
+          <p className="text-gray-600 text-base">
+            {rawMemoriesOnly ? 'Share your AI conversation history for personalized experiences.' : 'More Connections, Better Personalization.'}
+          </p>
         </div>
 
         {/* middle scrollable */}
@@ -375,13 +398,15 @@ export default function UniversalOnboarding({ onComplete, llmConnectorManager })
             </div>
           </div>
           {/* dots */}
-          <div className="flex justify-center gap-4 mb-3">
-            {[1, 2, 3].map((n) => (
-              <button key={n} onClick={() => setCurrentPage(n)} style={{ width: 12, height: 12 }}>
-                <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-110' : 'bg-gray-300'} transition-transform`} style={{ width: 12, height: 12 }} />
-              </button>
-                ))}
-              </div>
+          {!rawMemoriesOnly && (
+            <div className="flex justify-center gap-4 mb-3">
+              {[1, 2, 3].map((n) => (
+                <button key={n} onClick={() => setCurrentPage(n)} style={{ width: 12, height: 12 }}>
+                  <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-110' : 'bg-gray-300'} transition-transform`} style={{ width: 12, height: 12 }} />
+                </button>
+                  ))}
+                </div>
+          )}
           {/* card */}
           <div className="rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5 mx-auto mb-2" style={{ width: 'min(420px,90%)' }}>
             <div className="flex items-center justify-between">

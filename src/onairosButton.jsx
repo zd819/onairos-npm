@@ -28,7 +28,9 @@ export function OnairosButton({
   enableTraining = true,
   formatResponse = true,
   responseFormat = { includeDictionary: true, includeArray: true },
-  priorityPlatform = null // Platform to prioritize (e.g., 'gmail', 'pinterest', 'linkedin')
+  priorityPlatform = null, // Platform to prioritize (e.g., 'gmail', 'pinterest', 'linkedin')
+  rawMemoriesOnly = false, // Show only LLM connections when true
+  rawMemoriesConfig = null // Configuration for RAW memories collection
 }) {
 
   const [showOverlay, setShowOverlay] = useState(false);
@@ -383,6 +385,8 @@ export function OnairosButton({
             username={userData?.email || userData?.username}
             testMode={testMode}
             priorityPlatform={priorityPlatform}
+            rawMemoriesOnly={rawMemoriesOnly}
+            rawMemoriesConfig={rawMemoriesConfig}
           />
         );
       
@@ -416,6 +420,8 @@ export function OnairosButton({
             testMode={testMode}
             appIcon={appIcon}
             connectedAccounts={userData?.connectedAccounts || {}}
+            rawMemoriesOnly={rawMemoriesOnly}
+            rawMemoriesConfig={rawMemoriesConfig}
           />
         );
       
@@ -534,6 +540,8 @@ export function OnairosButton({
                   username={userData?.email || userData?.username}
                   testMode={testMode}
                   priorityPlatform={priorityPlatform}
+                  rawMemoriesOnly={rawMemoriesOnly}
+                  rawMemoriesConfig={rawMemoriesConfig}
                 />
               </div>
             </div>
@@ -544,7 +552,7 @@ export function OnairosButton({
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
-                    onClick={() => setCurrentFlow('loading')}
+                    onClick={() => setCurrentFlow('email')}
                     className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
                   >
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -563,6 +571,8 @@ export function OnairosButton({
                   testMode={testMode}
                   appIcon={appIcon}
                   connectedAccounts={userData?.connectedAccounts || {}}
+                  rawMemoriesOnly={rawMemoriesOnly}
+                  rawMemoriesConfig={rawMemoriesConfig}
                 />
               </div>
             </div>

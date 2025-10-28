@@ -13,6 +13,15 @@ const dataTypes = [
     privacyLink: 'https://onairos.uk/privacy#basic-info'
   },
   { 
+    id: 'rawMemories', 
+    name: 'Raw Memory Data', 
+    description: 'LLM conversation history from ChatGPT, Claude, Gemini, and other AI platforms', 
+    icon: 'Brain',
+    required: false,
+    tooltip: 'Your conversation history with AI assistants. Provides rich contextual data about your preferences and communication patterns.',
+    privacyLink: 'https://onairos.uk/privacy#raw-memories-data'
+  },
+  { 
     id: 'preferences', 
     name: 'User Preferences', 
     description: 'User preferences, interests, settings and personal choices', 
@@ -103,13 +112,36 @@ const DataRequest = ({
   autoFetch = true,
   appName = 'Test App',
   formatResponse = false,
-  responseFormat = 'simple'
+  responseFormat = 'simple',
+  rawMemoriesOnly = false,
+  rawMemoriesConfig = null,
+  requestData = null
 }) => {
-  const [selectedData, setSelectedData] = useState({
-    basic: true, // Always true for required data
-    personality: false,
-    preferences: false
-  });
+  // Initialize selectedData based on requestData and rawMemoriesOnly mode
+  const getInitialSelectedData = () => {
+    const initial = { basic: true }; // Basic is always included
+    
+    if (requestData && Array.isArray(requestData)) {
+      // Set based on requestData array
+      requestData.forEach(dataType => {
+        if (dataType !== 'basic') { // basic is always true
+          initial[dataType] = true;
+        }
+      });
+    } else if (rawMemoriesOnly) {
+      // RAW memories only mode
+      initial.rawMemories = true;
+    } else {
+      // Default mode
+      initial.personality = false;
+      initial.preferences = false;
+      initial.rawMemories = false;
+    }
+    
+    return initial;
+  };
+
+  const [selectedData, setSelectedData] = useState(getInitialSelectedData());
   const [isLoadingApi, setIsLoadingApi] = useState(false);
   const [apiError, setApiError] = useState(null);
 
@@ -385,15 +417,24 @@ const DataRequest = ({
         {/* Consent Options - Scrollable area */}
         <div className="flex-1 overflow-y-auto min-h-0">
           <div className="space-y-4 pb-4">
-            {dataTypes.map((dataType, index) => (
-              <DataTypeToggle
-                key={dataType.id}
-                dataType={dataType}
-                isEnabled={selectedData[dataType.id]}
-                onToggle={handleDataToggle}
-                isLast={index === dataTypes.length - 1}
-              />
-            ))}
+            {dataTypes
+              .filter(dataType => {
+                if (rawMemoriesOnly) {
+                  // In RAW memories only mode, show only basic and rawMemories
+                  return dataType.id === 'basic' || dataType.id === 'rawMemories';
+                }
+                // In normal mode, show all data types
+                return true;
+              })
+              .map((dataType, index) => (
+                <DataTypeToggle
+                  key={dataType.id}
+                  dataType={dataType}
+                  isEnabled={selectedData[dataType.id]}
+                  onToggle={handleDataToggle}
+                  isLast={index === dataTypes.length - 1}
+                />
+              ))}
           </div>
         </div>
       </div>
