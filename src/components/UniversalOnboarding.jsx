@@ -153,11 +153,27 @@ export default function UniversalOnboarding({ onComplete }) {
   const platforms = getPlatformsForPage(currentPage);
 
   useEffect(() => {
+    // Load OAuth platform returns
     const p = localStorage.getItem('onairos_oauth_platform');
     if (p) {
       localStorage.removeItem('onairos_oauth_platform');
       localStorage.removeItem('onairos_oauth_return');
       setConnectedAccounts((s) => ({ ...s, [p]: true }));
+    }
+    
+    // Load persisted connected accounts from user data
+    try {
+      const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+      if (userData.connectedAccounts && Array.isArray(userData.connectedAccounts)) {
+        // Convert array to object format
+        const accountsObj = userData.connectedAccounts.reduce((acc, platform) => {
+          acc[platform] = true;
+          return acc;
+        }, {});
+        setConnectedAccounts(accountsObj);
+      }
+    } catch (error) {
+      console.warn('Failed to load persisted connected accounts:', error);
     }
   }, []);
 
@@ -297,7 +313,7 @@ export default function UniversalOnboarding({ onComplete }) {
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
-              style={{
+                    style={{
                 gridAutoFlow: 'column',
                 gridTemplateColumns: `repeat(${platforms.length}, minmax(0,1fr))`,
                 columnGap: currentPage === 1 ? GAP_PAGE1 : GAP_PAGE2,
@@ -319,6 +335,10 @@ export default function UniversalOnboarding({ onComplete }) {
                       onClick={() => { 
                         setSelected(p.name);
                         if (p.directLink) {
+                          // For direct link platforms (AI tools), connect immediately and open link
+                          if (!connectedAccounts[p.name]) {
+                            setConnectedAccounts((s) => ({ ...s, [p.name]: true }));
+                          }
                           window.open(p.directLink, '_blank');
                         } else {
                           handleSwitch(p.name);
@@ -332,7 +352,7 @@ export default function UniversalOnboarding({ onComplete }) {
                            style={{ width: CIRCLE, height: CIRCLE, transform: `scale(${isSel ? ACTIVE_SCALE : 1})`, transformOrigin: 'center' }}>
                         <div className="flex items-center justify-center" style={{ width: 20, height: 20 }}>
                           {p.icon}
-                        </div>
+                    </div>
                       </div>
                     </button>
                   </div>

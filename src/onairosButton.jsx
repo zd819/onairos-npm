@@ -81,7 +81,7 @@ export function OnairosButton({
       setCurrentFlow('welcome');
       setUserData(null);
       try { localStorage.removeItem('onairosUser'); } catch {}
-      setShowOverlay(true);
+        setShowOverlay(true);
     } catch (error) {
       console.error('Error in openTerminal:', error);
     }
@@ -178,8 +178,17 @@ export function OnairosButton({
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
     
     // Trigger training job if user has connected accounts
-    if (updatedUserData.connectedAccounts && updatedUserData.connectedAccounts.length > 0) {
-      console.log('🎓 Triggering training job for connected accounts:', updatedUserData.connectedAccounts);
+    if (updatedUserData.connectedAccounts && Object.keys(updatedUserData.connectedAccounts).length > 0) {
+      const platformEmojis = {
+        Instagram: '📷', YouTube: '▶️', LinkedIn: '💼', Reddit: '🤖',
+        Pinterest: '📌', GitHub: '💻', Facebook: '👥', Gmail: '📧',
+        Twitter: '🐦', ChatGPT: '🤖', Claude: '🧠', Gemini: '✨', Grok: '⚡'
+      };
+      const connectedList = Object.entries(updatedUserData.connectedAccounts)
+        .filter(([_, v]) => v)
+        .map(([k]) => `${platformEmojis[k] || '🔗'} ${k}`)
+        .join(', ');
+      console.log('🎓 Triggering training job for connected accounts:', connectedList);
       
       try {
         // Use local backend for training if available, otherwise skip
@@ -552,7 +561,7 @@ export function OnairosButton({
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
-                    onClick={() => setCurrentFlow('email')}
+                    onClick={() => setCurrentFlow('onboarding')}
                     className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
                   >
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
