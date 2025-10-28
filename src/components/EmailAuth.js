@@ -2,14 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Mail, ArrowRight, Check } from 'lucide-react';
 import PrimaryButton from './ui/PrimaryButton.jsx';
 import { COLORS } from '../theme/colors.js';
-import { API_CONFIG } from '../config/api-config.js';
 
-export default function EmailAuth({ onSuccess, testMode = false }) {
-  // Component identification
-  console.log('📧 EmailAuth (onairos/src/components) initialized');
-  console.log('🔧 API Config:', API_CONFIG.getDebugInfo());
-  console.log('🧪 Test Mode:', testMode);
-  
+export default function EmailAuth({ onSuccess, testMode = true }) {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState('email'); // 'email' | 'code' | 'success'
@@ -46,31 +40,6 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
     setIsLoading(true);
 
     try {
-      const doFetchWithRetry = async (url, options, attempts = 3) => {
-        let lastErr;
-        for (let i = 0; i < attempts; i++) {
-          try {
-            const res = await fetch(url, options);
-            if (!res.ok) {
-              // Capture response body for better diagnostics
-              try {
-                const body = await res.json();
-                lastErr = new Error(body?.error || `HTTP ${res.status}`);
-              } catch {
-                lastErr = new Error(`HTTP ${res.status}`);
-              }
-            } else {
-              return res;
-            }
-          } catch (err) {
-            lastErr = err;
-          }
-          // backoff: 400ms, 800ms
-          await new Promise(r => setTimeout(r, 400 * (i + 1)));
-        }
-        throw lastErr || new Error('Network error');
-      };
-
       if (testMode) {
         // Test mode: Skip API call completely, simulate instant success
         console.log('🧪 Test mode: Simulating email verification request for:', email);
@@ -81,26 +50,17 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         }, 800); // Shorter delay for faster testing
       } else {
         // Production mode: Use proper email verification API from schema
-        const apiKey = window.onairosApiKey || 'test-key';
-        const apiUrl = API_CONFIG.getEmailVerifyUrl();
+        const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
+        const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
         
-        console.log('🚀 LIVE API CALL - Email Request');
-        console.log('📋 API Key:', apiKey ? `${apiKey.substring(0, 8)}...` : 'NOT SET');
-        console.log('🌐 URL:', apiUrl);
-        console.log('📧 Email:', email);
-        
-        const headers = {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          // Keep Authorization for backwards compatibility
-          'Authorization': `Bearer ${apiKey}`
-        };
-
-        
-        const response = await doFetchWithRetry(apiUrl, {
+        const response = await fetch(`${baseUrl}/email/verify`, {
           method: 'POST',
-          headers,
-          body: JSON.stringify({ 
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
             email: (email || '').trim().toLowerCase()
           }),
         });
@@ -121,7 +81,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       }
     } catch (error) {
       console.error('Email request error:', error);
-      setError('Couldn’t send code. Please try again.');
+      setError(error.message);
       setIsLoading(false);
     }
   };
@@ -187,29 +147,6 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
     setIsLoading(true);
 
     try {
-      const doFetchWithRetry = async (url, options, attempts = 3) => {
-        let lastErr;
-        for (let i = 0; i < attempts; i++) {
-          try {
-            const res = await fetch(url, options);
-            if (!res.ok) {
-              try {
-                const body = await res.json();
-                lastErr = new Error(body?.error || `HTTP ${res.status}`);
-              } catch {
-                lastErr = new Error(`HTTP ${res.status}`);
-              }
-            } else {
-              return res;
-            }
-          } catch (err) {
-            lastErr = err;
-          }
-          await new Promise(r => setTimeout(r, 400 * (i + 1)));
-        }
-        throw lastErr || new Error('Network error');
-      };
-
       if (testMode) {
         // Test mode: Skip API call completely, simulate verification
         console.log('🧪 Test mode: Simulating code verification for:', email, 'with code:', code);
@@ -217,30 +154,16 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         if (code === '123456' || code.length === 6) {
           setStep('success');
           setTimeout(() => {
-            // Simulate new user for design testing using new response format
+            // Simulate new user for design testing
             const simulatedResponse = { 
               email, 
               verified: true, 
               token: 'test-token-' + Date.now(),
               userName: email.split('@')[0],
-              // New response format
-              isNewUser: true,
-              userState: 'new',
-              flowType: 'onboarding',
-              user: {
-                userName: email.split('@')[0],
-                email: email,
-                verified: true,
-                creationDate: new Date().toISOString(),
-                lastLogin: new Date().toISOString()
-              },
-              enochInstructions: {
-                recommendedFlow: 'onboarding',
-                nextActionTitle: 'Get Started'
-              },
-              // Legacy fields for backward compatibility
-              existingUser: false,
+              existingUser: false, // Always simulate new user for full flow testing
               accountInfo: null,
+              isNewUser: true,
+              flowType: 'onboarding',
               adminMode: false,
               userCreated: true,
               accountDetails: {
@@ -258,27 +181,19 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         }
       } else {
         // Production mode: Use real email verification API from schema
-        const apiKey = window.onairosApiKey || 'test-key';
-        const apiUrl = API_CONFIG.getEmailVerifyConfirmUrl();
+        const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
+        const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
         
-        console.log('🚀 LIVE API CALL - Code Verification');
-        console.log('📋 API Key:', apiKey ? `${apiKey.substring(0, 8)}...` : 'NOT SET');
-        console.log('🌐 URL:', apiUrl);
-        console.log('📧 Email:', email);
-        console.log('🔢 Code:', code);
-        
-        const headers = {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'Authorization': `Bearer ${apiKey}`
-        };
-        
-        const response = await doFetchWithRetry(apiUrl, {
+        const response = await fetch(`${baseUrl}/email/verify/confirm`, {
           method: 'POST',
-          headers,
-          body: JSON.stringify({ 
-            email: (email || '').trim().toLowerCase(), 
-            code 
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            email: (email || '').trim().toLowerCase(),
+            code: code.trim()
           }),
         });
 
@@ -289,44 +204,32 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         const data = await response.json();
         
         if (!data.success) {
-          // Handle error with attempts remaining if available
-          const errorMessage = data.error || 'Verification failed';
-          if (data.attemptsRemaining !== undefined) {
-            throw new Error(`${errorMessage} (${data.attemptsRemaining} attempts remaining)`);
-          } else {
-            throw new Error(errorMessage);
-          }
+          throw new Error(data.error || 'Verification failed');
         }
 
         console.log('📧 Email verification response:', data);
 
         setStep('success');
         setTimeout(() => {
-          // Pass complete API response using new format
+          // Pass complete API response for flow determination
           onSuccess({ 
             email, 
             verified: true, 
-            token: data.token,
-            userName: data.userName || data.user?.userName,
-            // New response format fields
-            isNewUser: data.isNewUser,
-            userState: data.userState,
-            flowType: data.flowType,
-            user: data.user,
-            existingUserData: data.existingUserData,
-            enochInstructions: data.enochInstructions,
-            // Legacy fields for backward compatibility
-            existingUser: !data.isNewUser,
-            accountInfo: data.existingUserData,
+            token: data.token || data.jwtToken,
+            userName: data.userName,
+            existingUser: data.existingUser,
+            accountInfo: data.accountInfo,
+            isNewUser: !data.existingUser, // Set based on API response
+            flowType: data.existingUser ? 'dataRequest' : 'onboarding',
             adminMode: data.adminMode,
             userCreated: data.userCreated,
-            accountDetails: data.accountDetails || data.user
+            accountDetails: data.accountDetails
           });
         }, 1000);
       }
     } catch (error) {
       console.error('Email verification error:', error);
-      setError('Invalid code. Please try again.');
+      setError(error.message || 'Invalid code. Please try again.');
       setIsLoading(false);
     }
   };

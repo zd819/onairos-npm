@@ -119,11 +119,11 @@
             loadingState.style.display = 'none';
             successState.style.display = 'block';
             
-            // Close window after delay
+            // Close window after delay (4 seconds so users can read the message)
             setTimeout(() => {
                 console.log('🚪 Closing OAuth popup window');
                 window.close();
-            }, 2000);
+            }, 4000);
             
         } else if (error || success === 'false') {
             // Error flow
@@ -163,7 +163,7 @@
             
             setTimeout(() => {
                 window.close();
-            }, 2000);
+            }, 4000);
         }
 
         // Fallback: close window if no action taken after 10 seconds
