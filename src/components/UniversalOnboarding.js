@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ChatGPTConnector from './connectors/ChatGPTConnector';
 import YoutubeConnector from './connectors/YoutubeConnector';
 import LinkedInConnector from './connectors/LinkedInConnector';
 import InstagramConnector from './connectors/InstagramConnector';
@@ -9,6 +10,22 @@ import PrimaryButton from './ui/PrimaryButton.jsx';
 import { COLORS } from '../theme/colors.js';
 
 const platforms = [
+  { 
+    name: 'ChatGPT', 
+    icon: (
+      <img 
+        src="/chatgpt-icon.png" 
+        alt="ChatGPT" 
+        className="w-full h-full object-contain"
+        onError={(e) => {
+          // Fallback to emoji if image fails to load
+          e.target.outerHTML = '🤖';
+        }}
+      />
+    ), 
+    color: 'bg-green-600', 
+    connector: 'chatgpt' 
+  },
   { name: 'YouTube', icon: '📺', color: 'bg-red-500', connector: 'youtube' },
   { name: 'Reddit', icon: '🔥', color: 'bg-orange-500', connector: 'reddit' },
   { name: 'Instagram', icon: '📷', color: 'bg-pink-500', connector: 'instagram' },
@@ -17,7 +34,7 @@ const platforms = [
   { name: 'Gmail', icon: '📧', color: 'bg-red-500', connector: 'gmail' }
 ];
 
-export default function UniversalOnboarding({ onComplete, appIcon, appName = 'App', username, testMode = true }) {
+export default function UniversalOnboarding({ onComplete, appIcon, appName = 'App', username, testMode = false }) {
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeConnector, setActiveConnector] = useState(null);
@@ -59,6 +76,25 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
       console.log(`✅ Disconnected from ${platformName}`);
     } else {
       // Connect
+      // Special behavior for ChatGPT: Always open chatgpt.com in new tab
+      if (connectorType === 'chatgpt') {
+        console.log(`🤖 ChatGPT toggle: Opening chatgpt.com in new tab...`);
+        const chatGPTWindow = window.open('https://chatgpt.com', '_blank');
+        
+        if (chatGPTWindow) {
+          // Simulate connection
+          setConnectedAccounts(prev => ({
+            ...prev,
+            [platformName]: true
+          }));
+          console.log(`✅ ChatGPT opened in new tab and marked as connected`);
+        } else {
+          console.error(`❌ Failed to open ChatGPT - popup blocked`);
+          alert('Popup blocked. Please allow popups for this site to open ChatGPT.');
+        }
+        return;
+      }
+      
       if (testMode) {
         // Test mode: Simulate instant connection without OAuth dialog
         console.log(`🧪 Test mode: Simulating instant connection to ${platformName}...`);
@@ -197,6 +233,12 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
       {/* OAuth Connector Dialogs - Only show in production mode */}
       {!testMode && (
         <>
+          <ChatGPTConnector 
+            open={activeConnector === 'chatgpt'}
+            onClose={() => setActiveConnector(null)}
+            onConnectionChange={handleConnectionChange}
+            username={username}
+          />
           <YoutubeConnector 
             open={activeConnector === 'youtube'}
             onClose={() => setActiveConnector(null)}

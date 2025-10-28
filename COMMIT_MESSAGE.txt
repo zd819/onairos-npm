@@ -1,0 +1,62 @@
+feat: Enhanced email auth flow with new/existing user detection
+
+## Key Changes:
+
+### 1. Email Authentication Flow Improvements
+- Added support for new API response format with `isNewUser`, `userState`, `flowType` fields
+- Implemented intelligent flow routing: new users → onboarding, existing users → data request
+- Enhanced debugging with detailed console logs for flow determination
+- Added backward compatibility with legacy `existingUser` and `accountInfo` fields
+
+### 2. Test Mode Enhancements  
+- Always start fresh in test mode (clears cached user data)
+- Added comprehensive logging for test mode detection
+- Logs API key status and test mode state on terminal open
+
+### 3. Session Management
+- Always reset flow on terminal open for consistent UX
+- Clear localStorage on close to ensure fresh start next time
+- Improved session state handling for new vs. returning users
+
+### 4. Training Integration
+- Automatic training job queueing after PIN setup for users with connected accounts
+- Uses training-queue endpoint with proper error handling
+- Graceful fallback if training endpoint unavailable
+
+### 5. Flow Logic
+- New users: Welcome → Email → Onboarding (connectors) → PIN → Loading → Data Request
+- Existing users: Welcome → Email → Data Request (skip onboarding)
+- Explicit flow determination with detailed reasoning logs
+
+## Technical Details:
+
+### Modified Functions:
+- `openTerminal()`: Now always resets flow and clears localStorage for fresh start
+- `handleEmailAuthSuccess()`: Enhanced with explicit new/existing user detection logic
+- `handlePinSetupComplete()`: Added automatic training job queueing
+
+### Flow Determination Logic (lines 119-154):
+```javascript
+const isNewUser = authData.isNewUser === true || 
+                 authData.existingUser === false || 
+                 authData.flowType === 'onboarding' || 
+                 authData.userState === 'new' ||
+                 !authData.accountInfo;
+```
+
+### API Integration:
+- ✅ Email verification: `/email/verify` and `/email/verify/confirm`
+- ✅ Handles `isNewUser`, `existingUserData`, `accountInfo` from API response
+- ✅ Developer API key validation: `/auth/validate-key` (already updated in apiKeyValidation.js)
+- ✅ Training queue: `/training-queue/queue` with proper error handling
+
+## Related Files Updated (Already Committed):
+- `src/components/EmailAuth.js`: Email verification with new response format
+- `src/config/api-config.js`: Centralized API endpoint configuration
+- `src/utils/apiKeyValidation.js`: Updated to use `/auth/validate-key` endpoint
+
+## Testing:
+- Test mode: Set `testMode={true}` prop to always start fresh
+- Production mode: Normal flow with session persistence
+- Logs all flow decisions with reasoning for debugging
+

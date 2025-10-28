@@ -1,139 +1,219 @@
 # Changelog
 
-## [2.1.5] - 2024-12-19
+All notable changes to the Onairos SDK will be documented in this file.
 
-### 📱 Mobile Browser Compatibility & OAuth Enhancement
+## [3.4.0] - 2024-10-09
 
-#### ✨ New Features
-- **Mobile Browser Support**: Complete mobile browser compatibility with automatic device detection
-  - Auto-detects mobile devices (`/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i`)
-  - **Desktop**: Uses popup OAuth windows (`window.open`)
-  - **Mobile**: Uses redirect OAuth flow (`window.location.href`) to avoid popup blocking
-  - Mobile OAuth return handling with state cleanup
-  - Same React components work perfectly across all platforms
+### 🚀 Major Features
 
-- **Enhanced OAuth Flow**: Robust OAuth implementation for all 9 platforms
-  - All connectors use correct `api2.onairos.uk/{platform}/authorize` endpoints
-  - Improved error handling and connection state management
-  - Added timeout handling (5-minute OAuth timeout)
-  - Better logging and debugging information
+#### Standardized API Key Validation System
+- **NEW**: Implemented comprehensive `initializeApiKey()` function following standardized documentation
+- **NEW**: Added `validateApiKey()` utility with backend validation
+- **NEW**: Created `/auth/validate-key` endpoint for standardized API key validation
+- **NEW**: Added retry logic with exponential backoff for network resilience
+- **NEW**: Comprehensive error handling with specific error codes and suggestions
 
-#### 🔧 Technical Improvements
-- **Mobile Detection**: Added `isMobileDevice()` function with user agent + screen size detection
-- **OAuth State Management**: Proper localStorage handling for mobile redirect flows
-- **URL Parameter Cleanup**: Removes OAuth parameters after successful authentication
-- **Cross-Platform Components**: Enhanced mobile components work in mobile browsers too
-- **Touch Optimization**: Proper `touchAction` CSS and touch event handling
+#### Enhanced SDK Architecture
+- **NEW**: Modular API key validation utilities (`apiKeyValidation.js`)
+- **NEW**: Centralized SDK initialization system (`sdkInitialization.js`)
+- **NEW**: Global SDK state management with proper lifecycle
+- **NEW**: Authenticated request helper with automatic API key injection
 
-#### 📚 Documentation
-- **Mobile Browser Compatibility Guide**: Comprehensive guide explaining what works and what doesn't
-- **LLM Context File**: Added `llm.txt` with complete package overview and usage patterns
-- **OAuth Testing**: Enhanced test files with mobile compatibility indicators
+#### ChatGPT Integration
+- **NEW**: Added ChatGPT as first connector with special behavior
+- **NEW**: ChatGPT connector opens `chatgpt.com` in new tab (no OAuth)
+- **NEW**: Added OpenAI icon support with fallback to emoji
+- **NEW**: Updated platform configurations across all components
 
-#### 🛠️ Bug Fixes
-- **Popup Blocking**: Fixed OAuth popup blocking issues on mobile browsers
-- **API Consistency**: All endpoints consistently use `api2.onairos.uk` domain
-- **Mobile UX**: Improved touch targets and responsive design
+#### Gmail OAuth Fix
+- **NEW**: Created Gmail OAuth backend route (`gmail-enhanced.js`)
+- **NEW**: Added Gmail configuration to OAuth config
+- **NEW**: Fixed "Not Found" error for Gmail authorization
+- **NEW**: Comprehensive Gmail OAuth flow with token exchange
 
-## [2.0.0] - 2024-01-15
+### 🔧 Technical Improvements
 
-### 🚀 Major Release - Simplified Integration & Enhanced UX
+#### API Key Validation
+- **Format Validation**: Supports `ona_`, `dev_`, `pk_` prefixes (32+ characters)
+- **Admin Key Support**: Special handling for admin keys with full permissions
+- **Environment Detection**: Automatic production/development environment detection
+- **Rate Limiting**: Built-in rate limit handling and reporting
+- **Timeout Handling**: Configurable timeouts with abort controller
 
-#### ✨ New Features
-- **Popup-based Data Requests**: Completely redesigned iframe implementation using popup windows
-  - Fixes display cutoff issues seen in previous versions
-  - Better positioning and sizing (450x700px)
-  - Proper focus management and cross-browser compatibility
+#### Error Handling
+- **Standardized Error Codes**: `MISSING_API_KEY`, `INVALID_API_KEY_FORMAT`, etc.
+- **Detailed Error Messages**: User-friendly error descriptions
+- **Actionable Suggestions**: Specific suggestions for each error type
+- **Retry Logic**: Automatic retry with exponential backoff for server errors
 
-- **AutoFetch by Default**: Automatic API calls after user approval
-  - No more manual event handling required
-  - API responses included directly in onComplete callback
-  - Configurable with `autoFetch` prop (default: true)
-
-- **Simplified OnairosButton Component**: Much cleaner integration
-  ```jsx
-  // Before v2.0 (complex)
-  <Onairos requestData={complexRequestObject} webpageName={webpageName} />
-  // + manual event listeners for API handling
-  
-  // After v2.0 (simple)
-  <OnairosButton
-    requestData={['email', 'profile']}
-    webpageName="My App"
-    onComplete={(result) => console.log(result.apiResponse)}
-  />
-  ```
-
-#### 🎨 Enhanced User Experience
-- **Real-time Status Updates**: Loading states and progress indicators
-- **Better Error Handling**: User-friendly error messages and retry logic
-- **Visual Feedback**: Selection summaries and confirmation states
-- **Smart Button Text**: Adapts based on autoFetch setting
-
-#### 🔧 Technical Improvements
-- **Robust Popup Communication**: Improved postMessage handling with retry logic
-- **Memory Management**: Proper cleanup of event listeners and popup references
-- **TypeScript Support**: Updated type definitions for new API
-- **Cross-browser Compatibility**: Tested on Chrome 80+, Firefox 75+, Safari 13+, Edge 80+
-
-#### 📚 Documentation
-- **Comprehensive README**: Updated with simple usage examples
-- **Migration Guide**: Clear path from v1.x to v2.0
-- **Implementation Guide**: Detailed popup implementation documentation
-- **Test Files**: Example implementations for testing
-
-#### 🔄 API Changes
-- **New Response Format**: Includes apiResponse and apiError fields when autoFetch is enabled
-- **Simplified Props**: Array-based requestData instead of complex objects
-- **Backward Compatibility**: Legacy format still documented for reference
-
-#### 🐛 Bug Fixes
-- Fixed iframe cutoff issues with popup implementation
-- Improved error handling for blocked popups
-- Better handling of API failures and network issues
-- Fixed memory leaks with proper cleanup
-
-### Migration from v1.x
-
-**Installation remains the same:**
-```bash
-npm install onairos
+#### SDK Configuration
+```typescript
+interface InitConfig {
+  apiKey: string;                    // Required: Developer API key
+  environment?: 'production' | 'development'; // Default: auto-detected
+  enableLogging?: boolean;           // Default: false
+  timeout?: number;                  // Default: 30000ms
+  retryAttempts?: number;            // Default: 3
+  platform?: string;                // Default: 'web'
+  sdkVersion?: string;               // Default: '3.4.0'
+}
 ```
 
-**Simple migration example:**
-```jsx
-// v1.x (complex)
-const requestData = {
-  Small: { type: "Personality", descriptions: "...", reward: "..." },
-  Medium: { type: "Personality", descriptions: "...", reward: "..." },
-  Large: { type: "Personality", descriptions: "...", reward: "..." }
-};
+### 📡 API Endpoints
 
-// v2.0 (simple)
-const requestData = ['email', 'profile', 'social'];
+#### New Validation Endpoints
+- **POST** `/auth/validate-key` - Primary validation endpoint
+- **GET** `/auth/validate-key?key=API_KEY` - Simple validation
+- **GET** `/auth/health` - Health check endpoint
+
+#### Enhanced OAuth Endpoints
+- **POST** `/gmail/authorize` - Gmail OAuth authorization
+- **GET** `/gmail/callback` - Gmail OAuth callback
+- **POST** `/gmail/native-auth` - Gmail native authentication
+
+### 🎨 UI/UX Improvements
+
+#### Platform Connectors
+- **ChatGPT First**: ChatGPT appears as first connector option
+- **Visual Icons**: OpenAI icon for ChatGPT with emoji fallback
+- **Consistent Design**: Unified design across all connector components
+- **Special Behaviors**: Platform-specific behaviors (ChatGPT opens new tab)
+
+#### Error Feedback
+- **User-Friendly Messages**: Clear error descriptions for users
+- **Developer Guidance**: Detailed suggestions for developers
+- **Visual Feedback**: Proper loading states and error indicators
+
+### 🔒 Security Enhancements
+
+#### API Key Security
+- **Format Validation**: Strict format validation before network requests
+- **Secure Storage**: Proper API key handling in global state
+- **Token Management**: Automatic token refresh and management
+- **Permission Checking**: Granular permission validation
+
+#### Network Security
+- **HTTPS Only**: All API calls use HTTPS endpoints
+- **Request Signing**: Proper authorization headers
+- **Timeout Protection**: Request timeout protection
+- **Retry Limits**: Bounded retry attempts to prevent abuse
+
+### 📚 Documentation
+
+#### New Documentation Files
+- `SDK_API_KEY_VALIDATION.md` - Comprehensive API key validation guide
+- `GMAIL_CHATGPT_IMPLEMENTATION.md` - Gmail OAuth and ChatGPT implementation
+- `CHATGPT_ICON_UPDATE.md` - ChatGPT icon implementation details
+- `CHANGELOG.md` - This changelog
+
+#### Code Documentation
+- **JSDoc Comments**: Comprehensive function documentation
+- **TypeScript Interfaces**: Proper type definitions
+- **Usage Examples**: Clear usage examples in documentation
+- **Error Handling**: Documented error codes and handling
+
+### 🧪 Testing & Quality
+
+#### Validation Testing
+- **Format Validation**: Comprehensive API key format testing
+- **Network Testing**: Retry logic and timeout testing
+- **Error Scenarios**: All error code paths tested
+- **Integration Testing**: End-to-end validation flow testing
+
+#### Code Quality
+- **ESLint Clean**: No linting errors
+- **Modular Design**: Clean separation of concerns
+- **Error Boundaries**: Proper error handling throughout
+- **Performance**: Optimized network requests and state management
+
+### 🔄 Migration Guide
+
+#### From v3.3.0 to v3.4.0
+
+**Before (v3.3.0)**:
+```javascript
+import { OnairosButton } from 'onairos';
+
+// Components worked without explicit initialization
+<OnairosButton requestData={{...}} />
 ```
 
-For detailed migration instructions, see the [README.md](./README.md#migration-from-v1x).
+**After (v3.4.0)**:
+```javascript
+import { initializeApiKey, OnairosButton } from 'onairos';
+
+// 1. Initialize SDK first
+await initializeApiKey({
+  apiKey: 'ona_your_api_key_here',
+  environment: 'production',
+  enableLogging: true
+});
+
+// 2. Use components (they automatically use initialized API key)
+<OnairosButton requestData={{...}} />
+```
+
+#### Breaking Changes
+- **API Key Required**: `initializeApiKey()` must be called before using SDK components
+- **Environment Detection**: Automatic environment detection (can be overridden)
+- **Error Handling**: New error codes and error structure
+
+#### Backward Compatibility
+- **Component APIs**: All existing component APIs remain unchanged
+- **Response Formats**: All response formats remain compatible
+- **OAuth Flows**: Existing OAuth flows continue to work
+
+### 🐛 Bug Fixes
+
+#### Gmail OAuth
+- **Fixed**: "Not Found" error when connecting Gmail
+- **Fixed**: Missing Gmail OAuth backend route
+- **Fixed**: Gmail OAuth callback handling
+- **Fixed**: Gmail token exchange and user data storage
+
+#### Platform Connectors
+- **Fixed**: Platform icon loading and fallback behavior
+- **Fixed**: Connector state management across components
+- **Fixed**: Platform configuration consistency
+- **Fixed**: Special behavior handling for different platforms
+
+#### SDK Initialization
+- **Fixed**: Race conditions in SDK initialization
+- **Fixed**: Global state management and cleanup
+- **Fixed**: Error propagation and handling
+- **Fixed**: Network request timeout and retry logic
+
+### 📦 Dependencies
+
+#### Updated Dependencies
+- Maintained compatibility with existing React versions
+- No breaking dependency changes
+- Added proper error handling utilities
+- Enhanced network request capabilities
+
+### 🚀 Deployment
+
+#### NPM Package
+- **Version**: 3.4.0
+- **Size**: Optimized bundle size
+- **Compatibility**: React 18+, Node.js 16+
+- **Platforms**: Web, React Native, Node.js
+
+#### Distribution Files
+- `dist/onairos.bundle.js` - Browser bundle
+- `dist/onairos.esm.js` - ES modules
+- `dist/onairos.native.js` - React Native
+- `dist/onairos.laravel.js` - Laravel integration
 
 ---
 
-## [1.0.17] - Previous Release
+## [3.3.0] - Previous Release
 
 ### Features
-- Initial iframe implementation
-- Manual API handling with window.sendMessage
-- Complex request object format
-- Extension-based data requests
-
-### Known Issues
-- Iframe display cutoff problems
-- Complex integration requiring manual event handling
-- Limited error handling capabilities
+- Basic OAuth connectors
+- Component-based data collection
+- Response formatting utilities
 
 ---
 
-## Development Notes
-
-- **Breaking Changes**: v2.0.0 introduces significant API simplifications
-- **Backward Compatibility**: Legacy documentation preserved for reference
-- **Future Plans**: Enhanced mobile support, offline capabilities, custom API endpoints 
+*For more details, see the [GitHub repository](https://github.com/zd819/onairos-npm) and [documentation](https://docs.onairos.uk).*

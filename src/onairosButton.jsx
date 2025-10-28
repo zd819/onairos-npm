@@ -15,7 +15,7 @@ export function OnairosButton({
   inferenceData = null, 
   onComplete = null, 
   autoFetch = true, // Auto-enabled for seamless testing experience
-  testMode = true, // Auto-enabled for design testing - set to false for production
+  testMode = false, // Production mode by default - set to true for testing
   proofMode = false, 
   textLayout = 'below', 
   textColor = 'white',
@@ -28,7 +28,9 @@ export function OnairosButton({
   enableTraining = true,
   formatResponse = true,
   responseFormat = { includeDictionary: true, includeArray: true },
-  priorityPlatform = null // Platform to prioritize (e.g., 'gmail', 'pinterest', 'linkedin')
+  priorityPlatform = null, // Platform to prioritize (e.g., 'gmail', 'pinterest', 'linkedin')
+  rawMemoriesOnly = false, // Show only LLM connections when true
+  rawMemoriesConfig = null // Configuration for RAW memories collection
 }) {
 
   const [showOverlay, setShowOverlay] = useState(false);
@@ -88,6 +90,10 @@ export function OnairosButton({
   const handleCloseOverlay = () => {
     setShowOverlay(false);
     setError(null);
+    // Reset flow and session so next open starts fresh
+    setCurrentFlow('welcome');
+    try { localStorage.removeItem('onairosUser'); } catch {}
+    setUserData(null);
   };
 
   // Handle clicks on the backdrop to close modal
@@ -246,7 +252,8 @@ export function OnairosButton({
 
     // Close overlay immediately
     console.log('🔥 Closing overlay after data request completion');
-    setShowOverlay(false);
+    // Use centralized close to also reset flow and session
+    handleCloseOverlay();
 
     // Format response if requested and API response is present
     let formattedResult = requestResult;
@@ -263,12 +270,24 @@ export function OnairosButton({
       }
     }
 
+    // Enhanced user data formatting for better display
+    const { logFormattedUserData } = require('./utils/userDataFormatter');
+    
+    // Add user data to the result for comprehensive formatting
+    const completeResult = {
+      ...formattedResult,
+      userData: updatedUserData
+    };
+
+    // Log formatted user data for better readability
+    const enhancedResult = logFormattedUserData(completeResult);
+
     // Call onComplete callback if provided
-    console.log('🔥 Calling onComplete callback with:', formattedResult);
+    console.log('🔥 Calling onComplete callback with enhanced result');
     if (onComplete) {
       try {
-        onComplete(formattedResult);
-        console.log('🔥 onComplete callback executed successfully');
+        onComplete(enhancedResult);
+        console.log('🔥 onComplete callback executed successfully with enhanced formatting');
       } catch (error) {
         console.error('🔥 Error in onComplete callback:', error);
       }
@@ -366,6 +385,8 @@ export function OnairosButton({
             username={userData?.email || userData?.username}
             testMode={testMode}
             priorityPlatform={priorityPlatform}
+            rawMemoriesOnly={rawMemoriesOnly}
+            rawMemoriesConfig={rawMemoriesConfig}
           />
         );
       
@@ -399,6 +420,8 @@ export function OnairosButton({
             testMode={testMode}
             appIcon={appIcon}
             connectedAccounts={userData?.connectedAccounts || {}}
+            rawMemoriesOnly={rawMemoriesOnly}
+            rawMemoriesConfig={rawMemoriesConfig}
           />
         );
       
@@ -517,6 +540,8 @@ export function OnairosButton({
                   username={userData?.email || userData?.username}
                   testMode={testMode}
                   priorityPlatform={priorityPlatform}
+                  rawMemoriesOnly={rawMemoriesOnly}
+                  rawMemoriesConfig={rawMemoriesConfig}
                 />
               </div>
             </div>
@@ -527,7 +552,7 @@ export function OnairosButton({
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
-                    onClick={() => setCurrentFlow('loading')}
+                    onClick={() => setCurrentFlow('email')}
                     className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
                   >
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -546,6 +571,8 @@ export function OnairosButton({
                   testMode={testMode}
                   appIcon={appIcon}
                   connectedAccounts={userData?.connectedAccounts || {}}
+                  rawMemoriesOnly={rawMemoriesOnly}
+                  rawMemoriesConfig={rawMemoriesConfig}
                 />
               </div>
             </div>

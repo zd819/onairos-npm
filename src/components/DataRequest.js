@@ -13,6 +13,15 @@ const dataTypes = [
     privacyLink: 'https://onairos.uk/privacy#basic-info'
   },
   { 
+    id: 'rawMemories', 
+    name: 'Raw Memory Data', 
+    description: 'LLM conversation history from ChatGPT, Claude, Gemini, and other AI platforms', 
+    icon: 'Brain',
+    required: false,
+    tooltip: 'Your conversation history with AI assistants. Provides rich contextual data about your preferences and communication patterns.',
+    privacyLink: 'https://onairos.uk/privacy#raw-memories-data'
+  },
+  { 
     id: 'preferences', 
     name: 'User Preferences', 
     description: 'User preferences, interests, settings and personal choices', 
@@ -98,18 +107,41 @@ const DataTypeToggle = ({ dataType, isEnabled, onToggle, isLast }) => {
 
 const DataRequest = ({ 
   userEmail = 'user@example.com', 
-  testMode = true, 
+  testMode = false, 
   onComplete, 
   autoFetch = true,
   appName = 'Test App',
   formatResponse = false,
-  responseFormat = 'simple'
+  responseFormat = 'simple',
+  rawMemoriesOnly = false,
+  rawMemoriesConfig = null,
+  requestData = null
 }) => {
-  const [selectedData, setSelectedData] = useState({
-    basic: true, // Always true for required data
-    personality: false,
-    preferences: false
-  });
+  // Initialize selectedData based on requestData and rawMemoriesOnly mode
+  const getInitialSelectedData = () => {
+    const initial = { basic: true }; // Basic is always included
+    
+    if (requestData && Array.isArray(requestData)) {
+      // Set based on requestData array
+      requestData.forEach(dataType => {
+        if (dataType !== 'basic') { // basic is always true
+          initial[dataType] = true;
+        }
+      });
+    } else if (rawMemoriesOnly) {
+      // RAW memories only mode
+      initial.rawMemories = true;
+    } else {
+      // Default mode
+      initial.personality = false;
+      initial.preferences = false;
+      initial.rawMemories = false;
+    }
+    
+    return initial;
+  };
+
+  const [selectedData, setSelectedData] = useState(getInitialSelectedData());
   const [isLoadingApi, setIsLoadingApi] = useState(false);
   const [apiError, setApiError] = useState(null);
 
@@ -193,26 +225,44 @@ const DataRequest = ({
           
           setTimeout(() => {
             const simulatedApiData = {
-              success: true,
-              message: "Data request simulated successfully",
-              data: {
-                personalityScores: {
-                  openness: 0.75,
-                  conscientiousness: 0.68,
-                  extraversion: 0.82,
-                  agreeableness: 0.71,
-                  neuroticism: 0.43
-                },
-                insights: [
-                  "You show high creativity and openness to new experiences",
-                  "Strong social tendencies with good interpersonal skills",
-                  "Well-organized approach to tasks and goals"
-                ],
-                dataProcessed: approvedData,
-                timestamp: new Date().toISOString(),
-                testMode: true
+              InferenceResult: {
+                output: Array.from({ length: 16 }, () => [Math.random()]),
+                traits: {
+                  personality_traits: {
+                    positive_traits: {
+                      creativity: 85.5,
+                      empathy: 78.2,
+                      leadership: 72.8,
+                      analytical_thinking: 88.9,
+                      communication: 81.3
+                    },
+                    traits_to_improve: {
+                      patience: 45.2,
+                      time_management: 52.7,
+                      delegation: 38.9
+                    }
+                  }
+                }
+              },
+              persona: {
+                id: 1,
+                name: "Test Persona",
+                description: "Simulated persona for testing"
+              },
+              inference_metadata: {
+                size_used: "Large",
+                total_outputs: 16,
+                persona_applied: "Test Persona"
               }
             };
+
+            // Log detailed test mode response with explanations
+            const { logOnairosResponse } = require('../utils/apiResponseLogger');
+            console.log('🧪 Test Mode: Simulated API Response');
+            logOnairosResponse(simulatedApiData, 'TEST_MODE', { 
+              detailed: true, 
+              showRawData: false 
+            });
 
             const result = {
               ...baseResult,
@@ -222,7 +272,7 @@ const DataRequest = ({
             };
 
             setIsLoadingApi(false);
-            console.log('🧪 Test mode: Simulated data request completed:', result);
+            console.log('🧪 Test mode: Simulated data request completed');
             console.log('🔥 DataRequest: onComplete function type:', typeof onComplete);
             if (onComplete && typeof onComplete === 'function') {
               onComplete(result);
@@ -259,7 +309,14 @@ const DataRequest = ({
             }
 
             const apiData = await apiResponse.json();
-            console.log('🔥 API Response:', apiData);
+            
+            // Log detailed API response with explanations
+            const { logOnairosResponse } = require('../utils/apiResponseLogger');
+            console.log('🔥 Raw API Response received from backend');
+            logOnairosResponse(apiData, apiEndpoint, { 
+              detailed: true, 
+              showRawData: false // Set to true to see raw JSON
+            });
 
             const result = {
               ...baseResult,
@@ -360,15 +417,24 @@ const DataRequest = ({
         {/* Consent Options - Scrollable area */}
         <div className="flex-1 overflow-y-auto min-h-0">
           <div className="space-y-4 pb-4">
-            {dataTypes.map((dataType, index) => (
-              <DataTypeToggle
-                key={dataType.id}
-                dataType={dataType}
-                isEnabled={selectedData[dataType.id]}
-                onToggle={handleDataToggle}
-                isLast={index === dataTypes.length - 1}
-              />
-            ))}
+            {dataTypes
+              .filter(dataType => {
+                if (rawMemoriesOnly) {
+                  // In RAW memories only mode, show only basic and rawMemories
+                  return dataType.id === 'basic' || dataType.id === 'rawMemories';
+                }
+                // In normal mode, show all data types
+                return true;
+              })
+              .map((dataType, index) => (
+                <DataTypeToggle
+                  key={dataType.id}
+                  dataType={dataType}
+                  isEnabled={selectedData[dataType.id]}
+                  onToggle={handleDataToggle}
+                  isLast={index === dataTypes.length - 1}
+                />
+              ))}
           </div>
         </div>
       </div>

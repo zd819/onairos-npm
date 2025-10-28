@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAW Memories API Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="./dist/onairos.bundle.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+        pre {
+            background: #f1f3f4;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 RAW Memories API Test</h1>
+        <p>Test the new RAW memories functionality with different modes:</p>
+
+        <!-- Mode 1: RAW Data Only -->
+        <div class="test-section">
+            <h3>Mode 1: RAW Data Only</h3>
+            <p>Shows only LLM connections (ChatGPT, Claude, Gemini, Grok) + basic profile data.</p>
+            <div id="raw-only-button"></div>
+            <div id="raw-only-result" class="result" style="display: none;">
+                <strong>Result:</strong>
+                <pre id="raw-only-data"></pre>
+            </div>
+        </div>
+
+        <!-- Mode 2: RAW Data + Normal Data -->
+        <div class="test-section">
+            <h3>Mode 2: RAW Data + Normal Data Requests</h3>
+            <p>Shows LLM connections + social media platforms + personality/preferences analysis.</p>
+            <div id="raw-plus-button"></div>
+            <div id="raw-plus-result" class="result" style="display: none;">
+                <strong>Result:</strong>
+                <pre id="raw-plus-data"></pre>
+            </div>
+        </div>
+
+        <!-- Documentation -->
+        <div class="test-section">
+            <h3>📚 Implementation Guide</h3>
+            <h4>Mode 1: RAW Data Only</h4>
+            <pre><code>&lt;OnairosButton 
+  requestData={['rawMemories']}  // LLM data + basic (always included)
+  rawMemoriesOnly={true}         // Show only LLM connections
+  webpageName="Your App"
+  onComplete={handleRawMemories}
+/&gt;</code></pre>
+
+            <h4>Mode 2: RAW Data + Normal Data</h4>
+            <pre><code>&lt;OnairosButton 
+  requestData={['rawMemories', 'personality', 'preferences']}
+  rawMemoriesOnly={false}        // Show all connection options
+  rawMemoriesConfig={{
+    platforms: ['chatgpt', 'claude', 'gemini'],
+    includeMetadata: true,
+    maxConversations: 100
+  }}
+  webpageName="Your App"
+  onComplete={handleRawMemories}
+/&gt;</code></pre>
+
+            <h4>Response Structure</h4>
+            <pre><code>{
+  success: true,
+  data: {
+    basic: {
+      name: "User Name",
+      email: "user@example.com",
+      profileInfo: {...}
+    },
+    rawMemories: {
+      conversations: [...],  // Array of conversation objects
+      metadata: {
+        totalConversations: 25,
+        platforms: ["chatgpt", "claude"],
+        processingInfo: {...}
+      }
+    },
+    // Additional data if requested
+    personality?: {...},
+    preferences?: {...}
+  }
+}</code></pre>
+        </div>
+    </div>
+
+    <script>
+        // Mode 1: RAW Data Only
+        function handleRawOnlyComplete(result) {
+            console.log('RAW Only Result:', result);
+            document.getElementById('raw-only-result').style.display = 'block';
+            document.getElementById('raw-only-data').textContent = JSON.stringify(result, null, 2);
+        }
+
+        // Mode 2: RAW Data + Normal Data
+        function handleRawPlusComplete(result) {
+            console.log('RAW Plus Result:', result);
+            document.getElementById('raw-plus-result').style.display = 'block';
+            document.getElementById('raw-plus-data').textContent = JSON.stringify(result, null, 2);
+        }
+
+        // Initialize buttons when page loads
+        window.addEventListener('load', function() {
+            // Mode 1: RAW Data Only
+            if (window.OnairosButton) {
+                ReactDOM.render(
+                    React.createElement(window.OnairosButton, {
+                        requestData: ['rawMemories'],
+                        rawMemoriesOnly: true,
+                        webpageName: 'RAW Memories Test (Mode 1)',
+                        testMode: true,
+                        onComplete: handleRawOnlyComplete
+                    }),
+                    document.getElementById('raw-only-button')
+                );
+
+                // Mode 2: RAW Data + Normal Data
+                ReactDOM.render(
+                    React.createElement(window.OnairosButton, {
+                        requestData: ['rawMemories', 'personality', 'preferences'],
+                        rawMemoriesOnly: false,
+                        rawMemoriesConfig: {
+                            platforms: ['chatgpt', 'claude', 'gemini'],
+                            includeMetadata: true,
+                            maxConversations: 50
+                        },
+                        webpageName: 'RAW Memories Test (Mode 2)',
+                        testMode: true,
+                        onComplete: handleRawPlusComplete
+                    }),
+                    document.getElementById('raw-plus-button')
+                );
+            } else {
+                console.error('OnairosButton not found. Make sure the bundle is built.');
+            }
+        });
+    </script>
+</body>
+</html>

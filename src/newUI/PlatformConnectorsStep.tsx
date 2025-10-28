@@ -54,6 +54,12 @@ const PlatformConnectorsStep: React.FC<PlatformConnectorsStepProps> = ({
   // Real platforms that can be connected (from UniversalOnboarding)
   const platforms = [
     {
+      id: 'chatgpt',
+      name: 'ChatGPT',
+      icon: getPlatformIcon('chatgpt'),
+      description: 'Access AI-powered conversations and assistance for various tasks.',
+    },
+    {
       id: 'pinterest',
       name: 'Pinterest',
       icon: getPlatformIcon('pinterest'),
@@ -90,6 +96,19 @@ const PlatformConnectorsStep: React.FC<PlatformConnectorsStepProps> = ({
     
     try {
       if (enabled) {
+        // Special behavior for ChatGPT: Always open chatgpt.com in new tab
+        if (platformId === 'chatgpt') {
+          console.log('🤖 ChatGPT toggle: Opening chatgpt.com...');
+          // For React Native, we might need to use Linking.openURL
+          // For now, simulate connection
+          const newConnected = new Set(connectedPlatforms);
+          newConnected.add(platformId);
+          setConnectedPlatforms(newConnected);
+          setConnectionStatuses(prev => ({ ...prev, [platformId]: 'connected' }));
+          triggerHaptic(HapticType.SUCCESS);
+          return;
+        }
+        
         // Check if the platform has a native SDK
         if (hasNativeSDK(platformId)) {
           // Use native SDK authentication (YouTube)

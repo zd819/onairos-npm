@@ -1,7 +1,13 @@
+Using this llm instruction file (@llm.txt) and the Onairos package this is located in (@onairos) 
+install and setup Onairos so that we have the onairos button setup in the onbaording and the intialization 
+and everything else is setup, including tthe callback function for us to export the data from onairos easily
+
+The following is depth description Onairos package
+
 # Onairos NPM Package - LLM Context
 
 ## Package Overview
-- **Version**: 3.1.8
+- **Version**: 3.1.23
 - **Type**: React Web Library for Data Requests & OAuth Authentication
 - **Main Use**: Personal AI training data collection via social media OAuth
 - **Base API**: `https://api2.onairos.uk` (production), `staging-api.onairos.uk` (staging), `dev-api.onairos.uk` (development)
@@ -111,11 +117,11 @@ const API_ENDPOINTS = {
 
 ### Complete Initialization
 ```typescript
-import { initializeApiKey } from '@onairos/react-native';
+import { initializeApiKey } from 'onairos';
 
 // Initialize with developer key
 await initializeApiKey({
-  apiKey: 'ona_TzRKKgXPRsXj9nkAmBdvjPkOjhplAeFCkAycpXG6RAxvIH4yBZpPYQl4Z9Ja1n98',
+  apiKey: 'ona_your_api_key_here', // Get from Onairos Dashboard
   environment: 'production', // 'production' | 'staging' | 'development'
   enableLogging: true,
   timeout: 30000,      // Optional: Request timeout (default: 30000ms)
@@ -125,7 +131,7 @@ await initializeApiKey({
 
 ### Supported API Key Formats
 - **Developer Keys**: `dev_`, `pk_`, `ona_` prefixes + 32+ characters
-- **Admin Key**: `'OnairosIsAUnicorn2025'` (testing only)
+- **Admin Key**: Available for testing (contact support for access)
 - **Validation**: Backend validation with 5-minute cache
 
 ### Configuration Interface
@@ -198,7 +204,7 @@ import { initializeApiKey } from 'onairos';
 // Initialize SDK with developer API key
 try {
   await initializeApiKey({
-    apiKey: 'ona_TzRKKgXPRsXj9nkAmBdvjPkOjhplAeFCkAycpXG6RAxvIH4yBZpPYQl4Z9Ja1n98',
+    apiKey: 'ona_your_api_key_here', // Get from Onairos Dashboard
     environment: 'production',
     enableLogging: true,
     timeout: 30000,
