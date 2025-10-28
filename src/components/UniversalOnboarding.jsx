@@ -281,20 +281,23 @@ export default function UniversalOnboarding({ onComplete }) {
       {/* content above persona */}
       <div className="relative z-10 h-full flex flex-col">
         {/* header (unchanged visuals) */}
-        <div className="px-6 pt-16 pb-4 text-center">
+        <div className="px-6 pt-16 pb-4 text-center flex-shrink-0">
           <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
           <p className="text-gray-600 text-base">More Connections, Better Personalization.</p>
         </div>
 
-        {/* icons band — placed LOWER per request */}
-        <div className="px-6 flex-shrink-0" style={{ height: ICONS_H, marginTop: ICONS_TOP_OFFSET }}>
+        {/* Spacer to push content down */}
+        <div className="flex-1" style={{ minHeight: 40 }} />
+
+        {/* icons band */}
+        <div className="px-6 flex-shrink-0" style={{ height: ICONS_H }}>
           <div className="h-full flex items-center justify-center">
             <div
               className="grid w-full box-border relative"
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
-                    style={{
+              style={{
                 gridAutoFlow: 'column',
                 gridTemplateColumns: `repeat(${platforms.length}, minmax(0,1fr))`,
                 columnGap: currentPage === 1 ? GAP_PAGE1 : GAP_PAGE2,
@@ -329,7 +332,7 @@ export default function UniversalOnboarding({ onComplete }) {
                            style={{ width: CIRCLE, height: CIRCLE, transform: `scale(${isSel ? ACTIVE_SCALE : 1})`, transformOrigin: 'center' }}>
                         <div className="flex items-center justify-center" style={{ width: 20, height: 20 }}>
                           {p.icon}
-                    </div>
+                        </div>
                       </div>
                     </button>
                   </div>
@@ -340,7 +343,7 @@ export default function UniversalOnboarding({ onComplete }) {
         </div>
 
         {/* dots navigation (no numbers) - directly under icons, above card */}
-        <div className="relative flex items-center justify-center gap-4 select-none" style={{ marginTop: 20, zIndex: 25 }}>
+        <div className="relative flex items-center justify-center gap-4 select-none flex-shrink-0" style={{ marginTop: 20, marginBottom: 16, zIndex: 25 }}>
           {[1,2,3].map(n => (
             <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: 12, height: 12 }}>
               <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-110' : 'bg-gray-300'} transition-transform`} style={{ width: 12, height: 12 }} />
@@ -348,8 +351,8 @@ export default function UniversalOnboarding({ onComplete }) {
           ))}
         </div>
 
-        {/* info sheet — positioned right above the footer */}
-        <div className="px-6 flex-shrink-0" style={{ position: 'absolute', bottom: FOOTER_H + 24, left: 0, right: 0, zIndex: 20 }}>
+        {/* info sheet — positioned using flex */}
+        <div className="px-6 flex-shrink-0" style={{ marginBottom: 24, zIndex: 20 }}>
           <div className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5" style={{ width: 'min(680px,92%)', maxHeight: vh * 0.2 }}>
             <div className="flex items-center justify-between">
               <div className="text-gray-900 font-medium">{selected}</div>
@@ -374,8 +377,8 @@ export default function UniversalOnboarding({ onComplete }) {
           </div>
         </div>
 
-        {/* footer — fixed near bottom; no change to persona */}
-        <div className="absolute left-0 right-0 px-6" style={{ bottom: 0, height: FOOTER_H + 20, paddingBottom: 16, background: 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
+        {/* footer — anchored at bottom using flex */}
+        <div className="px-6 flex-shrink-0" style={{ paddingBottom: 16, background: 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
           <div className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" onClick={() => {
             const connected = Object.entries(connectedAccounts).filter(([, v]) => v).map(([k]) => k);
             onComplete?.({ connectedAccounts: connected, totalConnections: connected.length });
