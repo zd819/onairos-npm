@@ -179,6 +179,50 @@ module.exports = [
           {
             from: path.resolve(__dirname, 'public', '*.json'),
             to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'instagram.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'youtube.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'linkedin.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'reddit.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'pinterest.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'twitter.jpg'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'openai.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'chatgpt.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'claude-color.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'gemini-color.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
+          },
+          {
+            from: path.resolve(__dirname, 'public', 'grok.png'),
+            to: path.resolve(__dirname, 'dist', '[name][ext]')
           }
         ]
       }),

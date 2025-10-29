@@ -16,7 +16,7 @@ const dataTypes = [
     id: 'rawMemories', 
     name: 'Raw Memory Data', 
     description: 'LLM conversation history from ChatGPT, Claude, Gemini, and other AI platforms', 
-    icon: 'Brain',
+    icon: 'Memory',
     required: false,
     tooltip: 'Your conversation history with AI assistants. Provides rich contextual data about your preferences and communication patterns.',
     privacyLink: 'https://onairos.uk/privacy#raw-memories-data'
@@ -49,25 +49,31 @@ const DataTypeToggle = ({ dataType, isEnabled, onToggle, isLast }) => {
   };
 
   const getIconComponent = (iconName) => {
-    const iconProps = { className: "w-4 h-4 text-gray-600" };
+    const iconProps = { className: "w-4 h-4 text-gray-700" };
     
     switch (iconName) {
       case 'User':
         return (
-          <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          <svg {...iconProps} fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+        );
+      case 'Memory':
+        return (
+          <svg {...iconProps} fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
           </svg>
         );
       case 'Grid3X3':
         return (
-          <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          <svg {...iconProps} fill="currentColor" viewBox="0 0 24 24">
+            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
           </svg>
         );
       case 'Brain':
         return (
-          <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          <svg {...iconProps} fill="currentColor" viewBox="0 0 24 24">
+            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
           </svg>
         );
       default:
@@ -76,13 +82,13 @@ const DataTypeToggle = ({ dataType, isEnabled, onToggle, isLast }) => {
   };
 
             return (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50">
                     <div className="flex items-center gap-4">
                         <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                             {getIconComponent(dataType.icon)}
                         </div>
                         <div className="min-w-0 flex-1">
-                            <span className="font-medium text-gray-900 text-sm">{dataType.name}</span>
+                            <span className="font-medium text-gray-900 text-xs">{dataType.name}</span>
                         </div>
                     </div>
       <div
@@ -115,7 +121,8 @@ const DataRequest = ({
   responseFormat = 'simple',
   rawMemoriesOnly = false,
   rawMemoriesConfig = null,
-  requestData = null
+  requestData = null,
+  connectedAccounts = {}
 }) => {
   // Initialize selectedData based on requestData and rawMemoriesOnly mode
   const getInitialSelectedData = () => {
@@ -380,10 +387,46 @@ const DataRequest = ({
   // Count selected data types
   const selectedCount = Object.values(selectedData).filter(Boolean).length;
 
+  // Connected platforms - handle both object and array formats
+  const getConnectedPlatforms = () => {
+    if (!connectedAccounts) {
+      console.log('🔍 No connectedAccounts prop');
+      return [];
+    }
+    
+    console.log('🔍 DataRequest connectedAccounts:', connectedAccounts);
+    console.log('🔍 Type:', typeof connectedAccounts, 'Is Array:', Array.isArray(connectedAccounts));
+    
+    // If it's already an array, use it directly
+    if (Array.isArray(connectedAccounts)) {
+      console.log('🔍 Returning array as-is:', connectedAccounts);
+      return connectedAccounts;
+    }
+    
+    // If it's an object, extract the keys (platform names)
+    const platforms = Object.entries(connectedAccounts)
+      .filter(([_, v]) => Boolean(v)) // Handle truthy values
+      .map(([k]) => k);
+    console.log('🔍 Extracted platforms from object:', platforms);
+    return platforms;
+  };
+  
+  const connectedPlatforms = getConnectedPlatforms();
+  console.log('🔍 Final connectedPlatforms:', connectedPlatforms, 'Length:', connectedPlatforms.length);
+  
+  const getPlatformEmoji = (name) => {
+    const emojiMap = {
+      Instagram: '📷', YouTube: '▶️', LinkedIn: '💼', Reddit: '🤖',
+      Pinterest: '📌', GitHub: '💻', Facebook: '👥', Gmail: '📧',
+      Twitter: '🐦', ChatGPT: '🤖', Claude: '🧠', Gemini: '✨', Grok: '⚡'
+    };
+    return emojiMap[name] || '🔗';
+  };
+
   return (
-    <div className="w-full h-full flex flex-col min-h-0">
-      {/* Content - Flexible center area with proper constraints */}
-      <div className="px-6 pt-16 flex-1 flex flex-col min-h-0" style={{ minHeight: 'calc(100vh - 200px)' }}>
+    <div className="flex flex-col h-full max-h-[90vh] overflow-hidden">
+      {/* Scrollable main content */}
+      <div className="flex-1 overflow-y-auto px-6 pt-16 pb-4">
         {/* Icon Flow */}
         <div className="mb-4 flex justify-center items-center gap-4 flex-shrink-0">
           <div className="w-12 h-12 bg-white rounded-xl shadow-lg flex items-center justify-center border border-gray-100">
@@ -407,60 +450,101 @@ const DataRequest = ({
         </div>
 
         {/* Title Section */}
-        <div className="mb-4 flex-shrink-0">
+        <div className="mb-4 flex-shrink-0 text-center">
           <h1 className="text-xl font-bold text-gray-900 mb-2 text-balance leading-tight">
             {appName} wants to personalize your experience
           </h1>
           <p className="text-gray-600 text-sm">Choose what to share:</p>
         </div>
 
-        {/* Consent Options - Scrollable area */}
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="space-y-4 pb-4">
-            {dataTypes
-              .filter(dataType => {
-                if (rawMemoriesOnly) {
-                  // In RAW memories only mode, show only basic and rawMemories
-                  return dataType.id === 'basic' || dataType.id === 'rawMemories';
-                }
-                // In normal mode, show all data types
-                return true;
-              })
-              .map((dataType, index) => (
-                <DataTypeToggle
-                  key={dataType.id}
-                  dataType={dataType}
-                  isEnabled={selectedData[dataType.id]}
-                  onToggle={handleDataToggle}
-                  isLast={index === dataTypes.length - 1}
-                />
-              ))}
-          </div>
+        {/* Consent Options */}
+        <div className="space-y-4">
+          {dataTypes
+            .filter(dataType => {
+              if (rawMemoriesOnly) {
+                // In RAW memories only mode, show only basic and rawMemories
+                return dataType.id === 'basic' || dataType.id === 'rawMemories';
+              }
+              // In normal mode, show all data types
+              return true;
+            })
+            .map((dataType, index) => (
+              <DataTypeToggle
+                key={dataType.id}
+                dataType={dataType}
+                isEnabled={selectedData[dataType.id]}
+                onToggle={handleDataToggle}
+                isLast={index === dataTypes.length - 1}
+              />
+            ))}
         </div>
       </div>
 
-      {/* Buttons - Fixed at bottom with guaranteed visibility */}
-      <div className="px-6 pb-6 pt-3 flex-shrink-0 space-y-2 bg-white border-t border-gray-100">
-        <div
-          className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-3 text-sm font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      {/* Connected platforms line - Fixed above buttons */}
+      {connectedPlatforms.length > 0 ? (
+        <div className="px-6 py-3 text-center bg-gray-50 border-t border-gray-200 flex-shrink-0">
+          <div className="text-xs text-gray-500 mb-1">Connected Platforms</div>
+          <div className="flex justify-center items-center gap-2 flex-wrap">
+            {connectedPlatforms.map((platform, index) => {
+              const logoMap = {
+                Instagram: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png',
+                YouTube: 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg',
+                LinkedIn: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
+                Reddit: 'https://www.redditinc.com/assets/images/site/reddit-logo.png',
+                Pinterest: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Pinterest-logo.png',
+                GitHub: 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png',
+                Facebook: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg',
+                Gmail: 'https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg',
+                Twitter: 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg',
+                ChatGPT: 'https://anushkasirv.sirv.com/openai.png',
+                Claude: 'https://anushkasirv.sirv.com/claude-color.png',
+                Gemini: 'https://anushkasirv.sirv.com/gemini-color.png',
+                Grok: 'https://anushkasirv.sirv.com/grok.png'
+              };
+              const imageSrc = logoMap[platform] || '';
+              console.log(`🔍 Rendering platform ${index}: ${platform}, src: ${imageSrc}`);
+              return (
+                <img 
+                  key={`${platform}-${index}`} 
+                  src={imageSrc} 
+                  alt={platform}
+                  title={platform}
+                  className="w-6 h-6 object-contain"
+                  onError={(e) => { 
+                    console.warn(`Failed to load image for ${platform} from ${imageSrc}`);
+                    e.target.style.display = 'none'; 
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Fixed footer with buttons */}
+      <div className="px-6 py-4 bg-white border-t border-gray-200 flex flex-col gap-2 shrink-0">
+        <button
           onClick={fetchUserData}
           disabled={isLoadingApi || selectedCount === 0}
+          className="w-full rounded-full py-3 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isLoadingApi ? "Processing..." : "Accept & Continue"}
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-        <div
+          {!isLoadingApi && (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          )}
+        </button>
+        <button
           onClick={() => onComplete({ cancelled: true })}
-          className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full py-3 text-sm font-medium text-center cursor-pointer transition-colors"
+          className="w-full rounded-full py-3 bg-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-300 transition"
         >
           Decline
-        </div>
+        </button>
 
         {/* Error display */}
         {apiError && (
-          <div className="mt-3 p-3 rounded-lg text-center bg-red-50 border border-red-200 text-red-600">
+          <div className="mt-2 p-3 rounded-lg text-center bg-red-50 border border-red-200 text-red-600">
             <p className="text-xs">{apiError}</p>
           </div>
         )}
