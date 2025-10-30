@@ -206,7 +206,17 @@ export default function UniversalOnboarding({ onComplete }) {
 
       const res = await fetch(`${sdkConfig.baseUrl}/${plat.connector}/authorize`, {
         method: 'POST', headers: { 'x-api-key': sdkConfig.apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session: { username } }),
+        body: JSON.stringify({
+          session: (() => {
+            const origin = typeof window !== 'undefined' ? window.location.origin : '';
+            const isLocal = /localhost|127\.0\.0\.1/.test(origin);
+            return {
+              username,
+              sdkType: 'web',
+              ...(isLocal ? { returnUrl: `${origin}/Home/Connections?platform=${plat.connector}` } : {}),
+            };
+          })(),
+        }),
       });
       if (!res.ok) throw new Error('auth failed');
       const data = await res.json();
