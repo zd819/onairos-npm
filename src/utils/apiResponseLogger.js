@@ -121,12 +121,18 @@ function logContentPreferences(output) {
   
   // Summary statistics
   const scores = output.map(s => Array.isArray(s) ? s[0] : s);
-  const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-  const maxScore = Math.max(...scores);
-  const minScore = Math.min(...scores);
-  const topCategory = categories[scores.indexOf(maxScore)];
   
-  console.log(`   📈 Summary: Avg ${avgScore.toFixed(3)} | Max ${maxScore.toFixed(3)} (${topCategory}) | Min ${minScore.toFixed(3)}`);
+  if (scores.length > 0) {
+    const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const maxScore = Math.max(...scores);
+    const minScore = Math.min(...scores);
+    const topCategoryIndex = scores.indexOf(maxScore);
+    const topCategory = topCategoryIndex >= 0 && topCategoryIndex < categories.length 
+      ? categories[topCategoryIndex] 
+      : 'Unknown';
+    
+    console.log(`   📈 Summary: Avg ${avgScore.toFixed(3)} | Max ${maxScore.toFixed(3)} (${topCategory}) | Min ${minScore.toFixed(3)}`);
+  }
 }
 
 /**

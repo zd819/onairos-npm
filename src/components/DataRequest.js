@@ -183,21 +183,38 @@ const DataRequest = ({
     setApiError(null);
     
     try {
+      // Validate selectedData exists
+      if (!selectedData || typeof selectedData !== 'object') {
+        throw new Error('Selected data is not properly initialized');
+      }
+      
       const userHash = generateUserHash(userEmail);
       
-      // Get selected data types
-      const approvedData = Object.entries(selectedData)
+      // Get selected data types - ensure we always get an array
+      const approvedData = Object.entries(selectedData || {})
         .filter(([key, value]) => value)
         .map(([key]) => key);
+      
+      console.log('🔥 DataRequest: approvedData:', approvedData, 'Length:', approvedData?.length);
+      
+      if (!approvedData || !Array.isArray(approvedData) || approvedData.length === 0) {
+        throw new Error('Please select at least one data type');
+      }
 
       const mapDataTypesToConfirmations = (approvedData) => {
+        if (!approvedData || !Array.isArray(approvedData)) {
+          console.warn('🔥 mapDataTypesToConfirmations: approvedData is not an array:', approvedData);
+          return [];
+        }
+        
         const confirmations = [];
         const currentDate = new Date().toISOString();
         
         const dataTypeMapping = {
           'basic': 'Medium',
           'personality': 'Large', 
-          'preferences': 'Traits'
+          'preferences': 'Traits',
+          'rawMemories': 'RawMemories' // Add rawMemories mapping
         };
         
         approvedData.forEach(dataType => {
@@ -228,6 +245,7 @@ const DataRequest = ({
       if (autoFetch) {
         if (testMode) {
           // Test mode: Skip API call completely, simulate response
+          console.log('🧪 Test Mode: Simulated API Response');
           console.log('🧪 Test mode: Simulating data request API call for:', approvedData);
           
           setTimeout(() => {
@@ -289,19 +307,28 @@ const DataRequest = ({
             }
           }, 1200); // Simulate realistic processing time
         } else {
-          // Production mode: Make real API call
+          // Production mode: Make real API call (using Enoch's format)
           try {
             const confirmations = mapDataTypesToConfirmations(approvedData);
             
+            // Use Enoch's Info structure format for production mode
             const requestBody = {
-              approvedData,
-              userEmail,
-              appName,
-              confirmations
+              Info: {
+                storage: "local",
+                appId: appName,
+                confirmations: confirmations,
+                EncryptedUserPin: "pending_pin_integration", // Backend will verify PIN from session
+                account: userEmail,
+                proofMode: false,
+                Domain: typeof window !== 'undefined' ? window.location.hostname : 'localhost',
+                web3Type: "standard",
+                OthentSub: null
+              }
             };
 
-            console.log('🔥 DataRequest: Making API call to:', apiEndpoint);
-            console.log('🔥 Request body:', requestBody);
+            console.log('🚀 Starting inference API call...');
+            console.log('🔥 DataRequest: Making inference API call to:', apiEndpoint);
+            console.log('🔥 Request body:', JSON.stringify(requestBody, null, 2));
 
             const apiResponse = await fetch(apiEndpoint, {
               method: 'POST',
@@ -317,17 +344,38 @@ const DataRequest = ({
 
             const apiData = await apiResponse.json();
             
-            // Log detailed API response with explanations
+            // Format response to ensure InferenceResult structure is consistent
+            const formattedApiData = apiData.InferenceResult ? apiData : {
+              InferenceResult: {
+                output: apiData.croppedInference || apiData.output || apiData.inference || apiData.InferenceResult?.output,
+                traits: apiData.traitResult || apiData.traits || apiData.personalityData || apiData.InferenceResult?.traits
+              },
+              ...(apiData.persona && { persona: apiData.persona }),
+              ...(apiData.inference_metadata && { inference_metadata: apiData.inference_metadata }),
+              ...(apiData.llmData && { llmData: apiData.llmData })
+            };
+            
+            // Log detailed API response with explanations (matching the example format)
+            // ALWAYS show formatted output regardless of response structure
             const { logOnairosResponse } = require('../utils/apiResponseLogger');
             console.log('🔥 Raw API Response received from backend');
-            logOnairosResponse(apiData, apiEndpoint, { 
-              detailed: true, 
-              showRawData: false // Set to true to see raw JSON
-            });
+            console.log('🎯 Onairos API Response - Inference Results');
+            
+            // Always log, even if structure is incomplete
+            try {
+              logOnairosResponse(formattedApiData, apiEndpoint, { 
+                detailed: true, 
+                showRawData: false // Set to true to see raw JSON
+              });
+            } catch (logError) {
+              console.error('⚠️ Error formatting inference response:', logError);
+              // Fallback: show raw data
+              console.log('📦 Raw Response Data:', formattedApiData);
+            }
 
             const result = {
               ...baseResult,
-              apiResponse: apiData,
+              apiResponse: formattedApiData,
               success: true
             };
 
@@ -343,6 +391,7 @@ const DataRequest = ({
 
           } catch (apiError) {
             console.error('🔥 API Error:', apiError);
+            console.error('❌ Inference API call failed - no inference results to display');
             setApiError(apiError.message);
             setIsLoadingApi(false);
             
@@ -397,22 +446,30 @@ const DataRequest = ({
     console.log('🔍 DataRequest connectedAccounts:', connectedAccounts);
     console.log('🔍 Type:', typeof connectedAccounts, 'Is Array:', Array.isArray(connectedAccounts));
     
-    // If it's already an array, use it directly
-    if (Array.isArray(connectedAccounts)) {
-      console.log('🔍 Returning array as-is:', connectedAccounts);
-      return connectedAccounts;
+    try {
+      // If it's already an array, use it directly
+      if (Array.isArray(connectedAccounts)) {
+        console.log('🔍 Returning array as-is:', connectedAccounts);
+        return connectedAccounts;
+      }
+      
+      // If it's an object, extract the keys (platform names)
+      if (typeof connectedAccounts === 'object') {
+        const platforms = Object.entries(connectedAccounts)
+          .filter(([_, v]) => Boolean(v)) // Handle truthy values
+          .map(([k]) => k);
+        console.log('🔍 Extracted platforms from object:', platforms);
+        return platforms;
+      }
+    } catch (error) {
+      console.error('🔍 Error processing connectedAccounts:', error);
     }
     
-    // If it's an object, extract the keys (platform names)
-    const platforms = Object.entries(connectedAccounts)
-      .filter(([_, v]) => Boolean(v)) // Handle truthy values
-      .map(([k]) => k);
-    console.log('🔍 Extracted platforms from object:', platforms);
-    return platforms;
+    return [];
   };
   
   const connectedPlatforms = getConnectedPlatforms();
-  console.log('🔍 Final connectedPlatforms:', connectedPlatforms, 'Length:', connectedPlatforms.length);
+  console.log('🔍 Final connectedPlatforms:', connectedPlatforms, 'Length:', connectedPlatforms?.length || 0);
   
   const getPlatformEmoji = (name) => {
     const emojiMap = {
@@ -481,7 +538,7 @@ const DataRequest = ({
       </div>
 
       {/* Connected platforms line - Fixed above buttons */}
-      {connectedPlatforms.length > 0 ? (
+      {connectedPlatforms && Array.isArray(connectedPlatforms) && connectedPlatforms.length > 0 ? (
         <div className="px-6 py-3 text-center bg-gray-50 border-t border-gray-200 flex-shrink-0">
           <div className="text-xs text-gray-500 mb-1">Connected Platforms</div>
           <div className="flex justify-center items-center gap-2 flex-wrap">
