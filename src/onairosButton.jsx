@@ -135,15 +135,68 @@ export function OnairosButton({
       }
     });
     
+    // Extract token from authData (could be in multiple places)
+    const extractedToken = authData.token || authData.jwtToken || authData._rawResponse?.token || authData._rawResponse?.jwtToken;
+    
     const newUserData = {
       ...authData,
       verified: true,
       onboardingComplete: !isNewUser, // New users need onboarding, returning users have completed it
-      pinCreated: !isNewUser // Assume returning users have PIN, new users need to create it
+      pinCreated: !isNewUser, // Assume returning users have PIN, new users need to create it
     };
     
+    // Only set token if it actually exists (don't set undefined)
+    if (extractedToken) {
+      newUserData.token = extractedToken;
+      newUserData.jwtToken = extractedToken; // Also set jwtToken for compatibility
+    } else {
+      console.warn('⚠️ No token found in authData:', {
+        authDataKeys: Object.keys(authData),
+        hasToken: !!authData.token,
+        hasJwtToken: !!authData.jwtToken,
+        hasRawResponse: !!authData._rawResponse
+      });
+    }
+    
+    console.log('🔥 Storing user data with token:', {
+      hasToken: !!newUserData.token,
+      hasJwtToken: !!newUserData.jwtToken,
+      tokenInAuthData: !!authData.token,
+      jwtTokenInAuthData: !!authData.jwtToken,
+      tokenPreview: newUserData.token ? newUserData.token.substring(0, 20) + '...' : 'none',
+      tokenLength: newUserData.token?.length || 0,
+      allKeys: Object.keys(newUserData)
+    });
+    
     setUserData(newUserData);
-    localStorage.setItem('onairosUser', JSON.stringify(newUserData));
+    const savedData = JSON.stringify(newUserData);
+    localStorage.setItem('onairosUser', savedData);
+    
+    // Verify what was actually saved
+    const verify = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+    console.log('🔥 Verified localStorage save:', {
+      hasToken: !!verify.token,
+      hasJwtToken: !!verify.jwtToken,
+      tokenPreview: verify.token ? verify.token.substring(0, 20) + '...' : 'none',
+      savedKeys: Object.keys(verify)
+    });
+    
+    // Also store token in separate localStorage key for easier access
+    if (newUserData.token) {
+      localStorage.setItem('onairos_jwt_token', newUserData.token);
+      const verifyToken = localStorage.getItem('onairos_jwt_token');
+      console.log('🔥 Token also stored in onairos_jwt_token:', {
+        saved: !!verifyToken,
+        matches: verifyToken === newUserData.token,
+        preview: verifyToken ? verifyToken.substring(0, 20) + '...' : 'none'
+      });
+    } else {
+      console.error('❌ CRITICAL: No token in newUserData to save!', {
+        authDataToken: !!authData.token,
+        authDataJwtToken: !!authData.jwtToken,
+        newUserDataToken: !!newUserData.token
+      });
+    }
     
     // Flow decision logic - prioritize new user detection
     if (isNewUser) {
@@ -156,14 +209,63 @@ export function OnairosButton({
   };
 
   const handleOnboardingComplete = (onboardingData) => {
-    console.log('Onboarding completed:', onboardingData);
+    console.log('🔥 Onboarding completed:', onboardingData);
+    
+    // Convert connectedAccounts array to object format for consistency
+    const connectedAccountsArray = onboardingData.connectedAccounts || [];
+    const connectedAccountsObj = Array.isArray(connectedAccountsArray)
+      ? connectedAccountsArray.reduce((acc, platform) => {
+          acc[platform] = true;
+          return acc;
+        }, {})
+      : connectedAccountsArray;
+    
+    // IMPORTANT: Preserve token from previous userData
     const updatedUserData = {
       ...userData,
       onboardingComplete: true,
-      connectedAccounts: onboardingData.connectedAccounts || []
+      connectedAccounts: connectedAccountsObj,
+      // Ensure token is preserved (check both token and jwtToken properties)
+      token: userData.token || userData.jwtToken || (typeof window !== 'undefined' ? localStorage.getItem('onairos_jwt_token') : null)
     };
+    
+    console.log('🔥 Updated userData with token preserved:', {
+      hasToken: !!updatedUserData.token,
+      hasJwtToken: !!updatedUserData.jwtToken,
+      tokenPreview: updatedUserData.token ? updatedUserData.token.substring(0, 20) + '...' : 'none',
+      tokenFromUserData: !!userData.token,
+      tokenFromJwtToken: !!userData.jwtToken,
+      tokenFromLocalStorage: typeof window !== 'undefined' ? !!localStorage.getItem('onairos_jwt_token') : false,
+      finalToken: updatedUserData.token ? 'PRESENT' : 'MISSING'
+    });
+    
     setUserData(updatedUserData);
-    localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
+    const savedUserData = JSON.stringify(updatedUserData);
+    localStorage.setItem('onairosUser', savedUserData);
+    
+    // Verify what was actually saved
+    const verifySaved = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+    console.log('🔥 Verified saved userData:', {
+      hasToken: !!verifySaved.token,
+      tokenPreview: verifySaved.token ? verifySaved.token.substring(0, 20) + '...' : 'none'
+    });
+    
+    // Also store token in separate localStorage key for easier access
+    if (updatedUserData.token) {
+      localStorage.setItem('onairos_jwt_token', updatedUserData.token);
+      console.log('🔥 Token also stored in onairos_jwt_token');
+      
+      // Verify it was saved
+      const verifyToken = localStorage.getItem('onairos_jwt_token');
+      console.log('🔥 Verified onairos_jwt_token:', {
+        saved: !!verifyToken,
+        matches: verifyToken === updatedUserData.token
+      });
+    } else {
+      console.error('❌ No token to save in onairos_jwt_token');
+    }
+    
+    console.log('🔥 Moving to PIN setup flow');
     setCurrentFlow('pin');
   };
 
@@ -190,21 +292,31 @@ export function OnairosButton({
         .join(', ');
       console.log('🎓 Triggering training job for connected accounts:', connectedList);
       
-      try {
-        // Use local backend for training if available, otherwise skip
-        const trainingBaseUrl = (typeof window !== 'undefined' && window.onairosTrainingUrl) || 'http://localhost:3001';
-        const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'OnairosIsAUnicorn2025';
-        
-        console.log('🎓 Training endpoint:', `${trainingBaseUrl}/training-queue/queue`);
-        
-        // Use the training-queue endpoint to queue the training job
-        const response = await fetch(`${trainingBaseUrl}/training-queue/queue`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'Authorization': `Bearer ${apiKey}`
-          },
+      // Get user's JWT token from userData
+      const userToken = updatedUserData.token || updatedUserData.jwtToken;
+      
+      if (!userToken) {
+        console.error('❌ Missing user JWT token for training API call');
+        console.warn('⚠️ Training requires user authentication token. Skipping training API call.');
+        // Still proceed to loading screen even if training API call fails
+      } else {
+        try {
+          // Use local backend for training if available, otherwise skip
+          const trainingBaseUrl = (typeof window !== 'undefined' && window.onairosTrainingUrl) || 'http://localhost:3001';
+          const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'OnairosIsAUnicorn2025';
+          
+          console.log('🎓 Training endpoint:', `${trainingBaseUrl}/training-queue/queue`);
+          console.log('🎓 Using user JWT token for authentication');
+          
+          // Use the training-queue endpoint to queue the training job
+          // IMPORTANT: Use user's JWT token, not API key
+          const response = await fetch(`${trainingBaseUrl}/training-queue/queue`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey, // API key for API access
+              'Authorization': `Bearer ${userToken}` // User's JWT token for authentication
+            },
           body: JSON.stringify({
             username: updatedUserData.userName || updatedUserData.email?.split('@')[0],
             modelType: 'FinalMLP',
@@ -223,6 +335,7 @@ export function OnairosButton({
         }
       } catch (error) {
         console.warn('⚠️ Training endpoint not available (this is expected in production):', error.message);
+      }
       }
     }
     

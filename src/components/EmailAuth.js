@@ -207,23 +207,203 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
           throw new Error(data.error || 'Verification failed');
         }
 
+        // Log COMPLETE response (not truncated) to see exact structure
         console.log('📧 Email verification response:', data);
+        console.log('📧 Full response keys:', Object.keys(data));
+        console.log('📧 COMPLETE response (full):', JSON.stringify(data, null, 2));
+        console.log('📧 Response headers:', {
+          contentType: response.headers.get('content-type'),
+          authorization: response.headers.get('authorization'),
+          allHeaders: Object.fromEntries(response.headers.entries())
+        });
+        console.log('📧 Token in response:', {
+          hasToken: !!data.token,
+          tokenValue: data.token,
+          tokenIsNull: data.token === null,
+          tokenIsUndefined: data.token === undefined,
+          hasJwtToken: !!data.jwtToken,
+          jwtTokenValue: data.jwtToken,
+          hasUserToken: !!(data.user && data.user.token),
+          userTokenValue: data.user?.token,
+          tokenKeys: Object.keys(data).filter(k => k.toLowerCase().includes('token')),
+          tokenPreview: (data.token || data.jwtToken) ? (data.token || data.jwtToken).substring(0, 20) + '...' : 'none',
+          userObject: data.user ? Object.keys(data.user) : 'no user object',
+          allResponseKeys: Object.keys(data),
+          // Check ALL nested objects for token
+          nestedTokenCheck: {
+            dataToken: data.token,
+            dataJwtToken: data.jwtToken,
+            dataAccessToken: data.accessToken,
+            dataAccess_token: data.access_token,
+            userToken: data.user?.token,
+            userJwtToken: data.user?.jwtToken,
+            enochToken: data.enochInstructions?.token,
+            existingUserDataToken: data.existingUserData?.token
+          }
+        });
+        
+        // CRITICAL: Check if token is actually in response
+        if (!data.token && !data.jwtToken && !data.user?.token && data.token !== null) {
+          // If token is explicitly null, that's different from undefined
+          console.error('❌ CRITICAL ERROR: API response does not contain a token!', {
+            responseStatus: response.status,
+            responseOk: response.ok,
+            fullData: data,
+            allKeys: Object.keys(data),
+            dataString: JSON.stringify(data),
+            responseUrl: response.url,
+            requestHeaders: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey ? 'present' : 'missing',
+              'Authorization': apiKey ? 'present' : 'missing'
+            }
+          });
+        }
+        
+        // If token is explicitly null, that's a backend issue
+        if (data.token === null) {
+          console.error('❌ BACKEND ISSUE: API returned token: null. The backend should return a JWT token but it is null!', {
+            responseStatus: response.status,
+            fullResponse: data,
+            apiEndpoint: `${baseUrl}/email/verify/confirm`,
+            expectedBehavior: 'Backend should return a JWT token in the "token" field per API schema'
+          });
+        }
 
+        // Check response headers for token (some APIs return tokens in headers)
+        const authHeader = response.headers.get('authorization');
+        const tokenHeader = response.headers.get('x-auth-token') || response.headers.get('x-token');
+        const tokenFromHeader = authHeader?.replace('Bearer ', '') || tokenHeader;
+        
+        console.log('📧 Token from response headers:', {
+          hasAuthHeader: !!authHeader,
+          authHeaderValue: authHeader ? authHeader.substring(0, 30) + '...' : null,
+          hasTokenHeader: !!tokenHeader,
+          tokenFromHeader: tokenFromHeader ? tokenFromHeader.substring(0, 30) + '...' : null
+        });
+        
+        // Deep search for token in the entire response object
+        const deepSearchForToken = (obj, path = 'root') => {
+          if (!obj || typeof obj !== 'object') return null;
+          
+          const keys = Object.keys(obj);
+          for (const key of keys) {
+            const value = obj[key];
+            const currentPath = `${path}.${key}`;
+            
+            // Check if this key contains "token" and has a valid value
+            if (key.toLowerCase().includes('token') && value && typeof value === 'string' && value.length > 10) {
+              console.log(`🔍 Found token at ${currentPath}:`, value.substring(0, 30) + '...');
+              return { token: value, path: currentPath };
+            }
+            
+            // Recursively search nested objects
+            if (value && typeof value === 'object' && !Array.isArray(value)) {
+              const nested = deepSearchForToken(value, currentPath);
+              if (nested) return nested;
+            }
+          }
+          return null;
+        };
+        
+        const deepTokenSearch = deepSearchForToken(data);
+        console.log('🔍 Deep token search result:', deepTokenSearch);
+        
         setStep('success');
-        setTimeout(() => {
+        setTimeout(async () => {
+          // Extract token from multiple possible sources: body fields, nested objects, response headers, deep search
+          let token = data.token || 
+                       data.jwtToken || 
+                       data.accessToken || 
+                       data.access_token ||
+                       (data.user && data.user.token) ||
+                       (data.user && data.user.jwtToken) ||
+                       deepTokenSearch?.token ||
+                       tokenFromHeader; // Check headers as last resort
+          
+          console.log('📧 Token extraction result:', {
+            hasToken: !!token,
+            tokenPreview: token ? token.substring(0, 20) + '...' : 'none',
+            tokenLength: token?.length || 0,
+            tokenSource: data.token ? 'data.token' : 
+                        data.jwtToken ? 'data.jwtToken' :
+                        data.user?.token ? 'data.user.token' :
+                        deepTokenSearch?.token ? `deep search: ${deepTokenSearch.path}` :
+                        tokenFromHeader ? 'response.headers' :
+                        'NOT FOUND',
+            tokenIsNull: token === null,
+            tokenIsUndefined: token === undefined,
+            tokenValue: token, // Show actual value for debugging
+            allTokenFields: {
+              'data.token': data.token,
+              'data.jwtToken': data.jwtToken,
+              'data.accessToken': data.accessToken,
+              'data.access_token': data.access_token,
+              'data.user.token': data.user?.token,
+              'data.user.jwtToken': data.user?.jwtToken,
+              'deepSearch': deepTokenSearch?.token,
+              'headers': tokenFromHeader
+            }
+          });
+          
+          // If no token in response, try to get it via a separate login/token request
+          if (!token || token === null) {
+            console.warn('⚠️ No token in email verification response. Attempting to get token via separate API call...');
+            
+            try {
+              // Try to get token using verified user info
+              const tokenResponse = await fetch(`${baseUrl}/auth/login`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-api-key': apiKey,
+                  'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                  email: data.email || email,
+                  userId: data.user?.userId || data.user?.id,
+                  verified: true
+                })
+              });
+              
+              if (tokenResponse.ok) {
+                const tokenData = await tokenResponse.json();
+                const retrievedToken = tokenData.token || tokenData.jwtToken || tokenData.accessToken;
+                
+                if (retrievedToken) {
+                  console.log('✅ Successfully retrieved token from /auth/login:', retrievedToken.substring(0, 20) + '...');
+                  token = retrievedToken;
+                } else {
+                  console.warn('⚠️ /auth/login endpoint did not return a token either. Proceeding without token - backend may generate it when needed.');
+                  // Continue without token - backend may generate it when needed
+                }
+              } else {
+                console.warn(`⚠️ /auth/login endpoint failed (${tokenResponse.status}). Proceeding without token - will be generated on backend.`);
+                // Continue without token - backend may generate it when needed
+              }
+            } catch (tokenError) {
+              console.warn('⚠️ Failed to get token from /auth/login:', tokenError.message);
+              console.warn('⚠️ Proceeding without token - backend may generate it when needed for training');
+              // Continue without token - backend may generate it when needed
+            }
+          }
+          
           // Pass complete API response for flow determination
           onSuccess({ 
             email, 
             verified: true, 
-            token: data.token || data.jwtToken,
-            userName: data.userName,
+            token: token, // Use extracted token (may be undefined if backend doesn't provide it)
+            jwtToken: token, // Also set jwtToken for compatibility
+            userName: data.userName || data.user?.userName,
             existingUser: data.existingUser,
             accountInfo: data.accountInfo,
             isNewUser: !data.existingUser, // Set based on API response
             flowType: data.existingUser ? 'dataRequest' : 'onboarding',
             adminMode: data.adminMode,
             userCreated: data.userCreated,
-            accountDetails: data.accountDetails
+            accountDetails: data.accountDetails,
+            // Include full response for debugging
+            _rawResponse: data
           });
         }, 1000);
       }

@@ -206,7 +206,21 @@ export default function UniversalOnboarding({ onComplete }) {
 
       const res = await fetch(`${sdkConfig.baseUrl}/${plat.connector}/authorize`, {
         method: 'POST', headers: { 'x-api-key': sdkConfig.apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session: { username } }),
+        body: JSON.stringify({
+          session: (() => {
+            const origin = typeof window !== 'undefined' ? window.location.origin : '';
+            const isLocal = /localhost|127\.0\.0\.1/.test(origin);
+            // In local, send the local success page. In prod, send about:blank to avoid 404 flash.
+            const returnUrl = isLocal
+              ? `${origin}/Home/Connections?platform=${plat.connector}`
+              : 'about:blank';
+            return {
+              username,
+              sdkType: 'web',
+              returnUrl,
+            };
+          })(),
+        }),
       });
       if (!res.ok) throw new Error('auth failed');
       const data = await res.json();
@@ -230,10 +244,29 @@ export default function UniversalOnboarding({ onComplete }) {
       const popup = window.open(oauthUrl, `${plat.connector}_oauth`, 'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no');
       if (!popup) throw new Error('popup blocked');
 
-      let touched = false; const it = setInterval(() => {
-        try { if (popup.location && popup.location.hostname === 'onairos.uk') { touched = true; popup.close(); } } catch { if (!touched) touched = true; }
-        try { if (popup.closed) { clearInterval(it); setIsConnecting(false); setConnectingPlatform(null); } } catch {}
-      }, 800);
+      let touched = false;
+      let navigated = false; // becomes true once popup moves away from about:blank or throws cross-origin (provider)
+      const it = setInterval(() => {
+        try {
+          const href = popup.location && popup.location.href;
+          const host = popup.location && popup.location.hostname;
+          const isOurDomain = !!host && (host === 'onairos.uk' || host.endsWith('.onairos.uk') || host === '127.0.0.1' || host === 'localhost');
+          if (href && href !== 'about:blank') navigated = true; // saw a real navigation
+          // Close when we reach our domain, or when we've already navigated away and then land on about:blank (prod fallback)
+          if (isOurDomain || (navigated && href === 'about:blank')) { touched = true; popup.close(); }
+        } catch {
+          // Cross-origin while on provider indicates navigation started
+          navigated = true;
+        }
+        try {
+          if (popup.closed) {
+            clearInterval(it);
+            setIsConnecting(false);
+            setConnectingPlatform(null);
+            window.removeEventListener('message', handleMessage);
+          }
+        } catch {}
+      }, 10);
 
       setTimeout(() => { try { if (!popup.closed && touched) popup.close(); } catch {} }, 10000);
       setTimeout(() => { if (!popup.closed) { popup.close(); clearInterval(it); setIsConnecting(false); setConnectingPlatform(null); } }, 300000);
