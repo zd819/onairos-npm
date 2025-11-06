@@ -90,7 +90,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     try {
       // Use the same Google OAuth logic as UniversalOnboarding
       const sdkConfig = {
-        baseUrl: 'https://api2.onairos.uk',
+        baseUrl: (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk',
         apiKey: window.onairosApiKey || 'test-key',
         enableHealthMonitoring: true,
         enableAutoRefresh: true,

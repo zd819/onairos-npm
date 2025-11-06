@@ -228,8 +228,8 @@ function createDynamicPopupContent(data) {
         
         // Determine API endpoint based on test mode
         const apiEndpoint = testMode 
-            ? 'https://api2.onairos.uk/inferenceTest'
-            : 'https://api2.onairos.uk/getAPIurlMobile';
+            ? (((typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk') + '/inferenceTest')
+            : (((typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk') + '/getAPIurlMobile');
         
         async function makeApiCall(approvedData) {
             const confirmations = mapDataTypesToConfirmations(approvedData);
@@ -560,7 +560,7 @@ export function listenForPopupMessages(callback, options = {}) {
  */
 async function makeApiCall(approvedData, options = {}) {
   const { 
-    apiUrl = 'https://api2.onairos.uk/getAPIurlMobile', 
+    apiUrl = (((typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk') + '/getAPIurlMobile'), 
     testMode = false, 
     userEmail = '', 
     appName = 'App' 
@@ -592,7 +592,7 @@ async function makeApiCall(approvedData, options = {}) {
     };
 
     const endpoint = testMode 
-      ? 'https://api2.onairos.uk/inferenceTest'
+      ? (((typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk') + '/inferenceTest')
       : apiUrl;
 
     const confirmations = mapDataTypesToConfirmations(approvedData);
