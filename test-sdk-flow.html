@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onairos SDK Flow Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #667eea;
+      margin-top: 0;
+    }
+    h2 {
+      color: #333;
+      font-size: 18px;
+      margin-top: 0;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .log-entry {
+      padding: 8px;
+      margin: 4px 0;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+    }
+    .log-info { background: #e3f2fd; color: #1976d2; }
+    .log-success { background: #e8f5e9; color: #388e3c; }
+    .log-warning { background: #fff3e0; color: #f57c00; }
+    .log-error { background: #ffebee; color: #d32f2f; }
+    .log-training { background: #f3e5f5; color: #7b1fa2; font-weight: bold; }
+    .log-inference { background: #e1f5fe; color: #0277bd; font-weight: bold; }
+    
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #5568d3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .status.pending { background: #fff3e0; color: #f57c00; }
+    .status.active { background: #e8f5e9; color: #388e3c; }
+    .status.complete { background: #e3f2fd; color: #1976d2; }
+    
+    .flow-step {
+      padding: 15px;
+      margin: 10px 0;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+    .flow-step.active {
+      border-color: #667eea;
+      background: #f3f0ff;
+    }
+    .flow-step.complete {
+      border-color: #4caf50;
+      background: #f1f8f4;
+    }
+    
+    #logs {
+      max-height: 600px;
+      overflow-y: auto;
+      background: #fafafa;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    
+    .api-call {
+      background: #fff9c4;
+      border-left: 4px solid #fbc02d;
+      padding: 10px;
+      margin: 8px 0;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    
+    .clear-btn {
+      background: #f44336;
+      float: right;
+    }
+    .clear-btn:hover {
+      background: #d32f2f;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Onairos SDK Flow Test</h1>
+  
+  <div class="container">
+    <!-- Left Panel: Flow Control -->
+    <div class="panel">
+      <h2>📋 Test Flow</h2>
+      
+      <div class="flow-step" id="step-1">
+        <strong>1. Email Verification</strong>
+        <div class="status pending" id="status-1">Not Started</div>
+        <button onclick="simulateEmailVerification()">Simulate Email Auth</button>
+      </div>
+      
+      <div class="flow-step" id="step-2">
+        <strong>2. Platform Connections</strong>
+        <div class="status pending" id="status-2">Not Started</div>
+        <button onclick="simulatePlatformConnect('linkedin')">Connect LinkedIn</button>
+        <button onclick="simulatePlatformConnect('youtube')">Connect YouTube</button>
+        <button onclick="simulatePlatformConnect('reddit')">Connect Reddit</button>
+      </div>
+      
+      <div class="flow-step" id="step-3">
+        <strong>3. PIN Creation</strong>
+        <div class="status pending" id="status-3">Not Started</div>
+        <button onclick="simulatePinCreation()">Create PIN</button>
+        <p style="font-size: 12px; color: #666; margin: 5px 0;">
+          ⚡ This triggers <strong>TRAINING</strong> automatically
+        </p>
+      </div>
+      
+      <div class="flow-step" id="step-4">
+        <strong>4. Data Request</strong>
+        <div class="status pending" id="status-4">Not Started</div>
+        <button onclick="simulateDataRequest()">Accept & Continue</button>
+        <p style="font-size: 12px; color: #666; margin: 5px 0;">
+          🎯 This triggers <strong>INFERENCE</strong> after close
+        </p>
+      </div>
+      
+      <div style="margin-top: 20px;">
+        <button onclick="runFullFlow()" style="width: 100%; background: #4caf50;">
+          ▶️ Run Full Flow (Auto)
+        </button>
+        <button onclick="resetTest()" style="width: 100%; background: #9e9e9e; margin-top: 10px;">
+          🔄 Reset Test
+        </button>
+      </div>
+    </div>
+    
+    <!-- Right Panel: Logs -->
+    <div class="panel">
+      <h2>📊 API Calls & Events
+        <button class="clear-btn" onclick="clearLogs()">Clear</button>
+      </h2>
+      <div id="logs"></div>
+    </div>
+  </div>
+  
+  <script>
+    // Mock user data
+    let mockUser = {
+      email: 'test@example.com',
+      userName: 'test@example.com',
+      connectedPlatforms: [],
+      pinCreated: false,
+      trainingCompleted: false
+    };
+    
+    // Logging functions
+    function log(message, type = 'info') {
+      const logs = document.getElementById('logs');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logs.appendChild(entry);
+      logs.scrollTop = logs.scrollHeight;
+      console.log(`[${type.toUpperCase()}]`, message);
+    }
+    
+    function logApiCall(method, endpoint, payload) {
+      const logs = document.getElementById('logs');
+      const entry = document.createElement('div');
+      entry.className = 'api-call';
+      entry.innerHTML = `
+        <strong>${method}</strong> ${endpoint}<br>
+        ${payload ? `<pre style="margin: 5px 0 0 0;">${JSON.stringify(payload, null, 2)}</pre>` : ''}
+      `;
+      logs.appendChild(entry);
+      logs.scrollTop = logs.scrollHeight;
+    }
+    
+    function clearLogs() {
+      document.getElementById('logs').innerHTML = '';
+    }
+    
+    function updateStepStatus(step, status) {
+      const stepEl = document.getElementById(`step-${step}`);
+      const statusEl = document.getElementById(`status-${step}`);
+      
+      stepEl.classList.remove('active', 'complete');
+      statusEl.classList.remove('pending', 'active', 'complete');
+      
+      if (status === 'active') {
+        stepEl.classList.add('active');
+        statusEl.classList.add('active');
+        statusEl.textContent = 'In Progress...';
+      } else if (status === 'complete') {
+        stepEl.classList.add('complete');
+        statusEl.classList.add('complete');
+        statusEl.textContent = '✅ Complete';
+      }
+    }
+    
+    // Simulate Email Verification
+    async function simulateEmailVerification() {
+      updateStepStatus(1, 'active');
+      log('📧 Starting email verification...', 'info');
+      
+      await delay(500);
+      logApiCall('POST', '/email/verify', { email: mockUser.email });
+      log('📨 Verification code sent', 'success');
+      
+      await delay(1000);
+      logApiCall('POST', '/email/verify/confirm', { email: mockUser.email, code: '123456' });
+      log('✅ Email verified successfully', 'success');
+      log('🔑 JWT token stored in localStorage', 'info');
+      
+      // Store mock JWT
+      localStorage.setItem('onairos_jwt_token', 'mock-jwt-token-' + Date.now());
+      localStorage.setItem('onairosUser', JSON.stringify(mockUser));
+      
+      updateStepStatus(1, 'complete');
+    }
+    
+    // Simulate Platform Connection
+    async function simulatePlatformConnect(platform) {
+      updateStepStatus(2, 'active');
+      log(`🔗 Connecting ${platform}...`, 'info');
+      
+      await delay(500);
+      logApiCall('POST', `/${platform}/authorize`, { 
+        session: { username: mockUser.email, sdkType: 'web' }
+      });
+      log(`🌐 Redirecting to ${platform} OAuth...`, 'info');
+      
+      await delay(1500);
+      logApiCall('GET', `/${platform}/callback`, { code: 'mock-auth-code', state: 'mock-state' });
+      log(`✅ ${platform} connected successfully`, 'success');
+      log(`🪟 OAuth window closed automatically`, 'info');
+      
+      mockUser.connectedPlatforms.push(platform);
+      localStorage.setItem('onairosUser', JSON.stringify(mockUser));
+      
+      if (mockUser.connectedPlatforms.length > 0) {
+        updateStepStatus(2, 'complete');
+      }
+    }
+    
+    // Simulate PIN Creation (triggers TRAINING)
+    async function simulatePinCreation() {
+      if (mockUser.connectedPlatforms.length === 0) {
+        log('⚠️ Connect at least one platform first!', 'warning');
+        return;
+      }
+      
+      updateStepStatus(3, 'active');
+      log('🔐 Creating PIN...', 'info');
+      
+      await delay(500);
+      logApiCall('POST', '/store-pin/web', { 
+        username: mockUser.email, 
+        pin: 'Test123!' 
+      });
+      
+      await delay(1000);
+      log('✅ PIN stored successfully', 'success');
+      log('', 'info'); // Spacer
+      log('🚀 [AUTO-TRAINING] User has ' + mockUser.connectedPlatforms.length + ' connected platform(s): ' + mockUser.connectedPlatforms.join(', '), 'training');
+      log('✅ [AUTO-TRAINING] Found data files: Upvoted.csv, Downvoted.csv, LinkedIn.csv', 'training');
+      log('🚀 [AUTO-TRAINING] Starting direct training for ' + mockUser.email + ' after PIN creation (like Enoch)', 'training');
+      
+      await delay(500);
+      log('✅ [AUTO-TRAINING] Starting Python training process (PID: 12345)', 'training');
+      log('[TRAINING] 🎯 FinalMLP Training with DIRECT EmbeddingService', 'training');
+      
+      // Simulate training progress
+      await delay(2000);
+      log('[TRAINING] 📊 Dataset sizes: 441 upvoted, 679 downvoted', 'training');
+      log('[TRAINING] 📊 Split: 896 train, 224 validation', 'training');
+      log('[TRAINING] 🔮 Generating training embeddings via DIRECT service...', 'training');
+      
+      await delay(3000);
+      log('[TRAINING] ✅ Direct service call completed in 85795ms', 'training');
+      log('[TRAINING] 🏃 Starting training for 50 epochs...', 'training');
+      
+      await delay(2000);
+      log('[TRAINING] {"eta": "0:10:53", "percent": 38.0, "epoch": 19, "total_epochs": 50}', 'training');
+      
+      await delay(2000);
+      log('[TRAINING] 💾 Saving model to ONNX format...', 'training');
+      log('[TRAINING] Model saved to: /src/users/' + mockUser.email + '/models/UserSentiment.onnx', 'training');
+      log('[TRAINING] ✅ DIRECT embedding training completed successfully!', 'training');
+      log('✅ [AUTO-TRAINING] Training completed successfully for ' + mockUser.email, 'success');
+      log('', 'info'); // Spacer
+      
+      mockUser.pinCreated = true;
+      mockUser.trainingCompleted = true;
+      localStorage.setItem('onairosUser', JSON.stringify(mockUser));
+      
+      updateStepStatus(3, 'complete');
+    }
+    
+    // Simulate Data Request (triggers INFERENCE)
+    async function simulateDataRequest() {
+      if (!mockUser.trainingCompleted) {
+        log('⚠️ Complete training first (create PIN)!', 'warning');
+        return;
+      }
+      
+      updateStepStatus(4, 'active');
+      log('📋 Opening data request popup...', 'info');
+      
+      await delay(1000);
+      log('✅ User selected: basic, personality, preferences', 'info');
+      log('✅ User clicked "Accept & Continue"', 'success');
+      
+      await delay(500);
+      logApiCall('POST', '/getAPIurlMobile', {
+        Info: {
+          confirmations: [
+            { data: 'Medium', date: new Date().toISOString() },
+            { data: 'Traits', date: new Date().toISOString() }
+          ],
+          account: mockUser.email,
+          Domain: 'http://localhost:5173'
+        }
+      });
+      
+      await delay(1000);
+      log('📡 Backend returned inference endpoint: /combined-inference', 'info');
+      
+      await delay(500);
+      log('', 'info'); // Spacer
+      log('🔥 [INFERENCE] Starting post-data-request inference trigger', 'inference');
+      
+      // Check if inference already in response
+      const hasInferenceInResponse = true; // Simulate autoFetch: true
+      
+      if (hasInferenceInResponse) {
+        log('✅ [INFERENCE] Inference already completed during data request', 'inference');
+        log('[INFERENCE] Response contains: InferenceResult.output (16 scores), traits (personality)', 'inference');
+      } else {
+        log('🔥 [INFERENCE] No inference in data request response, triggering now', 'inference');
+        logApiCall('POST', '/combined-inference', {
+          Info: {
+            username: mockUser.email,
+            inputData: [{ text: 'Post Data Request Inference', category: 'General', img_url: '' }]
+          }
+        });
+        
+        await delay(1500);
+        log('✅ [INFERENCE] Inference completed successfully', 'inference');
+      }
+      
+      log('', 'info'); // Spacer
+      log('🪟 Data request popup closed', 'success');
+      log('✅ Flow complete! Training and inference both triggered.', 'success');
+      
+      updateStepStatus(4, 'complete');
+    }
+    
+    // Run full flow automatically
+    async function runFullFlow() {
+      resetTest();
+      await delay(500);
+      
+      await simulateEmailVerification();
+      await delay(1000);
+      
+      await simulatePlatformConnect('linkedin');
+      await delay(1000);
+      
+      await simulatePlatformConnect('youtube');
+      await delay(1000);
+      
+      await simulatePinCreation();
+      await delay(1000);
+      
+      await simulateDataRequest();
+    }
+    
+    // Reset test
+    function resetTest() {
+      mockUser = {
+        email: 'test@example.com',
+        userName: 'test@example.com',
+        connectedPlatforms: [],
+        pinCreated: false,
+        trainingCompleted: false
+      };
+      
+      localStorage.clear();
+      clearLogs();
+      
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById(`step-${i}`).classList.remove('active', 'complete');
+        const statusEl = document.getElementById(`status-${i}`);
+        statusEl.className = 'status pending';
+        statusEl.textContent = 'Not Started';
+      }
+      
+      log('🔄 Test reset. Ready to start.', 'info');
+    }
+    
+    // Utility
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    // Initialize
+    log('✅ Test environment ready', 'success');
+    log('👉 Click "Run Full Flow" or step through manually', 'info');
+  </script>
+</body>
+</html>
+
+
+

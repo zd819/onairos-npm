@@ -9,6 +9,70 @@ import LoadingScreen from './components/LoadingScreen.jsx';
 import { formatOnairosResponse } from './utils/responseFormatter.js';
 import { ModalPageLayout } from './components/ui/PageLayout.jsx';
 
+// Helper function to trigger inference after data request (emulate Enoch behavior)
+// This uses the getAPIurlMobile endpoint which returns the correct inference endpoint
+// based on what data types the user selected (traits, personality, or combined)
+async function triggerPostDataRequestInference(userData, lastDataRequest) {
+  try {
+    console.log('🔥 [INFERENCE] Starting post-data-request inference trigger');
+    
+    const baseUrl = (typeof window !== 'undefined' && (window.onairosTrainingUrl || window.onairosBaseUrl)) || 'https://api2.onairos.uk';
+    const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || null;
+    
+    // Safely extract JWT token
+    let token = null;
+    try { 
+      token = (typeof window !== 'undefined' && localStorage.getItem('onairos_jwt_token')) || null; 
+    } catch (e) {
+      console.warn('⚠️ [INFERENCE] Failed to read JWT token:', e.message);
+    }
+    
+    // Extract username from userData parameter
+    const username = userData?.email || userData?.userName || userData?.name || null;
+    
+    if (!username) { 
+      console.warn('⚠️ [INFERENCE] No username/email found in userData; skipping inference trigger'); 
+      return; 
+    }
+    
+    // Check if we have apiResponse from the data request (which already contains inference results)
+    if (lastDataRequest?.apiResponse) {
+      console.log('✅ [INFERENCE] Inference already completed during data request:', lastDataRequest.apiResponse);
+      return;
+    }
+    
+    console.log('🔥 [INFERENCE] No inference in data request response, triggering now for user:', username);
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    // The data request should have already triggered inference via getAPIurlMobile
+    // But if it didn't (e.g., autoFetch was false), we can trigger it here as fallback
+    // Use the same endpoint that getAPIurlMobile would return based on confirmations
+    const infRes = await fetch(`${baseUrl}/combined-inference`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ 
+        Info: {
+          username,
+          inputData: [{ text: 'Post Data Request Inference', category: 'General', img_url: '' }]
+        }
+      })
+    });
+    
+    if (!infRes.ok) {
+      const errText = await infRes.text().catch(() => 'Unknown error');
+      console.warn('⚠️ [INFERENCE] Inference call failed:', infRes.status, errText);
+    } else {
+      const result = await infRes.json().catch(() => ({}));
+      console.log('✅ [INFERENCE] Inference completed successfully:', result);
+    }
+  } catch (e) {
+    console.warn('⚠️ [INFERENCE] Inference trigger error:', e?.message, e);
+  }
+}
+
 export function OnairosButton({
   requestData, 
   webpageName, 
@@ -302,7 +366,7 @@ export function OnairosButton({
       } else {
         try {
           // Use local backend for training if available, otherwise skip
-          const trainingBaseUrl = (typeof window !== 'undefined' && window.onairosTrainingUrl) || 'http://localhost:3001';
+          const trainingBaseUrl = (typeof window !== 'undefined' && window.onairosTrainingUrl) || 'https://api2.onairos.uk';
           const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'OnairosIsAUnicorn2025';
           
           console.log('🎓 Training endpoint:', `${trainingBaseUrl}/training-queue/queue`);
@@ -361,7 +425,7 @@ export function OnairosButton({
     setCurrentFlow('dataRequest');
   };
 
-  const handleDataRequestComplete = (requestResult) => {
+  const handleDataRequestComplete = async (requestResult) => {
     console.log('🔥 OnairosButton: Data request completed:', requestResult);
     
     // Update user data with request result
@@ -371,6 +435,12 @@ export function OnairosButton({
     };
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
+
+    // Inference is already handled by the data request flow via getAPIurlMobile
+    // No need to trigger it again - the apiResponse already contains inference results
+    if (requestResult?.apiResponse) {
+      console.log('✅ [INFERENCE] Inference completed during data request:', requestResult.apiResponse);
+    }
 
     // Close overlay immediately
     console.log('🔥 Closing overlay after data request completion');

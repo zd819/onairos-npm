@@ -213,8 +213,8 @@ const DataRequest = ({
       };
 
       const apiEndpoint = testMode 
-        ? 'https://api2.onairos.uk/inferenceTest'
-        : 'https://api2.onairos.uk/getAPIurlMobile';
+        ? (((typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk') + '/inferenceTest')
+        : (((typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk') + '/getAPIurlMobile');
       
       const baseResult = {
         userHash,
@@ -289,19 +289,29 @@ const DataRequest = ({
             }
           }, 1200); // Simulate realistic processing time
         } else {
-          // Production mode: Make real API call
+          // Production mode: Make real API call with proper Info structure
           try {
             const confirmations = mapDataTypesToConfirmations(approvedData);
             
+            // Use the Info structure format that backend expects
             const requestBody = {
-              approvedData,
-              userEmail,
-              appName,
-              confirmations
+              Info: {
+                storage: "local",
+                appId: appName,
+                confirmations: confirmations,
+                EncryptedUserPin: "pending_pin_integration", // Backend will verify PIN from session
+                account: userEmail,
+                email: userEmail,
+                proofMode: false,
+                Domain: typeof window !== 'undefined' ? window.location.hostname : 'localhost',
+                web3Type: "standard",
+                OthentSub: null
+              }
             };
 
+            console.log('🚀 Starting inference API call...');
             console.log('🔥 DataRequest: Making API call to:', apiEndpoint);
-            console.log('🔥 Request body:', requestBody);
+            console.log('🔥 Request body:', JSON.stringify(requestBody, null, 2));
 
             const apiResponse = await fetch(apiEndpoint, {
               method: 'POST',
@@ -312,22 +322,73 @@ const DataRequest = ({
             });
 
             if (!apiResponse.ok) {
-              throw new Error(`API request failed with status ${apiResponse.status}`);
+              const errorText = await apiResponse.text();
+              console.error('❌ API Error Response:', errorText);
+              throw new Error(`API request failed with status ${apiResponse.status}: ${errorText}`);
             }
 
-            const apiData = await apiResponse.json();
+            const rawText = await apiResponse.text();
+            console.log("🧾 raw backend text:", rawText);
+            let apiData;
+            try {
+              apiData = JSON.parse(rawText);
+            } catch {
+              console.warn("⚠️ backend didn't return JSON, returning raw string instead");
+              apiData = { raw: rawText };
+            }
+
+            console.log('🔥 Raw API Response received from backend:', apiData);
+            
+            // Handle two possible response formats:
+            // 1. Direct inference results (InferenceResult present)
+            // 2. API URL + token (need to make second call)
+            let inferenceData = apiData;
+            
+            if (apiData.apiUrl && apiData.token && !apiData.InferenceResult) {
+              // Step 2: Call the inference endpoint with the token
+              console.log('🔄 Step 2: Calling inference endpoint:', apiData.apiUrl);
+              
+              const inferenceResponse = await fetch(apiData.apiUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${apiData.token}`
+                },
+                body: JSON.stringify({
+                  Input: approvedData // Pass selected data types
+                })
+              });
+
+              if (!inferenceResponse.ok) {
+                throw new Error(`Inference API call failed with status ${inferenceResponse.status}`);
+              }
+
+              inferenceData = await inferenceResponse.json();
+              console.log('🔥 Inference results received:', inferenceData);
+            }
+            
+            // Format response to ensure InferenceResult structure is consistent
+            const formattedApiData = inferenceData.InferenceResult ? inferenceData : {
+              InferenceResult: {
+                output: inferenceData.croppedInference || inferenceData.output || inferenceData.inference || inferenceData.InferenceResult?.output,
+                traits: inferenceData.traitResult || inferenceData.traits || inferenceData.personalityData || inferenceData.InferenceResult?.traits
+              },
+              ...(inferenceData.persona && { persona: inferenceData.persona }),
+              ...(inferenceData.inference_metadata && { inference_metadata: inferenceData.inference_metadata }),
+              ...(inferenceData.llmData && { llmData: inferenceData.llmData })
+            };
             
             // Log detailed API response with explanations
             const { logOnairosResponse } = require('../utils/apiResponseLogger');
-            console.log('🔥 Raw API Response received from backend');
-            logOnairosResponse(apiData, apiEndpoint, { 
+            console.log('🎯 Onairos API Response - Inference Results');
+            logOnairosResponse(formattedApiData, apiEndpoint, { 
               detailed: true, 
               showRawData: false // Set to true to see raw JSON
             });
 
             const result = {
               ...baseResult,
-              apiResponse: apiData,
+              apiResponse: formattedApiData,
               success: true
             };
 
@@ -343,6 +404,7 @@ const DataRequest = ({
 
           } catch (apiError) {
             console.error('🔥 API Error:', apiError);
+            console.error('❌ Inference API call failed - no inference results to display');
             setApiError(apiError.message);
             setIsLoadingApi(false);
             
