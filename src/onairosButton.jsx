@@ -227,27 +227,31 @@ export function OnairosButton({
       console.log('🎓 User approved data request! Triggering training job for:', connectedList);
       
       try {
-        // Use local backend for training if available, otherwise skip
-        const trainingBaseUrl = (typeof window !== 'undefined' && window.onairosTrainingUrl) || 'http://localhost:3001';
-        const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'OnairosIsAUnicorn2025';
+        // Use production backend for training
+        const trainingBaseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
         
-        console.log('🎓 Training endpoint:', `${trainingBaseUrl}/training-queue/queue`);
+        // Get the JWT token from requestResult (it was returned by /getAPIurlMobile)
+        const jwtToken = requestResult?.apiResponse?.token || updatedUserData?.jwtToken;
         
-        // Use the training-queue endpoint to queue the training job
-        const response = await fetch(`${trainingBaseUrl}/training-queue/queue`, {
+        if (!jwtToken) {
+          console.warn('⚠️ No JWT token available for training - skipping training trigger');
+          return;
+        }
+        
+        console.log('🎓 Training endpoint:', `${trainingBaseUrl}/mobile-training/enoch`);
+        console.log('🎓 Using JWT token for auth');
+        
+        // Use the mobile-training/enoch endpoint (requires JWT auth)
+        const response = await fetch(`${trainingBaseUrl}/mobile-training/enoch`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'Authorization': `Bearer ${apiKey}`
+            'Authorization': `Bearer ${jwtToken}`
           },
           body: JSON.stringify({
             username: updatedUserData.userName || updatedUserData.email?.split('@')[0],
             email: updatedUserData.email,
-            modelType: 'FinalMLP',
-            connectedAccounts: updatedUserData.connectedAccounts,
-            priority: 'normal',
-            source: 'web_sdk'
+            connectedPlatforms: Object.keys(updatedUserData.connectedAccounts || {}).filter(k => updatedUserData.connectedAccounts[k])
           })
         });
         
