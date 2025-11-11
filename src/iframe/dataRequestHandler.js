@@ -211,7 +211,8 @@ function createDynamicPopupContent(data) {
             const dataTypeMapping = {
                 'basic': 'Medium',        // Basic info -> Medium data
                 'personality': 'Large',   // Personality -> Large analysis
-                'preferences': 'Traits'   // Preferences -> Traits data
+                'preferences': 'Traits',  // Preferences -> Traits data
+                'rawMemories': 'LLMData'  // Raw memories -> LLM data
             };
             
             approvedData.forEach(dataType => {
@@ -576,7 +577,8 @@ async function makeApiCall(approvedData, options = {}) {
       const dataTypeMapping = {
         'basic': 'Medium',        // Basic info -> Medium data
         'personality': 'Large',   // Personality -> Large analysis
-        'preferences': 'Traits'   // Preferences -> Traits data
+        'preferences': 'Traits',  // Preferences -> Traits data
+        'rawMemories': 'LLMData'  // Raw memories -> LLM data
       };
       
       approvedData.forEach(dataType => {

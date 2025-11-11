@@ -117,6 +117,25 @@ export function OnairosButton({
       existingUser: authData.existingUser,
       hasAccountInfo: !!authData.accountInfo
     });
+
+    // Save identity-bearing JWT immediately (email/id/userId/sub)
+    try {
+      const candidate = authData.jwtToken || authData.token || authData.accessToken;
+      if (candidate) {
+        const base64 = candidate.split('.')[1];
+        if (base64) {
+          const payload = JSON.parse(decodeURIComponent(atob(base64).split('').map(c => '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+          if (payload && (payload.email || payload.id || payload.userId || payload.sub)) {
+            try { localStorage.setItem('onairos_user_token', candidate); } catch {}
+            console.log('✅ [OnairosButton] Identity JWT saved from email auth');
+          } else {
+            console.warn('⚠️ [OnairosButton] Email auth returned minimal token (no id/email)');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ [OnairosButton] Failed to parse/save email auth token');
+    }
     
     // Determine flow based on API response - more explicit checking
     const isNewUser = authData.isNewUser === true || 
@@ -212,60 +231,8 @@ export function OnairosButton({
     };
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
-
-    // 🔥 NEW: Trigger training job AFTER user approves data request
-    if (updatedUserData.connectedAccounts && Object.keys(updatedUserData.connectedAccounts).length > 0) {
-      const platformEmojis = {
-        Instagram: '📷', YouTube: '▶️', LinkedIn: '💼', Reddit: '🤖',
-        Pinterest: '📌', GitHub: '💻', Facebook: '👥', Gmail: '📧',
-        Twitter: '🐦', ChatGPT: '🤖', Claude: '🧠', Gemini: '✨', Grok: '⚡'
-      };
-      const connectedList = Object.entries(updatedUserData.connectedAccounts)
-        .filter(([_, v]) => v)
-        .map(([k]) => `${platformEmojis[k] || '🔗'} ${k}`)
-        .join(', ');
-      console.log('🎓 User approved data request! Triggering training job for:', connectedList);
-      
-      try {
-        // Use production backend for training
-        const trainingBaseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
-        
-        // Get the JWT token from requestResult (it was returned by /getAPIurlMobile)
-        const jwtToken = requestResult?.apiResponse?.token || updatedUserData?.jwtToken;
-        
-        if (!jwtToken) {
-          console.warn('⚠️ No JWT token available for training - skipping training trigger');
-          return;
-        }
-        
-        console.log('🎓 Training endpoint:', `${trainingBaseUrl}/mobile-training/enoch`);
-        console.log('🎓 Using JWT token for auth');
-        
-        // Use the mobile-training/enoch endpoint (requires JWT auth)
-        const response = await fetch(`${trainingBaseUrl}/mobile-training/enoch`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${jwtToken}`
-          },
-          body: JSON.stringify({
-            username: updatedUserData.userName || updatedUserData.email?.split('@')[0],
-            email: updatedUserData.email,
-            connectedPlatforms: Object.keys(updatedUserData.connectedAccounts || {}).filter(k => updatedUserData.connectedAccounts[k])
-          })
-        });
-        
-        if (response.ok) {
-          const trainingData = await response.json();
-          console.log('🎓 Training job queued successfully:', trainingData);
-        } else {
-          const errorText = await response.text();
-          console.warn('⚠️ Training job failed to queue (this is expected if training endpoint is not available):', response.status, errorText);
-        }
-      } catch (error) {
-        console.warn('⚠️ Training endpoint not available (this is expected in production):', error.message);
-      }
-    }
+    // Do NOT auto-trigger training here. The host app (e.g., DelphiDemo)
+    // will call the backend-chosen apiUrl for combined training/inference.
 
     // Close overlay immediately
     console.log('🔥 Closing overlay after data request completion');

@@ -196,14 +196,15 @@ const DataRequest = ({
         
         const dataTypeMapping = {
           'basic': 'Medium',
-          'personality': 'Large', 
-          'preferences': 'Traits'
+          'personality': 'Large',
+          'preferences': 'Traits',
+          'rawMemories': 'LLMData'
         };
         
-        approvedData.forEach(dataType => {
-          if (dataTypeMapping[dataType]) {
+        Object.keys(selectedData).forEach(key => {
+          if (selectedData[key]) {
             confirmations.push({
-              data: dataTypeMapping[dataType],
+              data: dataTypeMapping[key] || key,
               date: currentDate
             });
           }
@@ -294,10 +295,16 @@ const DataRequest = ({
             const confirmations = mapDataTypesToConfirmations(approvedData);
             
             const requestBody = {
-              approvedData,
-              userEmail,
-              appName,
-              confirmations
+              Info: {
+                storage: "local",
+                appId: appName,
+                account: userEmail,
+                confirmations: confirmations,
+                EncryptedUserPin: "pending_pin_integration",
+                proofMode: false,
+                Domain: window.location.hostname,
+                web3Type: "standard"
+              }
             };
 
             console.log('🔥 DataRequest: Making API call to:', apiEndpoint);
@@ -327,6 +334,11 @@ const DataRequest = ({
 
             const result = {
               ...baseResult,
+              // Use backend-chosen endpoint so host apps don't call /getAPIurlMobile
+              apiUrl: apiData.apiUrl || baseResult.apiUrl,
+              token: apiData.token, // expose JWT for authenticated calls
+              authorizedData: apiData.authorizedData,
+              usage: apiData.usage,
               apiResponse: apiData,
               success: true
             };
