@@ -274,6 +274,7 @@ const DataRequest = ({
 
             const result = {
               ...baseResult,
+              token: 'test_token_' + Date.now(), // Mock JWT token for test mode
               apiResponse: simulatedApiData,
               success: true,
               simulated: true
@@ -281,7 +282,15 @@ const DataRequest = ({
 
             setIsLoadingApi(false);
             console.log('🧪 Test mode: Simulated data request completed');
-            console.log('🔥 DataRequest: onComplete function type:', typeof onComplete);
+            console.log('🔥 DataRequest: Result structure (TEST MODE):', {
+              token: result.token ? `✅ ${result.token.substring(0, 20)}...` : '❌ Missing',
+              apiUrl: result.apiUrl ? `✅ ${result.apiUrl}` : '❌ Missing',
+              hasApiResponse: !!result.apiResponse,
+              success: result.success,
+              testMode: result.testMode,
+              simulated: result.simulated
+            });
+            
             if (onComplete && typeof onComplete === 'function') {
               onComplete(result);
               console.log('🔥 DataRequest: onComplete called successfully (test mode)');
@@ -344,8 +353,15 @@ const DataRequest = ({
             };
 
             setIsLoadingApi(false);
-            console.log('🔥 DataRequest: Calling onComplete with result:', result);
-            console.log('🔥 DataRequest: onComplete function type:', typeof onComplete);
+            console.log('🔥 DataRequest: Calling onComplete with result');
+            console.log('🔥 DataRequest: Result structure:', {
+              token: result.token ? `✅ ${result.token.substring(0, 20)}...` : '❌ Missing',
+              apiUrl: result.apiUrl ? `✅ ${result.apiUrl}` : '❌ Missing',
+              hasApiResponse: !!result.apiResponse,
+              success: result.success,
+              testMode: result.testMode || false
+            });
+            
             if (onComplete && typeof onComplete === 'function') {
               onComplete(result);
               console.log('🔥 DataRequest: onComplete called successfully');

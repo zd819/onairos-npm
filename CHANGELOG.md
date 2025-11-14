@@ -2,6 +2,53 @@
 
 All notable changes to the Onairos SDK will be documented in this file.
 
+## [4.0.1] - 2025-11-14
+
+### 🎯 TypeScript Enhancement: onComplete Callback
+
+#### Enhanced Type Definitions
+- **NEW**: Added comprehensive `OnairosCompleteData` interface with full type documentation
+- **IMPROVED**: Specified `token: string` and `apiUrl: string` as core response properties
+- **NEW**: Documented all optional fields with detailed comments
+- **NEW**: Added enhanced formatting fields (`userDataSummary`, `prettyPrint`)
+
+#### Bug Fixes
+- **FIXED**: Test mode now includes mock `token` field for consistent data structure
+- **FIXED**: Test mode returns identical structure to production mode
+
+#### Developer Experience
+- **NEW**: Added comprehensive logging for `onComplete` data structure validation
+- **NEW**: Visual indicators (✅/❌) for presence of key fields in console
+- **NEW**: Detailed logging shows token preview, apiUrl, and all returned keys
+- **NEW**: Created `ONCOMPLETE_USAGE_EXAMPLE.md` with complete usage documentation
+
+#### Documentation
+- **NEW**: TypeScript interface examples with proper typing
+- **NEW**: JavaScript usage examples with authentication patterns
+- **NEW**: Complete field documentation with descriptions
+- **NEW**: Test mode vs Production mode comparison
+- **NEW**: Examples of authenticated API requests using token and apiUrl
+
+#### Code Quality
+- **IMPROVED**: Better console debugging output at all stages of data flow
+- **IMPROVED**: DataRequest component logs token and apiUrl presence before callback
+- **IMPROVED**: OnairosButton logs complete data structure before passing to parent
+
+### Changes Summary
+```typescript
+// Now properly typed in TypeScript
+interface OnairosCompleteData {
+  token: string;        // ✅ JWT token for authenticated API calls
+  apiUrl: string;       // ✅ Backend API endpoint URL
+  // ... plus 20+ optional fields with full documentation
+}
+
+// Usage
+const handleComplete = (data: OnairosCompleteData) => {
+  const { token, apiUrl } = data; // TypeScript knows these are strings!
+};
+```
+
 ## [3.4.0] - 2024-10-09
 
 ### 🚀 Major Features

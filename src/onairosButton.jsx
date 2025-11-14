@@ -268,6 +268,16 @@ export function OnairosButton({
 
     // Call onComplete callback if provided
     console.log('🔥 Calling onComplete callback with enhanced result');
+    console.log('🔥 onComplete data structure:', {
+      token: enhancedResult.token ? '✅ Present (JWT string)' : '❌ Missing',
+      apiUrl: enhancedResult.apiUrl ? '✅ Present (URL string)' : '❌ Missing',
+      apiResponse: enhancedResult.apiResponse ? '✅ Present (object)' : '❌ Missing',
+      userData: enhancedResult.userData ? '✅ Present (object)' : '❌ Missing',
+      success: enhancedResult.success,
+      testMode: enhancedResult.testMode,
+      allKeys: Object.keys(enhancedResult)
+    });
+    
     if (onComplete) {
       try {
         onComplete(enhancedResult);
