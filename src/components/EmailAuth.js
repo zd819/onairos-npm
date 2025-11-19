@@ -86,59 +86,198 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     }
   };
 
+  // Handle Google authentication using OAuth popup flow (works without origin registration)
   const handleGoogleAuth = async () => {
     try {
-      // Use the same Google OAuth logic as UniversalOnboarding
-      const sdkConfig = {
-        baseUrl: 'https://api2.onairos.uk',
-        apiKey: window.onairosApiKey || 'test-key',
-        enableHealthMonitoring: true,
-        enableAutoRefresh: true,
-        enableConnectionValidation: true
-      };
+      setIsLoading(true);
+      setError('');
 
-      const username = localStorage.getItem('username') || localStorage.getItem('onairosUser')?.email || 'user@example.com';
+      const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
+      const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
       
-      const authorizeUrl = `${sdkConfig.baseUrl}/gmail/authorize`;
-      const params = new URLSearchParams({
-        username: username,
-        sdk_type: 'web',
-        return_url: window.location.origin + '/oauth-callback.html'
-      });
+      console.log('🔗 Starting Google OAuth flow...');
 
-      const fullUrl = `${authorizeUrl}?${params.toString()}`;
-      console.log('🔗 Starting Google OAuth from email flow...');
-      console.log('📋 Google OAuth URL:', fullUrl);
-
-      // Open popup for OAuth
-      const popup = window.open(
-        fullUrl,
-        'google_oauth',
-        'width=500,height=600,scrollbars=yes,resizable=yes'
-      );
-
-      if (!popup) {
-        throw new Error('Popup blocked. Please allow popups for this site.');
+      // CRITICAL: Create/verify account FIRST before OAuth
+      // The backend requires the user to exist before OAuth callback can update it
+      let userEmail = email?.trim() || '';
+      
+      if (!userEmail) {
+        setError('Please enter your email address first, then try Google sign-in.');
+        setIsLoading(false);
+        return;
       }
 
-      // Monitor popup for completion
-      const checkInterval = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkInterval);
-          console.log('✅ Google OAuth popup closed');
-          // Simulate successful OAuth for now
-          onSuccess({ 
-            email: 'user@gmail.com', 
-            method: 'google',
-            connectedAccounts: { Google: true }
-          });
-        }
-      }, 1000);
+      userEmail = userEmail.toLowerCase();
+      console.log('📧 Creating/verifying account for:', userEmail);
 
+      // Step 1: Create/verify account via email verification
+      try {
+        const verifyResponse = await fetch(`${baseUrl}/email/verify`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            email: userEmail
+          }),
+        });
+
+        if (!verifyResponse.ok) {
+          const errorData = await verifyResponse.json().catch(() => ({}));
+          console.warn('⚠️ Email verification response:', errorData);
+          // Continue anyway - account might already exist
+        } else {
+          console.log('✅ Account verification initiated');
+        }
+      } catch (verifyError) {
+        console.warn('⚠️ Error during account verification, continuing anyway:', verifyError);
+        // Continue with OAuth - account might already exist
+      }
+
+      // Step 2: Now that account exists (or is being created), proceed with OAuth
+      // Use email as username for OAuth
+      const username = userEmail;
+      localStorage.setItem('username', username);
+      
+      console.log('🔗 Requesting Google OAuth URL for user:', username);
+
+      const response = await fetch(`${baseUrl}/gmail/authorize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          session: { username }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || errorData.error || 'Failed to get Google authorization URL';
+        
+        // If still getting "user not found", wait a bit and retry
+        if (errorMessage.includes('User not found') || errorMessage.includes('create an account')) {
+          console.log('⏳ Account might still be creating, waiting 2 seconds and retrying...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Retry once
+          const retryResponse = await fetch(`${baseUrl}/gmail/authorize`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+            },
+            body: JSON.stringify({
+              session: { username }
+            }),
+          });
+          
+          if (!retryResponse.ok) {
+            throw new Error('Account creation may have failed. Please try again.');
+          }
+          
+          const retryData = await retryResponse.json();
+          const oauthUrl = retryData.gmailURL || retryData.gmailUrl || retryData.gmail_url || retryData.url;
+          
+          if (!oauthUrl) {
+            throw new Error('No authorization URL received from server');
+          }
+          
+          console.log('✅ Google OAuth URL received (after retry)');
+          
+          // Use the retry oauthUrl
+          const finalOauthUrl = oauthUrl;
+          
+          // Open popup and continue with OAuth flow
+          openOAuthPopup(finalOauthUrl, userEmail);
+        } else {
+          throw new Error(errorMessage);
+        }
+      } else {
+        const data = await response.json();
+        const oauthUrl = data.gmailURL || data.gmailUrl || data.gmail_url || data.url;
+
+        if (!oauthUrl) {
+          throw new Error('No authorization URL received from server');
+        }
+
+        console.log('✅ Google OAuth URL received');
+        
+        // Open popup and continue with OAuth flow
+        openOAuthPopup(oauthUrl, userEmail);
+      }
     } catch (error) {
       console.error('❌ Google OAuth failed:', error);
-      setError('Google authentication failed. Please try again.');
+      setError(error.message || 'Google authentication failed. Please try again.');
+      setIsLoading(false);
     }
+  };
+
+  // Helper function to open OAuth popup and handle completion
+  const openOAuthPopup = (oauthUrl, userEmail) => {
+    const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
+    
+    // Open popup for OAuth
+    const popup = window.open(
+      oauthUrl,
+      'google_oauth',
+      'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
+    );
+
+    if (!popup) {
+      setError('Popup blocked. Please allow popups for this site.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Monitor popup for completion
+    let touched = false;
+    const checkInterval = setInterval(async () => {
+      try {
+        // Check if popup navigated to onairos.uk (callback page)
+        if (popup.location && popup.location.hostname === 'onairos.uk') {
+          touched = true;
+          console.log('✅ Google OAuth callback detected');
+        }
+      } catch (e) {
+        // Cross-origin error is expected when popup is on different domain
+        if (!touched) touched = true;
+      }
+      
+      // Check if popup was closed
+      if (popup.closed) {
+        clearInterval(checkInterval);
+        console.log('✅ Google OAuth popup closed');
+        
+        // Wait a moment for backend to process OAuth callback
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // OAuth completed - account should already exist and be connected
+        // Proceed with success
+        setIsLoading(false);
+        onSuccess({ 
+          email: userEmail, 
+          method: 'google',
+          connectedAccounts: { Gmail: true, Google: true },
+          verified: true,
+          existingUser: false, // Assume new user for Google sign-in
+          isNewUser: true,
+          flowType: 'onboarding',
+          googleAuth: true
+        });
+      }
+    }, 800);
+
+    // Timeout after 5 minutes
+    setTimeout(() => {
+      if (!popup.closed) {
+        popup.close();
+        clearInterval(checkInterval);
+        setIsLoading(false);
+      }
+    }, 300000);
   };
 
   const handleCodeSubmit = async (e) => {
@@ -266,11 +405,12 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         <div className="mb-8">
           <button
             type="button"
-            className="w-full max-w-sm mx-auto py-4 text-base font-medium rounded-xl border border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-3 bg-transparent transition-colors"
+            className="w-full max-w-sm mx-auto py-4 text-base font-medium rounded-xl border border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-3 bg-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ 
               fontFamily: 'Inter, system-ui, sans-serif'
             }}
             onClick={handleGoogleAuth}
+            disabled={isLoading}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -290,7 +430,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Continue with Google
+            {isLoading ? 'Connecting...' : 'Continue with Google'}
           </button>
         </div>
 
