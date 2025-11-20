@@ -214,12 +214,27 @@ export default function UniversalOnboarding({ onComplete }) {
       
       const username = localStorage.getItem('username') || (JSON.parse(localStorage.getItem('onairosUser') || '{}')?.email) || 'user@example.com';
 
+      console.log(`🔗 Requesting ${name} OAuth URL for username:`, username);
       const res = await fetch(`${sdkConfig.baseUrl}/${plat.connector}/authorize`, {
-        method: 'POST', headers: { 'x-api-key': sdkConfig.apiKey, 'Content-Type': 'application/json' },
+        method: 'POST', 
+        headers: { 
+          'x-api-key': sdkConfig.apiKey, 
+          'Content-Type': 'application/json' 
+        },
         body: JSON.stringify({ session: { username } }),
       });
-      if (!res.ok) throw new Error('auth failed');
+      
+      console.log(`📡 ${name} authorize response status:`, res.status, res.ok);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const errorMsg = errorData.error || errorData.message || `Authentication failed (${res.status})`;
+        console.error(`❌ ${name} authorization failed:`, errorData);
+        throw new Error(errorMsg);
+      }
+      
       const data = await res.json();
+      console.log(`✅ ${name} authorize successful, response keys:`, Object.keys(data));
 
       const candidates = (
         {
