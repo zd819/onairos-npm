@@ -32,6 +32,219 @@ const fadeSlideInKeyframes = `
 }
 `;
 
+// Scrape ChatGPT chats (called after popup login) - following Flutter methodology exactly
+async function scrapeChatGPTChats() {
+  try {
+    console.log('🧲 Starting ChatGPT chat scraping (Flutter methodology)...');
+
+    const baseUrl = sdkConfig.baseUrl;
+    
+    // Try multiple possible token storage locations
+    const jwtToken = 
+      localStorage.getItem('onairos_user_token') || 
+      localStorage.getItem('onairos_jwt_token') ||
+      localStorage.getItem('jwtToken') ||
+      (typeof window !== 'undefined' && window.onairosToken) ||
+      null;
+
+    console.log('🔑 JWT token check:', {
+      hasToken: !!jwtToken,
+      tokenLength: jwtToken ? jwtToken.length : 0,
+      storageKeys: ['onairos_user_token', 'onairos_jwt_token', 'jwtToken'].map(k => ({
+        key: k,
+        exists: !!localStorage.getItem(k)
+      }))
+    });
+
+    if (!jwtToken) {
+      console.warn('⚠️ No JWT token found. ChatGPT scraping requires authentication.');
+      console.warn('💡 User needs to complete email authentication first to scrape chats.');
+      console.warn('💡 ChatGPT will be marked as connected, but chats cannot be scraped without auth.');
+      // Return empty array - user can still connect ChatGPT, scraping will happen later
+      // Or we could prompt user to authenticate first
+      return [];
+    }
+
+    // Flutter methodology (from Swift code):
+    // 1. Get access token from /api/auth/session (with cookies) 
+    // 2. Get conversation list from /backend-api/conversations?limit=10
+    // 3. Fetch each conversation detail from /backend-api/conversation/{id}
+    // 4. Send each to /llm-data/store
+    
+    // For web, browser CORS blocks direct ChatGPT API calls
+    // Backend needs to proxy the requests (same methodology, server-side)
+    console.log('📡 Requesting ChatGPT conversations from backend...');
+    
+    // Backend endpoint should handle scraping (same as Flutter but server-side)
+    const scrapeResponse = await fetch(`${baseUrl}/llm-data/scrape-chatgpt`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`,
+      },
+      body: JSON.stringify({
+        limit: 10,
+      }),
+    });
+
+    if (!scrapeResponse.ok) {
+      const errorText = await scrapeResponse.text();
+      console.error('❌ Backend scraping failed:', scrapeResponse.status, errorText);
+      throw new Error(`Backend scraping failed: ${scrapeResponse.status}`);
+    }
+
+    const scrapeData = await scrapeResponse.json();
+    const conversations = scrapeData.conversations || [];
+
+    console.log('🎉 Scraping complete! Conversations:', conversations);
+    console.log('📋 Total conversations scraped:', conversations.length);
+
+    // Print chats to console (Flutter prints them too)
+    conversations.forEach((conv, index) => {
+      const title = conv.title || 'Untitled';
+      const messages = [];
+      
+      // Extract messages from mapping (Flutter structure)
+      if (conv.mapping) {
+        Object.values(conv.mapping).forEach(node => {
+          if (node.message) {
+            const msg = node.message;
+            const role = msg.author?.role || 'unknown';
+            const content = msg.content?.parts?.[0] || '';
+            if (content) {
+              messages.push({ role, content });
+            }
+          }
+        });
+      }
+      
+      console.log(`\n📝 Conversation ${index + 1}: ${title}`);
+      console.log(`   ID: ${conv.id || conv.conversationId}`);
+      console.log(`   Messages: ${messages.length}`);
+      messages.forEach((msg, idx) => {
+        console.log(`   [${msg.role}]: ${msg.content.substring(0, 100)}${msg.content.length > 100 ? '...' : ''}`);
+      });
+    });
+
+    // Send each conversation to /llm-data/store (exactly like Flutter)
+    console.log('📤 Sending conversations to /llm-data/store (Flutter methodology)...');
+    
+    for (const conversation of conversations) {
+      await sendChatGPTChatsToBackend([conversation]);
+    }
+
+    return conversations;
+  } catch (error) {
+    console.error('❌ Error scraping ChatGPT chats:', error);
+    throw error;
+  }
+}
+
+async function sendChatGPTChatsToBackend(conversations) {
+  try {
+    const baseUrl = sdkConfig.baseUrl;
+    const jwtToken = localStorage.getItem('onairos_user_token') || localStorage.getItem('onairos_jwt_token');
+
+    if (!jwtToken) {
+      throw new Error('No JWT token found');
+    }
+
+    console.log('📤 Sending chats to /llm-data/store (exact Flutter methodology)...');
+
+    // Send each conversation individually (like Flutter does)
+    for (let index = 0; index < conversations.length; index++) {
+      const conversation = conversations[index];
+      const conversationId = conversation.id || conversation.conversation_id;
+      
+      if (!conversationId) {
+        console.warn(`⚠️ Skipping conversation ${index + 1}: no ID`);
+        continue;
+      }
+
+      const title = conversation.title || 'Untitled Conversation';
+      const createTime = conversation.create_time || Math.floor(Date.now() / 1000);
+      const updateTime = conversation.update_time || Math.floor(Date.now() / 1000);
+      
+      // Extract messages from mapping (EXACT Flutter structure)
+      const messages = [];
+      if (conversation.mapping) {
+        Object.values(conversation.mapping).forEach(node => {
+          if (node.message) {
+            const msg = node.message;
+            const messageId = msg.id;
+            const author = msg.author || {};
+            const role = author.role;
+            const content = msg.content || {};
+            const parts = content.parts || [];
+            const firstPart = parts[0];
+            
+            if (messageId && role && firstPart) {
+              const timestamp = msg.create_time 
+                ? new Date(msg.create_time * 1000).toISOString()
+                : new Date().toISOString();
+              
+              messages.push({
+                id: messageId,
+                role: role,
+                content: firstPart,
+                timestamp: timestamp,
+                metadata: msg.metadata || {},
+              });
+            }
+          }
+        });
+      }
+
+      // Sort messages by timestamp (Flutter does this)
+      messages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+      // Build conversationData EXACTLY like Flutter
+      const conversationData = {
+        conversationId: conversationId,
+        messages: messages,
+        context: {
+          title: title,
+          create_time: Math.floor(createTime),
+          update_time: Math.floor(updateTime),
+        },
+        mobileMetadata: {
+          platform: 'web', // Web instead of iOS
+          appVersion: '1.0.0',
+          isOfflineSync: false,
+        },
+      };
+
+      // Send to /llm-data/store (same endpoint as Flutter)
+      const response = await fetch(`${baseUrl}/llm-data/store`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwtToken}`, // Required by backend authenticateToken
+        },
+        body: JSON.stringify({
+          platform: 'web-chatgpt', // Backend normalizes this
+          conversationData: conversationData,
+          memoryType: 'conversation',
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`✅ [${index + 1}/${conversations.length}] Sent conversation "${title}" to backend`);
+        console.log(`   Conversation ID: ${result.data?.conversationId || conversationId}`);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn(`⚠️ [${index + 1}/${conversations.length}] Failed to send "${title}": ${response.status}`, errorData);
+      }
+    }
+
+    console.log('✅ All chats sent to /llm-data/store');
+  } catch (error) {
+    console.error('❌ Error sending chats to backend:', error);
+    throw error;
+  }
+}
+
 export default function UniversalOnboarding({ onComplete }) {
   const lottieRef = useRef(null);
   const lastFrameRef = useRef(0);
@@ -42,6 +255,7 @@ export default function UniversalOnboarding({ onComplete }) {
   const [connectingPlatform, setConnectingPlatform] = useState(null);
   const [selected, setSelected] = useState('Instagram');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isExtractingChats, setIsExtractingChats] = useState(false);
 
   // swipe state
   const touchStartX = useRef(0);
@@ -143,7 +357,7 @@ export default function UniversalOnboarding({ onComplete }) {
     // Page 1
     { name: 'Instagram', connector: 'instagram', icon: Brand.Instagram },
     { name: 'YouTube', connector: 'youtube', icon: Brand.YouTube },
-    { name: 'ChatGPT', connector: 'chatgpt', icon: Brand.ChatGPT, directLink: aiLinks.ChatGPT },
+    { name: 'ChatGPT', connector: 'chatgpt', icon: Brand.ChatGPT },
     // Page 2
     { name: 'Claude', connector: 'claude', icon: Brand.Claude, directLink: aiLinks.Claude },
     { name: 'Gemini', connector: 'gemini', icon: Brand.Gemini, directLink: aiLinks.Gemini },
@@ -191,6 +405,101 @@ export default function UniversalOnboarding({ onComplete }) {
     const plat = allPlatforms.find((p) => p.name === name);
     if (!plat) return false;
     try {
+      // ChatGPT: Use popup window (like YouTube/Pinterest) for login, then scrape
+      if (name === 'ChatGPT') {
+        console.log('🤖 ChatGPT: Opening popup for login and chat extraction');
+        setConnectedAccounts((s) => ({ ...s, [name]: true }));
+        setIsConnecting(true);
+        setConnectingPlatform('ChatGPT');
+        
+        // Open ChatGPT in popup window
+        const popup = window.open('https://chatgpt.com/auth/login', 'chatgpt_login', 'width=600,height=700,scrollbars=yes,resizable=yes');
+        if (!popup) {
+          throw new Error('Popup blocked. Please allow popups for this site.');
+        }
+
+        // Monitor popup for login completion and then scrape
+        let loginDetected = false;
+        let popupClosed = false;
+        
+        const checkInterval = setInterval(async () => {
+          try {
+            // Check if popup is closed
+            if (popup.closed && !popupClosed) {
+              popupClosed = true;
+              clearInterval(checkInterval);
+              setIsConnecting(false);
+              setConnectingPlatform(null);
+              
+              // Always try to scrape when popup closes (user likely logged in)
+              console.log('✅ ChatGPT popup closed, starting chat extraction...');
+              setIsExtractingChats(true);
+              
+              // Use setTimeout to ensure state update happens
+              setTimeout(async () => {
+                try {
+                  // Wait a moment for session cookies to be set
+                  await new Promise(resolve => setTimeout(resolve, 2000));
+                  
+                  const conversations = await scrapeChatGPTChats();
+                  
+                  if (conversations.length > 0) {
+                    console.log('✅ ChatGPT connected and chats scraped successfully');
+                  } else {
+                    console.log('✅ ChatGPT connected (no chats scraped - may need authentication)');
+                    // Still mark as connected even if scraping didn't happen
+                  }
+                } catch (error) {
+                  console.error('❌ Failed to scrape ChatGPT chats:', error);
+                  // Don't unmark as connected - user did connect ChatGPT, just scraping failed
+                  // This could be due to no auth token, backend endpoint missing, etc.
+                } finally {
+                  setIsExtractingChats(false);
+                }
+              }, 100);
+              return;
+            }
+
+            // Try to detect login by checking if popup navigated away from login page
+            if (!loginDetected && !popup.closed) {
+              try {
+                if (popup.location && popup.location.href && !popup.location.href.includes('/auth/login')) {
+                  loginDetected = true;
+                  console.log('✅ ChatGPT login detected in popup - will extract when popup closes');
+                  // Don't close popup automatically - let user close it
+                }
+              } catch (e) {
+                // Cross-origin - can't access popup location, that's expected
+                // We'll try to scrape when popup closes
+              }
+            }
+          } catch (error) {
+            console.error('Error monitoring ChatGPT popup:', error);
+          }
+        }, 1000);
+
+        // Timeout after 5 minutes
+        setTimeout(() => {
+          if (!popup.closed) {
+            popup.close();
+          }
+          clearInterval(checkInterval);
+          setIsConnecting(false);
+          setConnectingPlatform(null);
+        }, 300000);
+
+        return true;
+      }
+
+      // BYPASS: Twitter endpoint is 404, so just keep toggle ON without API call
+      if (name === 'Twitter') {
+        console.log('🐦 Twitter: Bypassing API call (endpoint not available), keeping toggle ON');
+        setConnectedAccounts((s) => ({ ...s, [name]: true }));
+        setIsConnecting(false);
+        setConnectingPlatform(null);
+        return true;
+      }
+
       // For direct-link platforms (no OAuth), mark connected immediately and return
       if (plat.directLink) {
         setConnectedAccounts((s) => ({ ...s, [name]: true }));
@@ -203,14 +512,6 @@ export default function UniversalOnboarding({ onComplete }) {
       setConnectedAccounts((s) => ({ ...s, [name]: true }));
       setIsConnecting(true);
       setConnectingPlatform(name);
-      
-      // BYPASS: Twitter endpoint is 404, so just keep toggle ON without API call
-      if (name === 'Twitter') {
-        console.log('🐦 Twitter: Bypassing API call (endpoint not available), keeping toggle ON');
-        setIsConnecting(false);
-        setConnectingPlatform(null);
-        return true;
-      }
       
       const username = localStorage.getItem('username') || (JSON.parse(localStorage.getItem('onairosUser') || '{}')?.email) || 'user@example.com';
 
@@ -484,6 +785,17 @@ export default function UniversalOnboarding({ onComplete }) {
             </div>
           </div>
         </div>
+
+        {/* Extracting chats overlay */}
+        {isExtractingChats && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-8 max-w-md mx-4 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Extracting chats...</h3>
+              <p className="text-gray-600">Please wait while we retrieve your ChatGPT conversations.</p>
+            </div>
+          </div>
+        )}
 
         {/* footer — anchored at bottom using flex */}
         <div className="px-6 flex-shrink-0" style={{ paddingBottom: 16, background: 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>

@@ -98,6 +98,7 @@
         const error = urlParams.get('error');
         const platform = urlParams.get('platform');
         const details = urlParams.get('details');
+        const email = urlParams.get('email'); // Gmail email from OAuth
 
         // Get elements
         const loadingState = document.getElementById('loading-state');
@@ -105,15 +106,46 @@
         const errorState = document.getElementById('error-state');
         const errorDetails = document.getElementById('error-details');
 
-        console.log('🔄 OAuth callback received:', { success, error, platform, details });
+        console.log('🔄 OAuth callback received:', { success, error, platform, details, email });
 
         if (success === 'true' && platform) {
             // Success flow
-            console.log(`✅ OAuth success for platform: ${platform}`);
+            console.log(`✅ OAuth success for platform: ${platform}, email: ${email}`);
             
             // Signal success to parent window
             localStorage.setItem(`onairos_${platform}_success`, 'true');
             localStorage.setItem(`onairos_${platform}_timestamp`, Date.now().toString());
+            
+            // If email is provided, send it to parent window via postMessage
+            if (email) {
+                console.log('📧 Email found in URL:', email);
+                
+                // Send via postMessage immediately (works cross-origin)
+                if (window.opener && !window.opener.closed) {
+                    try {
+                        window.opener.postMessage({
+                            type: 'onairos_oauth_success',
+                            platform: platform,
+                            email: email
+                        }, '*');
+                        console.log('✅ Sent email via postMessage to parent window');
+                    } catch (e) {
+                        console.error('❌ Error sending postMessage:', e);
+                    }
+                } else {
+                    console.warn('⚠️ window.opener is not available or closed');
+                }
+                
+                // Also try to store in localStorage (won't work cross-origin, but try anyway)
+                try {
+                    localStorage.setItem('onairos_gmail_email', email);
+                    console.log('📧 Stored Gmail email in localStorage (may not work cross-origin)');
+                } catch (e) {
+                    console.warn('⚠️ Could not set localStorage (cross-origin):', e);
+                }
+            } else {
+                console.warn('⚠️ No email parameter in URL');
+            }
             
             // Update UI
             loadingState.style.display = 'none';

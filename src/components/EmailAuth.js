@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Mail, ArrowRight, Check } from 'lucide-react';
 import PrimaryButton from './ui/PrimaryButton.jsx';
 import { COLORS } from '../theme/colors.js';
@@ -9,6 +9,10 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
   const [step, setStep] = useState('email'); // 'email' | 'code' | 'success'
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const googleButtonRef = useRef(null);
+  const googleScriptLoaded = useRef(false);
+
+  // Removed Google Identity Services - using OAuth popup flow instead
 
   // Auto-focus first PIN input when code step loads
   useEffect(() => {
@@ -86,7 +90,378 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     }
   };
 
-  // Handle Google OAuth using popup flow (works without origin registration)
+  // Retrieve Gmail email from backend and continue with authentication
+  const retrieveAndContinueWithGoogleEmail = async (tempUsername, popup) => {
+    try {
+      console.log('📧 Retrieving Gmail email from backend for user:', tempUsername);
+      
+      const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
+      const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
+      
+      // First, try to get email from postMessage (fastest)
+      let googleEmail = null;
+      const messageHandler = (event) => {
+        if (event.origin.includes('onairos.uk') || event.origin.includes('localhost')) {
+          if (event.data && event.data.type === 'onairos_oauth_success' && event.data.platform === 'gmail') {
+            googleEmail = event.data.email;
+            console.log('📧 Got email from postMessage:', googleEmail);
+            window.removeEventListener('message', messageHandler);
+          }
+        }
+      };
+      window.addEventListener('message', messageHandler);
+      
+      // Wait a bit for postMessage
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      window.removeEventListener('message', messageHandler);
+      
+      // If postMessage didn't work, query backend directly
+      if (!googleEmail) {
+        console.log('📡 PostMessage didn\'t work, querying backend for Gmail email...');
+        
+        // Wait a bit more for backend to process OAuth callback
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Try multiple times with increasing delays (backend might need time to process)
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            console.log(`📡 Attempt ${attempt}/3: Querying backend for Gmail email...`);
+            
+            // Try POST first
+            let emailResponse = await fetch(`${baseUrl}/gmail/get-email`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+              },
+              body: JSON.stringify({
+                username: tempUsername
+              }),
+            });
+            
+            // If POST fails with 404, try GET
+            if (emailResponse.status === 404) {
+              console.log('📡 POST failed, trying GET method...');
+              emailResponse = await fetch(`${baseUrl}/gmail/get-email?username=${encodeURIComponent(tempUsername)}`, {
+                method: 'GET',
+                headers: {
+                  'x-api-key': apiKey,
+                },
+              });
+            }
+            
+            if (emailResponse.ok) {
+              const emailData = await emailResponse.json();
+              googleEmail = emailData.email;
+              console.log('✅ Got Gmail email from backend:', googleEmail);
+              break; // Success, exit loop
+            } else {
+              const errorText = await emailResponse.text().catch(() => 'Unknown error');
+              console.warn(`⚠️ Backend email query failed (attempt ${attempt}/3), status: ${emailResponse.status}, error: ${errorText}`);
+              
+              // Wait before retry (exponential backoff)
+              if (attempt < 3) {
+                await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+              }
+            }
+          } catch (fetchError) {
+            console.error(`❌ Error querying backend for email (attempt ${attempt}/3):`, fetchError);
+            if (attempt < 3) {
+              await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+            }
+          }
+        }
+      }
+      
+      if (!googleEmail) {
+        console.warn('⚠️ Could not retrieve email automatically after all attempts.');
+        setIsLoading(false);
+        setError('Google authentication completed! Please enter your Google email address below to continue.');
+        
+        setTimeout(() => {
+          const emailInput = document.querySelector('input[type="email"]');
+          if (emailInput) {
+            emailInput.focus();
+          }
+        }, 100);
+        return;
+      }
+      
+      // We have the email - proceed with authentication
+      await handleGoogleEmailAuth(googleEmail);
+      
+    } catch (error) {
+      console.error('❌ Error retrieving email after OAuth:', error);
+      setIsLoading(false);
+      setError('Google authentication completed! Please enter your Google email address below to continue.');
+      
+      setTimeout(() => {
+        const emailInput = document.querySelector('input[type="email"]');
+        if (emailInput) {
+          emailInput.focus();
+        }
+      }, 100);
+    }
+  };
+
+  // Handle email verification flow for Google-authenticated email
+  const handleGoogleEmailAuth = async (googleEmail) => {
+    try {
+      setIsLoading(true);
+      setError('');
+
+      const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
+      const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
+      
+      // Request email verification
+      console.log('📧 Requesting email verification for Google user:', googleEmail);
+      const emailResponse = await fetch(`${baseUrl}/email/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          email: googleEmail.toLowerCase().trim()
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'Failed to verify email');
+      }
+
+      const emailData = await emailResponse.json();
+      console.log('✅ Email verification request successful');
+
+      // Auto-verify with dummy code
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const verifyResponse = await fetch(`${baseUrl}/email/verify/confirm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          email: googleEmail.toLowerCase().trim(),
+          code: '000000'
+        }),
+      });
+
+      if (!verifyResponse.ok) {
+        const errorData = await verifyResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'Email verification failed');
+      }
+
+      const verifyData = await verifyResponse.json();
+      if (!verifyData.success) {
+        throw new Error(verifyData.error || 'Email verification failed');
+      }
+
+      const userEmail = googleEmail.toLowerCase().trim();
+      const userName = verifyData.userName || userEmail.split('@')[0];
+      const token = verifyData.token || verifyData.jwtToken;
+      const isNewUser = !verifyData.existingUser;
+
+      setIsLoading(false);
+
+      onSuccess({
+        email: userEmail,
+        method: 'google',
+        verified: true,
+        token: token,
+        userName: userName,
+        existingUser: verifyData.existingUser || false,
+        isNewUser: isNewUser,
+        flowType: isNewUser ? 'onboarding' : 'dataRequest',
+        googleAuth: true,
+        connectedAccounts: { Google: true, Gmail: true },
+        accountInfo: verifyData.accountInfo,
+        accountDetails: verifyData.accountDetails
+      });
+    } catch (error) {
+      console.error('❌ Google email auth error:', error);
+      setError(error.message || 'Google authentication failed. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  // OLD: Handle Google credential from Google Identity Services (removed - doesn't work in SDK)
+  const handleGoogleCredential = async (response) => {
+    try {
+      setIsLoading(true);
+      setError('');
+
+      console.log('🔑 Google credential received, response:', response);
+      
+      if (!response || !response.credential) {
+        throw new Error('Invalid Google credential response');
+      }
+
+      const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
+      
+      // Try /auth/google endpoint first (no API key needed based on backend code)
+      console.log('🔗 Calling /auth/google endpoint...');
+      let authResponse;
+      try {
+        authResponse = await fetch(`${baseUrl}/auth/google`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            credential: response.credential
+          }),
+        });
+
+        console.log('📡 /auth/google response status:', authResponse.status);
+
+        if (authResponse.ok) {
+          const authData = await authResponse.json();
+          console.log('✅ Google auth successful:', authData);
+
+          // Extract user data from response
+          const userData = authData.body || authData;
+          const userEmail = userData.email || userData.username || '';
+          const userName = userData.username || userEmail.split('@')[0];
+          const token = userData.token;
+          const isNewUser = userData.isNewUser !== false;
+
+          setIsLoading(false);
+
+          // Call onSuccess with proper data structure
+          onSuccess({
+            email: userEmail,
+            method: 'google',
+            verified: true,
+            token: token,
+            userName: userName,
+            existingUser: !isNewUser,
+            isNewUser: isNewUser,
+            flowType: isNewUser ? 'onboarding' : 'dataRequest',
+            googleAuth: true,
+            connectedAccounts: { Google: true },
+          });
+          return;
+        } else {
+          // If 403 or other error, try Flutter approach (email verification flow)
+          const errorText = await authResponse.text();
+          console.warn('⚠️ /auth/google failed, trying email verification flow:', errorText);
+        }
+      } catch (fetchError) {
+        console.warn('⚠️ /auth/google fetch error, trying email verification flow:', fetchError);
+      }
+
+      // Fallback: Flutter approach - extract email and use email verification flow
+      console.log('📧 Falling back to email verification flow...');
+      
+      // Decode JWT to get email
+      let googleEmail = null;
+      try {
+        const parts = response.credential.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+          googleEmail = payload.email;
+          console.log('📧 Extracted email from Google credential:', googleEmail);
+        }
+      } catch (e) {
+        console.error('❌ Could not decode Google credential:', e);
+        throw new Error('Could not extract email from Google credential');
+      }
+
+      if (!googleEmail) {
+        throw new Error('Could not extract email from Google credential');
+      }
+
+      const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
+      
+      // Step 1: Request email verification
+      console.log('📧 Requesting email verification for Google user:', googleEmail);
+      const emailResponse = await fetch(`${baseUrl}/email/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          email: googleEmail.toLowerCase().trim()
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json().catch(() => ({}));
+        console.error('❌ Email verification request failed:', errorData);
+        throw new Error(errorData.error || errorData.message || 'Failed to verify email');
+      }
+
+      const emailData = await emailResponse.json();
+      console.log('✅ Email verification request successful:', emailData);
+
+      // Step 2: Auto-verify with dummy code
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log('🔄 Auto-verifying email code for Google user...');
+      const verifyResponse = await fetch(`${baseUrl}/email/verify/confirm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          email: googleEmail.toLowerCase().trim(),
+          code: '000000'
+        }),
+      });
+
+      if (!verifyResponse.ok) {
+        const errorData = await verifyResponse.json().catch(() => ({}));
+        console.error('❌ Email verification failed:', errorData);
+        throw new Error(errorData.error || errorData.message || 'Email verification failed');
+      }
+
+      const verifyData = await verifyResponse.json();
+      console.log('✅ Email verification successful:', verifyData);
+
+      if (!verifyData.success) {
+        throw new Error(verifyData.error || 'Email verification failed');
+      }
+
+      // Extract user data from verification response
+      const userEmail = googleEmail.toLowerCase().trim();
+      const userName = verifyData.userName || userEmail.split('@')[0];
+      const token = verifyData.token || verifyData.jwtToken;
+      const isNewUser = !verifyData.existingUser;
+
+      setIsLoading(false);
+
+      // Call onSuccess with proper data structure
+      onSuccess({
+        email: userEmail,
+        method: 'google',
+        verified: true,
+        token: token,
+        userName: userName,
+        existingUser: verifyData.existingUser || false,
+        isNewUser: isNewUser,
+        flowType: isNewUser ? 'onboarding' : 'dataRequest',
+        googleAuth: true,
+        connectedAccounts: { Google: true },
+        accountInfo: verifyData.accountInfo,
+        accountDetails: verifyData.accountDetails
+      });
+    } catch (error) {
+      console.error('❌ Google authentication error:', error);
+      setError(error.message || 'Google authentication failed. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  // Handle Google Sign-In using OAuth popup flow (works without origin registration)
   const handleGoogleAuth = async () => {
     try {
       setIsLoading(true);
@@ -95,12 +470,11 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
       const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
       const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
       
-      // Generate a temporary email and username for account creation
-      const tempId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const tempEmail = `google_${tempId}@onairos.temp`;
-      const tempUsername = `google_${tempId}`;
+      // Generate temporary username for OAuth flow
+      const tempId = `google_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const tempUsername = tempId;
       
-      // Create account directly using registerAccount/enoch endpoint (no email verification needed)
+      // Create temporary account first
       try {
         const registerResponse = await fetch(`${baseUrl}/registerAccount/enoch`, {
           method: 'POST',
@@ -109,7 +483,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
             'x-api-key': apiKey,
           },
           body: JSON.stringify({
-            email: tempEmail,
+            email: `${tempId}@onairos.temp`,
             username: tempUsername
           }),
         });
@@ -117,100 +491,201 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         if (!registerResponse.ok) {
           const errorData = await registerResponse.json().catch(() => ({}));
           console.warn('Account registration warning:', errorData);
-          // Continue anyway - user might already exist
         } else {
-          console.log('✅ Temporary account created successfully');
+          console.log('✅ Temporary account created for Google OAuth');
         }
         
-        // Wait for account to be fully created
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Wait for account to be created
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (e) {
         console.warn('Account registration error:', e);
-        // Continue anyway - might work if account already exists
       }
 
-      // Get OAuth URL using temp username (matches what backend created from email)
-      console.log('🔗 Requesting Gmail OAuth URL for username:', tempUsername);
-      let response;
-      try {
-        response = await fetch(`${baseUrl}/gmail/authorize`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-          },
-          body: JSON.stringify({
-            session: { username: tempUsername }
-          }),
-        });
-        console.log('📡 Gmail authorize response status:', response.status, response.ok);
-      } catch (fetchError) {
-        console.error('❌ Fetch error getting OAuth URL:', fetchError);
-        throw new Error('Failed to connect to server. Please check your internet connection.');
+      // Get Gmail OAuth URL (this will get user's email after OAuth)
+      console.log('🔗 Requesting Gmail OAuth URL for Google authentication...');
+      const oauthResponse = await fetch(`${baseUrl}/gmail/authorize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          session: { username: tempUsername }
+        }),
+      });
+
+      if (!oauthResponse.ok) {
+        const errorData = await oauthResponse.json().catch(() => ({}));
+        console.error('❌ Failed to get OAuth URL:', errorData);
+        throw new Error(errorData.error || errorData.message || 'Failed to get Google authorization URL');
       }
 
-      // If still not found, wait and retry
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.warn('⚠️ Gmail authorize failed:', errorData);
-        if (errorData.message?.includes('User not found') || errorData.message?.includes('create an account')) {
-          console.log('⏳ User not found, waiting 2 seconds and retrying...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          try {
-            response = await fetch(`${baseUrl}/gmail/authorize`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-              },
-              body: JSON.stringify({
-                session: { username: tempUsername }
-              }),
-            });
-            console.log('📡 Retry response status:', response.status, response.ok);
-          } catch (retryError) {
-            console.error('❌ Retry fetch error:', retryError);
-            throw new Error('Failed to get Google authorization URL after retry.');
-          }
-        }
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Gmail authorize final error:', errorData);
-        throw new Error(errorData.message || errorData.error || 'Failed to get Google authorization URL');
-      }
-
-      console.log('✅ Gmail authorize successful, parsing response...');
-      let data;
-      try {
-        data = await response.json();
-        console.log('📦 Response data keys:', Object.keys(data));
-      } catch (parseError) {
-        console.error('❌ Error parsing response:', parseError);
-        throw new Error('Invalid response from server');
-      }
-
-      const oauthUrl = data.gmailURL || data.gmailUrl || data.gmail_url || data.url;
-      console.log('🔗 OAuth URL extracted:', oauthUrl ? 'Present' : 'Missing');
+      const oauthData = await oauthResponse.json();
+      const oauthUrl = oauthData.gmailURL || oauthData.gmailUrl || oauthData.url;
+      
       if (!oauthUrl) {
-        console.error('❌ No OAuth URL in response:', data);
         throw new Error('No authorization URL received from server');
       }
 
-      console.log('🚀 Opening OAuth popup...');
-      // Open OAuth popup - after OAuth, we'll get real email and update account
-      openOAuthPopup(oauthUrl, tempUsername);
+      console.log('🚀 Opening Google OAuth popup...');
+      
+      // Set up postMessage listener BEFORE opening popup (so we catch the message when callback loads)
+      let googleEmail = null;
+      const messageHandler = (event) => {
+        // Accept messages from onairos.uk domain (where callback page is hosted)
+        if (event.origin.includes('onairos.uk') || event.origin.includes('localhost')) {
+          if (event.data && event.data.type === 'onairos_oauth_success' && event.data.platform === 'gmail') {
+            googleEmail = event.data.email;
+            console.log('📧 Got email from postMessage:', googleEmail);
+            window.removeEventListener('message', messageHandler);
+            
+            // Close popup if still open
+            try {
+              if (popup && !popup.closed) {
+                popup.close();
+              }
+            } catch (e) {}
+            
+            // Proceed with authentication
+            if (googleEmail) {
+              handleGoogleEmailAuth(googleEmail);
+            }
+          }
+        }
+      };
+      window.addEventListener('message', messageHandler);
+      
+      // Open OAuth popup and monitor for completion
+      const popup = window.open(oauthUrl, 'google_auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
+      if (!popup) {
+        window.removeEventListener('message', messageHandler);
+        throw new Error('Popup blocked. Please allow popups for this site.');
+      }
+
+      // Monitor popup for completion - detect cross-origin navigation (like UniversalOnboarding)
+      let touched = false;
+      let crossOriginDetected = false;
+      let crossOriginTimeout = null;
+      
+      const checkInterval = setInterval(async () => {
+        try {
+          // Try to access popup location - if it throws, popup is on different domain (success)
+          if (popup.location && popup.location.hostname === 'onairos.uk') {
+            if (!touched) {
+              touched = true;
+              crossOriginDetected = true;
+              console.log('✅ OAuth popup navigated to onairos.uk - OAuth completed');
+              
+              // Set a timeout to close popup and proceed after callback processes
+              if (!crossOriginTimeout) {
+              crossOriginTimeout = setTimeout(async () => {
+                console.log('✅ Closing popup and proceeding after OAuth completion...');
+                clearInterval(checkInterval);
+                
+                // Close popup
+                try {
+                  if (popup && !popup.closed) {
+                    popup.close();
+                  }
+                } catch (e) {
+                  console.warn('Could not close popup:', e);
+                }
+                
+                // Wait for backend to process and callback page to send postMessage
+                // The postMessage handler (set up earlier) will automatically proceed when it receives the email
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // If postMessage handler didn't receive email yet, try fallback method
+                if (!googleEmail) {
+                  console.log('⏳ PostMessage handler hasn\'t received email yet, trying fallback...');
+                  await retrieveAndContinueWithGoogleEmail(tempUsername, popup);
+                }
+              }, 3000); // Wait 3 seconds after cross-origin detected
+              }
+            }
+          }
+        } catch (e) {
+          // Cross-origin error means popup navigated to onairos.uk (different domain)
+          if (!touched) {
+            touched = true;
+            crossOriginDetected = true;
+            console.log('✅ Cross-origin detected - OAuth popup navigated to onairos.uk');
+            
+            // Set timeout to close popup and proceed
+            if (!crossOriginTimeout) {
+              crossOriginTimeout = setTimeout(async () => {
+                console.log('✅ Closing popup and proceeding after cross-origin detection...');
+                clearInterval(checkInterval);
+                
+                // Close popup
+                try {
+                  if (popup && !popup.closed) {
+                    popup.close();
+                  }
+                } catch (closeError) {
+                  console.warn('Could not close popup (COOP may block it):', closeError);
+                }
+                
+                // Wait for backend to process and callback page to send postMessage
+                // The postMessage handler will automatically proceed when it receives the email
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // If we still don't have email after waiting, try to retrieve it
+                if (!googleEmail) {
+                  await retrieveAndContinueWithGoogleEmail(tempUsername, popup);
+                }
+              }, 3000); // Wait 3 seconds after cross-origin detected
+            }
+          }
+        }
+        
+        // Check if popup was closed manually (before cross-origin was detected)
+        try {
+          if (popup.closed && !crossOriginDetected) {
+            clearInterval(checkInterval);
+            if (crossOriginTimeout) clearTimeout(crossOriginTimeout);
+            setIsLoading(false);
+            setError('Google authentication was cancelled. Please try again.');
+          } else if (popup.closed && crossOriginDetected) {
+            // Popup closed after cross-origin - OAuth completed successfully
+            clearInterval(checkInterval);
+            if (crossOriginTimeout) clearTimeout(crossOriginTimeout);
+            
+            // Wait for backend to process and callback page to send postMessage
+            // The postMessage handler will automatically proceed when it receives the email
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // If we still don't have email after waiting, try to retrieve it
+            if (!googleEmail) {
+              await retrieveAndContinueWithGoogleEmail(tempUsername, popup);
+            }
+          }
+        } catch (e) {
+          // COOP blocks popup.closed check - that's okay, we'll use the timeout instead
+        }
+      }, 500);
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        if (!popup.closed) {
+          popup.close();
+        }
+        clearInterval(checkInterval);
+        setIsLoading(false);
+        setError('Google authentication timed out. Please try again.');
+      }, 300000);
+
     } catch (error) {
-      console.error('❌ Google OAuth failed:', error);
-      setError(error.message || 'Google authentication failed.');
+      console.error('❌ Google OAuth error:', error);
+      setError(error.message || 'Google authentication failed. Please try again.');
       setIsLoading(false);
     }
   };
 
 
-  // Helper to open OAuth popup
-  const openOAuthPopup = async (oauthUrl, tempUsername) => {
+  // OLD OAuth popup function - removed, using Google Identity Services instead
+  // Keeping for reference but not used
+  const _openOAuthPopup_DEPRECATED = async (oauthUrl, tempUsername) => {
     console.log('🎯 openOAuthPopup called with URL:', oauthUrl ? 'Present' : 'Missing', 'username:', tempUsername);
     const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
     const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
@@ -583,35 +1058,41 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         </div>
 
         <div className="mb-8">
-          <button
-            type="button"
+          {/* Google Sign-In button - custom button that triggers Google Identity Services */}
+          <div 
+            ref={googleButtonRef}
+            className="w-full max-w-sm mx-auto"
             onClick={handleGoogleAuth}
-            disabled={isLoading}
-            className="w-full max-w-sm mx-auto py-4 text-base font-medium rounded-xl border border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-3 bg-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ 
-              fontFamily: 'Inter, system-ui, sans-serif'
-            }}
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              />
-            </svg>
-            {isLoading ? 'Connecting...' : 'Continue with Google'}
-          </button>
+            <button
+              type="button"
+              disabled={isLoading}
+              className="w-full py-4 text-base font-medium rounded-xl border border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-3 bg-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ 
+                fontFamily: 'Inter, system-ui, sans-serif'
+              }}
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                />
+              </svg>
+              {isLoading ? 'Connecting...' : 'Continue with Google'}
+            </button>
+          </div>
         </div>
 
         {/* Error Display */}
