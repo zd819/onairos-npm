@@ -98,6 +98,7 @@
         const error = urlParams.get('error');
         const platform = urlParams.get('platform');
         const details = urlParams.get('details');
+        const email = urlParams.get('email'); // Extract email from URL params
 
         // Get elements
         const loadingState = document.getElementById('loading-state');
@@ -105,7 +106,7 @@
         const errorState = document.getElementById('error-state');
         const errorDetails = document.getElementById('error-details');
 
-        console.log('🔄 OAuth callback received:', { success, error, platform, details });
+        console.log('🔄 OAuth callback received:', { success, error, platform, details, email });
 
         if (success === 'true' && platform) {
             // Success flow
@@ -114,6 +115,31 @@
             // Signal success to parent window
             localStorage.setItem(`onairos_${platform}_success`, 'true');
             localStorage.setItem(`onairos_${platform}_timestamp`, Date.now().toString());
+            
+            // Store email if provided (for Gmail OAuth)
+            if (email) {
+                localStorage.setItem(`onairos_${platform}_email`, email);
+                // Also store as generic oauth_email for compatibility
+                localStorage.setItem('onairos_oauth_email', email);
+                localStorage.setItem('onairos_gmail_email', email); // Direct key for Gmail
+                console.log(`📧 Stored ${platform} email in localStorage:`, email);
+            }
+            
+            // Also try to send postMessage to parent window (if same origin)
+            try {
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage({
+                        type: 'oauth-success',
+                        platform: platform,
+                        email: email,
+                        gmailEmail: email, // Alias for Gmail
+                        success: true
+                    }, '*');
+                    console.log('📤 Sent postMessage to parent window');
+                }
+            } catch (e) {
+                console.log('⚠️ Could not send postMessage (cross-origin):', e.message);
+            }
             
             // Update UI
             loadingState.style.display = 'none';
