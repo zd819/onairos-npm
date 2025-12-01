@@ -118,23 +118,40 @@ export function OnairosButton({
       hasAccountInfo: !!authData.accountInfo
     });
 
-    // Save identity-bearing JWT immediately (email/id/userId/sub)
+    // Save JWT/token immediately for later use (ChatGPT scraping, etc.)
     try {
       const candidate = authData.jwtToken || authData.token || authData.accessToken;
       if (candidate) {
-        const base64 = candidate.split('.')[1];
-        if (base64) {
-          const payload = JSON.parse(decodeURIComponent(atob(base64).split('').map(c => '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-          if (payload && (payload.email || payload.id || payload.userId || payload.sub)) {
-            try { localStorage.setItem('onairos_user_token', candidate); } catch {}
-            console.log('✅ [OnairosButton] Identity JWT saved from email auth');
-          } else {
-            console.warn('⚠️ [OnairosButton] Email auth returned minimal token (no id/email)');
-          }
+        // Store as-is; backend will validate it. Don't gate on decoding here.
+        try {
+          localStorage.setItem('onairos_user_token', candidate);
+          console.log('✅ [OnairosButton] Token saved to onairos_user_token from email auth');
+        } catch (storageError) {
+          console.warn('⚠️ [OnairosButton] Failed to persist token to localStorage:', storageError);
         }
+
+        // Best-effort decode for debugging only
+        try {
+          const base64 = candidate.split('.')[1];
+          if (base64) {
+            const payload = JSON.parse(
+              decodeURIComponent(
+                atob(base64)
+                  .split('')
+                  .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                  .join('')
+              )
+            );
+            console.log('🧾 [OnairosButton] Decoded token payload (debug):', payload);
+          }
+        } catch {
+          // Ignore decode errors; token is still saved.
+        }
+      } else {
+        console.warn('⚠️ [OnairosButton] Email auth succeeded but no token/jwtToken/accessToken present in authData');
       }
     } catch (e) {
-      console.warn('⚠️ [OnairosButton] Failed to parse/save email auth token');
+      console.warn('⚠️ [OnairosButton] Unexpected error while handling auth token:', e);
     }
     
     // Determine flow based on API response - more explicit checking
@@ -154,15 +171,31 @@ export function OnairosButton({
       }
     });
     
+    // Extract token from authData before creating newUserData
+    const tokenFromAuth = authData.jwtToken || authData.token || authData.accessToken;
+    
     const newUserData = {
       ...authData,
       verified: true,
       onboardingComplete: !isNewUser, // New users need onboarding, returning users have completed it
-      pinCreated: !isNewUser // Assume returning users have PIN, new users need to create it
+      pinCreated: !isNewUser, // Assume returning users have PIN, new users need to create it
+      // Ensure token is included in userData (for ChatGPT scraping)
+      token: tokenFromAuth,
+      jwtToken: tokenFromAuth,
     };
     
     setUserData(newUserData);
     localStorage.setItem('onairosUser', JSON.stringify(newUserData));
+    
+    // Also ensure token is in separate key for easy access
+    if (tokenFromAuth) {
+      try {
+        localStorage.setItem('onairos_user_token', tokenFromAuth);
+        console.log('✅ [OnairosButton] Token saved to onairos_user_token for ChatGPT scraping');
+      } catch (e) {
+        console.warn('⚠️ [OnairosButton] Failed to save token to onairos_user_token:', e);
+      }
+    }
     
     // Flow decision logic - prioritize new user detection
     if (isNewUser) {
