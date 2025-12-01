@@ -1,6 +1,6 @@
 {
   "name": "onairos",
-  "version": "4.0.8",
+  "version": "4.0.12",
   "dependencies": {
     "@react-oauth/google": "^0.12.1",
     "@telegram-apps/sdk-react": "^2.0.25",
@@ -66,7 +66,7 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-typescript": "^12.1.2",
-    "@tailwindcss/postcss": "^4.1.11",
+    "@tailwindcss/postcss": ">=3.0.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/test-utils": "^2.4.4",
     "assert": "^2.1.0",
