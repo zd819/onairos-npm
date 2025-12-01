@@ -90,15 +90,12 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     }
   };
 
-  // Retrieve Gmail email from backend and continue with authentication
+  // Retrieve Gmail email via postMessage and continue with authentication
   const retrieveAndContinueWithGoogleEmail = async (tempUsername, popup) => {
     try {
       console.log('📧 Retrieving Gmail email from backend for user:', tempUsername);
       
-      const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
-      const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
-      
-      // First, try to get email from postMessage (fastest)
+      // First, try to get email from postMessage (primary, reliable path)
       let googleEmail = null;
       const messageHandler = (event) => {
         if (event.origin.includes('onairos.uk') || event.origin.includes('localhost')) {
@@ -115,66 +112,8 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       window.removeEventListener('message', messageHandler);
       
-      // If postMessage didn't work, query backend directly
       if (!googleEmail) {
-        console.log('📡 PostMessage didn\'t work, querying backend for Gmail email...');
-        
-        // Wait a bit more for backend to process OAuth callback
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Try multiple times with increasing delays (backend might need time to process)
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          try {
-            console.log(`📡 Attempt ${attempt}/3: Querying backend for Gmail email...`);
-            
-            // Try POST first
-            let emailResponse = await fetch(`${baseUrl}/gmail/get-email`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-              },
-              body: JSON.stringify({
-                username: tempUsername
-              }),
-            });
-            
-            // If POST fails with 404, try GET
-            if (emailResponse.status === 404) {
-              console.log('📡 POST failed, trying GET method...');
-              emailResponse = await fetch(`${baseUrl}/gmail/get-email?username=${encodeURIComponent(tempUsername)}`, {
-                method: 'GET',
-                headers: {
-                  'x-api-key': apiKey,
-                },
-              });
-            }
-            
-            if (emailResponse.ok) {
-              const emailData = await emailResponse.json();
-              googleEmail = emailData.email;
-              console.log('✅ Got Gmail email from backend:', googleEmail);
-              break; // Success, exit loop
-            } else {
-              const errorText = await emailResponse.text().catch(() => 'Unknown error');
-              console.warn(`⚠️ Backend email query failed (attempt ${attempt}/3), status: ${emailResponse.status}, error: ${errorText}`);
-              
-              // Wait before retry (exponential backoff)
-              if (attempt < 3) {
-                await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
-              }
-            }
-          } catch (fetchError) {
-            console.error(`❌ Error querying backend for email (attempt ${attempt}/3):`, fetchError);
-            if (attempt < 3) {
-              await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
-            }
-          }
-        }
-      }
-      
-      if (!googleEmail) {
-        console.warn('⚠️ Could not retrieve email automatically after all attempts.');
+        console.warn('⚠️ Could not retrieve email automatically via postMessage.');
         setIsLoading(false);
         setError('Google authentication completed! Please enter your Google email address below to continue.');
         
@@ -531,12 +470,39 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
       
       // Set up postMessage listener BEFORE opening popup (so we catch the message when callback loads)
       let googleEmail = null;
+      let emailReceived = false;
       const messageHandler = (event) => {
+        // Log ALL postMessages for debugging (even if they don't match)
+        console.log('📨 [POSTMESSAGE] Received:', { 
+          origin: event.origin, 
+          type: event.data?.type, 
+          platform: event.data?.platform,
+          hasEmail: !!event.data?.email,
+          fullData: event.data
+        });
+        
         // Accept messages from onairos.uk domain (where callback page is hosted)
-        if (event.origin.includes('onairos.uk') || event.origin.includes('localhost')) {
+        // Be more flexible with origin check - accept api2.onairos.uk, onairos.uk, localhost
+        const isOnairosOrigin = event.origin.includes('onairos.uk') || 
+                                 event.origin.includes('localhost') ||
+                                 event.origin.includes('127.0.0.1');
+        
+        console.log('🔍 [POSTMESSAGE] Origin check:', { 
+          origin: event.origin, 
+          isOnairosOrigin,
+          type: event.data?.type,
+          platform: event.data?.platform,
+          expectedType: 'onairos_oauth_success',
+          expectedPlatform: 'gmail'
+        });
+        
+        if (isOnairosOrigin) {
           if (event.data && event.data.type === 'onairos_oauth_success' && event.data.platform === 'gmail') {
             googleEmail = event.data.email;
-            console.log('📧 Got email from postMessage:', googleEmail);
+            emailReceived = true;
+            console.log('✅ [POSTMESSAGE] SUCCESS! Got email from postMessage:', googleEmail);
+            
+            // Clean up listener
             window.removeEventListener('message', messageHandler);
             
             // Close popup if still open
@@ -544,16 +510,29 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
               if (popup && !popup.closed) {
                 popup.close();
               }
-            } catch (e) {}
+            } catch (e) {
+              console.warn('Could not close popup:', e);
+            }
             
-            // Proceed with authentication
+            // Proceed with authentication immediately
             if (googleEmail) {
+              console.log('🚀 [POSTMESSAGE] Proceeding with Google email auth...');
               handleGoogleEmailAuth(googleEmail);
             }
+          } else {
+            console.log('⚠️ [POSTMESSAGE] Message from onairos origin but wrong type/platform:', {
+              type: event.data?.type,
+              platform: event.data?.platform,
+              expectedType: 'onairos_oauth_success',
+              expectedPlatform: 'gmail'
+            });
           }
+        } else {
+          console.log('⚠️ [POSTMESSAGE] Message from non-onairos origin, ignoring:', event.origin);
         }
       };
       window.addEventListener('message', messageHandler);
+      console.log('👂 [POSTMESSAGE] Listener registered, waiting for messages...');
       
       // Open OAuth popup and monitor for completion
       const popup = window.open(oauthUrl, 'google_auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
@@ -579,7 +558,27 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
               // Set a timeout to close popup and proceed after callback processes
               if (!crossOriginTimeout) {
               crossOriginTimeout = setTimeout(async () => {
-                console.log('✅ Closing popup and proceeding after OAuth completion...');
+                console.log('✅ OAuth popup navigated to onairos.uk - waiting for postMessage...');
+                
+                // Wait longer for callback page to load and send postMessage (5 seconds)
+                // The callback page sends postMessage immediately when it loads
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                // Check if we received the email via postMessage
+                console.log('🔍 [TIMEOUT] Checking if email was received:', { 
+                  emailReceived, 
+                  googleEmail: googleEmail ? 'present' : 'missing',
+                  emailValue: googleEmail
+                });
+                
+                if (emailReceived && googleEmail) {
+                  console.log('✅ [TIMEOUT] Email already received via postMessage, auth should be in progress...');
+                  // The messageHandler already called handleGoogleEmailAuth, so we're done
+                  clearInterval(checkInterval);
+                  return;
+                }
+                
+                console.log('⏳ [TIMEOUT] PostMessage not received after 5 seconds, closing popup and trying fallback...');
                 clearInterval(checkInterval);
                 
                 // Close popup
@@ -591,16 +590,12 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
                   console.warn('Could not close popup:', e);
                 }
                 
-                // Wait for backend to process and callback page to send postMessage
-                // The postMessage handler (set up earlier) will automatically proceed when it receives the email
-                await new Promise(resolve => setTimeout(resolve, 3000));
-                
-                // If postMessage handler didn't receive email yet, try fallback method
+                // If postMessage handler didn't receive email, try fallback method
                 if (!googleEmail) {
-                  console.log('⏳ PostMessage handler hasn\'t received email yet, trying fallback...');
+                  console.log('⏳ PostMessage handler didn\'t receive email, trying fallback...');
                   await retrieveAndContinueWithGoogleEmail(tempUsername, popup);
                 }
-              }, 3000); // Wait 3 seconds after cross-origin detected
+              }, 2000); // Wait 2 seconds after cross-origin detected, then wait 5 more seconds for postMessage
               }
             }
           }
@@ -614,7 +609,26 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
             // Set timeout to close popup and proceed
             if (!crossOriginTimeout) {
               crossOriginTimeout = setTimeout(async () => {
-                console.log('✅ Closing popup and proceeding after cross-origin detection...');
+                console.log('✅ Cross-origin detected - waiting for postMessage...');
+                
+                // Wait longer for callback page to load and send postMessage (5 seconds)
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                // Check if we received the email via postMessage
+                console.log('🔍 [TIMEOUT] Checking if email was received (cross-origin):', { 
+                  emailReceived, 
+                  googleEmail: googleEmail ? 'present' : 'missing',
+                  emailValue: googleEmail
+                });
+                
+                if (emailReceived && googleEmail) {
+                  console.log('✅ [TIMEOUT] Email already received via postMessage, auth should be in progress...');
+                  // The messageHandler already called handleGoogleEmailAuth, so we're done
+                  clearInterval(checkInterval);
+                  return;
+                }
+                
+                console.log('⏳ [TIMEOUT] PostMessage not received after 5 seconds (cross-origin), closing popup and trying fallback...');
                 clearInterval(checkInterval);
                 
                 // Close popup
@@ -626,15 +640,11 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
                   console.warn('Could not close popup (COOP may block it):', closeError);
                 }
                 
-                // Wait for backend to process and callback page to send postMessage
-                // The postMessage handler will automatically proceed when it receives the email
-                await new Promise(resolve => setTimeout(resolve, 3000));
-                
                 // If we still don't have email after waiting, try to retrieve it
                 if (!googleEmail) {
                   await retrieveAndContinueWithGoogleEmail(tempUsername, popup);
                 }
-              }, 3000); // Wait 3 seconds after cross-origin detected
+              }, 2000); // Wait 2 seconds after cross-origin detected, then wait 5 more seconds for postMessage
             }
           }
         }
@@ -651,9 +661,21 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
             clearInterval(checkInterval);
             if (crossOriginTimeout) clearTimeout(crossOriginTimeout);
             
-            // Wait for backend to process and callback page to send postMessage
-            // The postMessage handler will automatically proceed when it receives the email
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // Check if we already received the email via postMessage
+            if (emailReceived && googleEmail) {
+              console.log('✅ Email already received via postMessage');
+              return; // Already handled by messageHandler
+            }
+            
+            // Wait for callback page to send postMessage (5 seconds)
+            console.log('⏳ Popup closed, waiting for postMessage...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            
+            // Check again if we received the email
+            if (emailReceived && googleEmail) {
+              console.log('✅ Email received via postMessage after popup closed');
+              return; // Already handled by messageHandler
+            }
             
             // If we still don't have email after waiting, try to retrieve it
             if (!googleEmail) {
@@ -667,10 +689,12 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
 
       // Timeout after 5 minutes
       setTimeout(() => {
+        window.removeEventListener('message', messageHandler);
         if (!popup.closed) {
           popup.close();
         }
         clearInterval(checkInterval);
+        if (crossOriginTimeout) clearTimeout(crossOriginTimeout);
         setIsLoading(false);
         setError('Google authentication timed out. Please try again.');
       }, 300000);

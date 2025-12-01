@@ -120,21 +120,42 @@
             if (email) {
                 console.log('📧 Email found in URL:', email);
                 
-                // Send via postMessage immediately (works cross-origin)
-                if (window.opener && !window.opener.closed) {
-                    try {
-                        window.opener.postMessage({
-                            type: 'onairos_oauth_success',
-                            platform: platform,
-                            email: email
-                        }, '*');
-                        console.log('✅ Sent email via postMessage to parent window');
-                    } catch (e) {
-                        console.error('❌ Error sending postMessage:', e);
+                // Send via postMessage with retries (in case parent window isn't ready yet)
+                let retryCount = 0;
+                const maxRetries = 10;
+                const sendPostMessage = () => {
+                    if (window.opener && !window.opener.closed) {
+                        try {
+                            window.opener.postMessage({
+                                type: 'onairos_oauth_success',
+                                platform: platform,
+                                email: email
+                            }, '*');
+                            console.log(`✅ Sent email via postMessage to parent window (attempt ${retryCount + 1})`);
+                            retryCount++;
+                            
+                            // Retry a few more times to ensure message is received
+                            if (retryCount < maxRetries) {
+                                setTimeout(sendPostMessage, 500);
+                            }
+                        } catch (e) {
+                            console.error('❌ Error sending postMessage:', e);
+                            retryCount++;
+                            if (retryCount < maxRetries) {
+                                setTimeout(sendPostMessage, 500);
+                            }
+                        }
+                    } else {
+                        console.warn(`⚠️ window.opener is not available or closed (attempt ${retryCount + 1})`);
+                        retryCount++;
+                        if (retryCount < maxRetries) {
+                            setTimeout(sendPostMessage, 500);
+                        }
                     }
-                } else {
-                    console.warn('⚠️ window.opener is not available or closed');
-                }
+                };
+                
+                // Send immediately and retry
+                sendPostMessage();
                 
                 // Also try to store in localStorage (won't work cross-origin, but try anyway)
                 try {

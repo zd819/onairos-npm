@@ -15,6 +15,12 @@ const sdkConfig = {
   enableConnectionValidation: true,
 };
 
+// Bookmarklet users can drag to their bookmarks bar and click on chatgpt.com.
+// It reads ChatGPT's accessToken (using ChatGPT's own cookies) and posts it
+// back to the SDK window via window.opener.postMessage. The SDK then calls
+// /llm-data/scrape-chatgpt from a trusted origin (not blocked by CSP).
+const CHATGPT_BOOKMARKLET = `javascript:(async()=>{try{if(location.hostname!=='chatgpt.com'){alert('Open this on https://chatgpt.com first, then click the bookmark again.');return;}if(!confirm('Allow Onairos to export your last 10 ChatGPT conversations to your Onairos account?'))return;const r=await fetch('https://chatgpt.com/api/auth/session',{credentials:'include'});if(!r.ok){alert('Could not get ChatGPT session. Please make sure you are logged in.');return;}const s=await r.json().catch(()=>null);if(!s||!s.accessToken){alert('No accessToken found in ChatGPT session. Try refreshing the page and logging in again.');console.log('Onairos ChatGPT: session payload:',s);return;}if(!window.opener){alert('Could not find Onairos window. Please open ChatGPT from the Onairos popup and try again.');return;}window.opener.postMessage({type:'onairos_chatgpt_access_token',accessToken:s.accessToken},'*');alert('Sent ChatGPT access token to Onairos. You can close this tab now.');}catch(e){console.error('Onairos ChatGPT bookmarklet error:',e);alert('Onairos ChatGPT error: '+(e.message||e));}})();`;
+
 const fadeSlideInKeyframes = `
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateX(var(--slide-x)); }
@@ -30,81 +36,222 @@ const fadeSlideInKeyframes = `
     transform: scale(1.05);
   }
 }
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(248,113,113,0.7), 0 0 16px rgba(248,113,113,0.6), 0 0 32px rgba(59,130,246,0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(248,113,113,0), 0 0 22px rgba(248,113,113,0.9), 0 0 44px rgba(59,130,246,0.7);
+    transform: scale(1.04);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(248,113,113,0.7), 0 0 16px rgba(248,113,113,0.6), 0 0 32px rgba(59,130,246,0.5);
+    transform: scale(1);
+  }
+}
+@keyframes modalFade {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 `;
 
-// Scrape ChatGPT chats (called after popup login) - following Flutter methodology exactly
-async function scrapeChatGPTChats() {
+// Extract ChatGPT chats via backend proxy. Optionally accepts a ChatGPT accessToken
+// (provided by the bookmarklet running on chatgpt.com).
+async function scrapeChatGPTChats(accessToken) {
   try {
-    console.log('🧲 Starting ChatGPT chat scraping (Flutter methodology)...');
+    console.log('🧲 Starting ChatGPT chat extraction (Flutter methodology)...');
 
     const baseUrl = sdkConfig.baseUrl;
     
     // Try multiple possible token storage locations
-    const jwtToken = 
-      localStorage.getItem('onairos_user_token') || 
-      localStorage.getItem('onairos_jwt_token') ||
-      localStorage.getItem('jwtToken') ||
-      (typeof window !== 'undefined' && window.onairosToken) ||
-      null;
+    // Check all localStorage keys that might contain a token
+    const possibleKeys = [
+      'onairos_user_token',
+      'onairos_jwt_token', 
+      'jwtToken',
+      'token',
+      'authToken',
+      'accessToken'
+    ];
+    
+    let jwtToken = null;
+    
+    // FIRST: Check the primary storage location (where it's saved after email auth)
+    // This is set in onairosButton.jsx line 129: localStorage.setItem('onairos_user_token', candidate)
+    const primaryToken = localStorage.getItem('onairos_user_token');
+    if (primaryToken && primaryToken.length > 20) {
+      // Validate it's a JWT (has 3 parts separated by dots)
+      const parts = primaryToken.split('.');
+      if (parts.length === 3) {
+        jwtToken = primaryToken;
+        console.log(`✅ Found JWT token in: onairos_user_token (primary location)`);
+      } else {
+        console.log(`⚠️ onairos_user_token exists but doesn't look like a JWT (${parts.length} parts)`);
+      }
+    }
+    
+    // SECOND: Check onairosUser object (authData is spread into it, so token should be there)
+    if (!jwtToken) {
+      try {
+        const userDataStr = localStorage.getItem('onairosUser');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          // authData from EmailAuth has: token, jwtToken, accessToken
+          if (userData.token || userData.jwtToken || userData.accessToken) {
+            const candidate = userData.token || userData.jwtToken || userData.accessToken;
+            const parts = candidate.split('.');
+            if (parts.length === 3 && candidate.length > 20) {
+              jwtToken = candidate;
+              console.log(`✅ Found JWT token in: onairosUser.${userData.token ? 'token' : userData.jwtToken ? 'jwtToken' : 'accessToken'}`);
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Could not check onairosUser for token:', e);
+      }
+    }
+    
+    // THIRD: Check other possible keys
+    if (!jwtToken) {
+      for (const key of possibleKeys) {
+        if (key === 'onairos_user_token') continue; // Already checked
+        const value = localStorage.getItem(key);
+        if (value && value.length > 20) {
+          const parts = value.split('.');
+          if (parts.length === 3) {
+            jwtToken = value;
+            console.log(`✅ Found JWT token in: ${key}`);
+            break;
+          }
+        }
+      }
+    }
+    
+    // FOURTH: Check window object
+    if (!jwtToken && typeof window !== 'undefined') {
+      jwtToken = window.onairosToken || window.onairosJWT || null;
+      if (jwtToken) console.log('✅ Found JWT token in window object');
+    }
 
     console.log('🔑 JWT token check:', {
       hasToken: !!jwtToken,
       tokenLength: jwtToken ? jwtToken.length : 0,
-      storageKeys: ['onairos_user_token', 'onairos_jwt_token', 'jwtToken'].map(k => ({
+      storageKeys: possibleKeys.map(k => ({
         key: k,
-        exists: !!localStorage.getItem(k)
+        exists: !!localStorage.getItem(k),
+        value: localStorage.getItem(k) ? localStorage.getItem(k).substring(0, 20) + '...' : null
       }))
     });
-
+    
+    // Debug: log all localStorage keys to see what's available
     if (!jwtToken) {
-      console.warn('⚠️ No JWT token found. ChatGPT scraping requires authentication.');
-      console.warn('💡 User needs to complete email authentication first to scrape chats.');
-      console.warn('💡 ChatGPT will be marked as connected, but chats cannot be scraped without auth.');
-      // Return empty array - user can still connect ChatGPT, scraping will happen later
-      // Or we could prompt user to authenticate first
-      return [];
+      console.log('🔍 All localStorage keys:', Object.keys(localStorage));
+      console.log('🔍 Checking for token in user data...');
+      
+      // Try to get token from user data object
+      try {
+        const userDataStr = localStorage.getItem('onairosUser');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          console.log('🔍 onairosUser data keys:', Object.keys(userData));
+          console.log('🔍 onairosUser full data (for debugging):', JSON.stringify(userData, null, 2));
+          
+          // Check multiple possible token fields (Flutter uses jwtToken, web might use token)
+          if (userData.token || userData.jwtToken || userData.jwt || userData.accessToken) {
+            jwtToken = userData.token || userData.jwtToken || userData.jwt || userData.accessToken;
+            console.log('✅ Found token in onairosUser data');
+          }
+          
+          // Also check nested auth objects
+          if (!jwtToken && userData.auth) {
+            jwtToken = userData.auth.token || userData.auth.jwtToken || null;
+            if (jwtToken) console.log('✅ Found token in onairosUser.auth');
+          }
+        }
+      } catch (e) {
+        console.log('Could not parse onairosUser:', e);
+      }
+      
+      // Check if token was stored in a different format - scan all localStorage
+      const allKeys = Object.keys(localStorage);
+      for (const key of allKeys) {
+        if (key.toLowerCase().includes('token') || key.toLowerCase().includes('jwt')) {
+          const value = localStorage.getItem(key);
+          if (value && value.length > 20 && !jwtToken) {
+            // Try to validate it's a JWT (has 3 parts separated by dots)
+            const parts = value.split('.');
+            if (parts.length === 3) {
+              jwtToken = value;
+              console.log(`✅ Found valid JWT token in key: ${key}`);
+              break;
+            } else {
+              console.log(`🔍 Found potential token in key: ${key} (but doesn't look like JWT)`);
+            }
+          }
+        }
+      }
     }
 
-    // Flutter methodology (from Swift code):
-    // 1. Get access token from /api/auth/session (with cookies) 
-    // 2. Get conversation list from /backend-api/conversations?limit=10
-    // 3. Fetch each conversation detail from /backend-api/conversation/{id}
-    // 4. Send each to /llm-data/store
     
-    // For web, browser CORS blocks direct ChatGPT API calls
-    // Backend needs to proxy the requests (same methodology, server-side)
-    console.log('📡 Requesting ChatGPT conversations from backend...');
-    
-    // Backend endpoint should handle scraping (same as Flutter but server-side)
+    if (!jwtToken) {
+      console.warn('⚠️ No Onairos JWT token found in localStorage.');
+      console.warn('💡 Extraction will still be attempted using ChatGPT cookies (like Flutter).');
+      console.warn('💡 However, sending conversations to /llm-data/store may fail without JWT.');
+    }
+
+    // At this point, we are in a browser and CORS blocks direct access to:
+    // - https://chatgpt.com/api/auth/session
+    // - https://chatgpt.com/backend-api/...
+    //
+    // So instead of calling ChatGPT directly (which fails with CORS),
+    // we delegate to a backend proxy endpoint:
+    //   POST /llm-data/scrape-chatgpt
+    //
+    // That endpoint is responsible for implementing server-side scraping
+    // (if/when cookies or headless browser are available). For now it
+    // returns an empty conversations array with a clear message.
+
+    console.log('📡 Requesting ChatGPT conversations from backend /llm-data/scrape-chatgpt...');
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-api-key': sdkConfig.apiKey,
+    };
+    if (jwtToken) {
+      headers['Authorization'] = `Bearer ${jwtToken}`;
+    }
+
     const scrapeResponse = await fetch(`${baseUrl}/llm-data/scrape-chatgpt`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${jwtToken}`,
-      },
+      headers,
       body: JSON.stringify({
         limit: 10,
+        ...(accessToken ? { accessToken } : {}),
       }),
     });
 
     if (!scrapeResponse.ok) {
-      const errorText = await scrapeResponse.text();
-      console.error('❌ Backend scraping failed:', scrapeResponse.status, errorText);
-      throw new Error(`Backend scraping failed: ${scrapeResponse.status}`);
+      const errorText = await scrapeResponse.text().catch(() => '');
+      console.error('❌ Backend ChatGPT scrape failed:', scrapeResponse.status, errorText);
+      throw new Error(`Backend ChatGPT scrape failed: ${scrapeResponse.status}`);
     }
 
-    const scrapeData = await scrapeResponse.json();
-    const conversations = scrapeData.conversations || [];
+    const scrapeData = await scrapeResponse.json().catch(() => ({}));
+    const conversations = scrapeData.conversations || scrapeData.data?.conversations || [];
 
-    console.log('🎉 Scraping complete! Conversations:', conversations);
-    console.log('📋 Total conversations scraped:', conversations.length);
+    if (scrapeData.message) {
+      console.log('ℹ️ Backend scrape message:', scrapeData.message);
+    }
 
-    // Print chats to console (Flutter prints them too)
+    console.log('🎉 Backend scraping complete! Conversations:', conversations);
+    console.log('📋 Total conversations scraped from backend:', conversations.length);
+
+    // Print chats to console (same style as Flutter)
     conversations.forEach((conv, index) => {
       const title = conv.title || 'Untitled';
       const messages = [];
       
-      // Extract messages from mapping (Flutter structure)
       if (conv.mapping) {
         Object.values(conv.mapping).forEach(node => {
           if (node.message) {
@@ -116,6 +263,12 @@ async function scrapeChatGPTChats() {
             }
           }
         });
+      } else if (Array.isArray(conv.messages)) {
+        conv.messages.forEach(msg => {
+          if (msg.content) {
+            messages.push({ role: msg.role || 'unknown', content: msg.content });
+          }
+        });
       }
       
       console.log(`\n📝 Conversation ${index + 1}: ${title}`);
@@ -125,7 +278,7 @@ async function scrapeChatGPTChats() {
         console.log(`   [${msg.role}]: ${msg.content.substring(0, 100)}${msg.content.length > 100 ? '...' : ''}`);
       });
     });
-
+    
     // Send each conversation to /llm-data/store (exactly like Flutter)
     console.log('📤 Sending conversations to /llm-data/store (Flutter methodology)...');
     
@@ -143,10 +296,20 @@ async function scrapeChatGPTChats() {
 async function sendChatGPTChatsToBackend(conversations) {
   try {
     const baseUrl = sdkConfig.baseUrl;
-    const jwtToken = localStorage.getItem('onairos_user_token') || localStorage.getItem('onairos_jwt_token');
+    const apiKey = sdkConfig.apiKey;
+    
+    // Try multiple token locations
+    const jwtToken = 
+      localStorage.getItem('onairos_user_token') || 
+      localStorage.getItem('onairos_jwt_token') ||
+      localStorage.getItem('onairosToken') ||
+      localStorage.getItem('jwtToken') ||
+      (typeof window !== 'undefined' && window.onairosToken) ||
+      null;
 
     if (!jwtToken) {
-      throw new Error('No JWT token found');
+      console.warn('⚠️ No JWT token found, but attempting to send with API key');
+      // Some endpoints might work with just API key
     }
 
     console.log('📤 Sending chats to /llm-data/store (exact Flutter methodology)...');
@@ -215,12 +378,22 @@ async function sendChatGPTChatsToBackend(conversations) {
       };
 
       // Send to /llm-data/store (same endpoint as Flutter)
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add Authorization header if token exists
+      if (jwtToken) {
+        headers['Authorization'] = `Bearer ${jwtToken}`;
+      } else {
+        // Try with API key as fallback (backend might accept it)
+        headers['x-api-key'] = apiKey;
+        console.warn('⚠️ Sending without JWT token, using API key');
+      }
+
       const response = await fetch(`${baseUrl}/llm-data/store`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwtToken}`, // Required by backend authenticateToken
-        },
+        headers: headers,
         body: JSON.stringify({
           platform: 'web-chatgpt', // Backend normalizes this
           conversationData: conversationData,
@@ -256,6 +429,7 @@ export default function UniversalOnboarding({ onComplete }) {
   const [selected, setSelected] = useState('Instagram');
   const [currentPage, setCurrentPage] = useState(1);
   const [isExtractingChats, setIsExtractingChats] = useState(false);
+  const [showChatGPTHelp, setShowChatGPTHelp] = useState(false);
 
   // swipe state
   const touchStartX = useRef(0);
@@ -376,6 +550,37 @@ export default function UniversalOnboarding({ onComplete }) {
 
   const platforms = getPlatformsForPage(currentPage);
 
+  // Listen for ChatGPT bookmarklet messages (accessToken → backend extraction)
+  useEffect(() => {
+    function handleMessage(event) {
+      const data = event.data;
+      if (!data || data.type !== 'onairos_chatgpt_access_token' || !data.accessToken) {
+        return;
+      }
+
+      console.log('📥 Received ChatGPT accessToken from bookmarklet');
+      setIsExtractingChats(true);
+
+      (async () => {
+        try {
+          const conversations = await scrapeChatGPTChats(data.accessToken);
+          if (conversations.length > 0) {
+            console.log('✅ ChatGPT connected and chats extracted successfully via backend');
+          } else {
+            console.log('ℹ️ ChatGPT extraction completed via backend, but no conversations were returned');
+          }
+        } catch (err) {
+          console.error('❌ Failed to extract ChatGPT chats via backend:', err);
+        } finally {
+          setIsExtractingChats(false);
+        }
+      })();
+    }
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   useEffect(() => {
     // Load OAuth platform returns
     const p = localStorage.getItem('onairos_oauth_platform');
@@ -405,88 +610,13 @@ export default function UniversalOnboarding({ onComplete }) {
     const plat = allPlatforms.find((p) => p.name === name);
     if (!plat) return false;
     try {
-      // ChatGPT: Use popup window (like YouTube/Pinterest) for login, then scrape
+      // ChatGPT: show helper modal and let user explicitly open ChatGPT from there
       if (name === 'ChatGPT') {
-        console.log('🤖 ChatGPT: Opening popup for login and chat extraction');
+        console.log('🤖 ChatGPT: Opening ChatGPT so user can run the Onairos bookmarklet');
         setConnectedAccounts((s) => ({ ...s, [name]: true }));
-        setIsConnecting(true);
-        setConnectingPlatform('ChatGPT');
-        
-        // Open ChatGPT in popup window
-        const popup = window.open('https://chatgpt.com/auth/login', 'chatgpt_login', 'width=600,height=700,scrollbars=yes,resizable=yes');
-        if (!popup) {
-          throw new Error('Popup blocked. Please allow popups for this site.');
-        }
-
-        // Monitor popup for login completion and then scrape
-        let loginDetected = false;
-        let popupClosed = false;
-        
-        const checkInterval = setInterval(async () => {
-          try {
-            // Check if popup is closed
-            if (popup.closed && !popupClosed) {
-              popupClosed = true;
-              clearInterval(checkInterval);
-              setIsConnecting(false);
-              setConnectingPlatform(null);
-              
-              // Always try to scrape when popup closes (user likely logged in)
-              console.log('✅ ChatGPT popup closed, starting chat extraction...');
-              setIsExtractingChats(true);
-              
-              // Use setTimeout to ensure state update happens
-              setTimeout(async () => {
-                try {
-                  // Wait a moment for session cookies to be set
-                  await new Promise(resolve => setTimeout(resolve, 2000));
-                  
-                  const conversations = await scrapeChatGPTChats();
-                  
-                  if (conversations.length > 0) {
-                    console.log('✅ ChatGPT connected and chats scraped successfully');
-                  } else {
-                    console.log('✅ ChatGPT connected (no chats scraped - may need authentication)');
-                    // Still mark as connected even if scraping didn't happen
-                  }
-                } catch (error) {
-                  console.error('❌ Failed to scrape ChatGPT chats:', error);
-                  // Don't unmark as connected - user did connect ChatGPT, just scraping failed
-                  // This could be due to no auth token, backend endpoint missing, etc.
-                } finally {
-                  setIsExtractingChats(false);
-                }
-              }, 100);
-              return;
-            }
-
-            // Try to detect login by checking if popup navigated away from login page
-            if (!loginDetected && !popup.closed) {
-              try {
-                if (popup.location && popup.location.href && !popup.location.href.includes('/auth/login')) {
-                  loginDetected = true;
-                  console.log('✅ ChatGPT login detected in popup - will extract when popup closes');
-                  // Don't close popup automatically - let user close it
-                }
-              } catch (e) {
-                // Cross-origin - can't access popup location, that's expected
-                // We'll try to scrape when popup closes
-              }
-            }
-          } catch (error) {
-            console.error('Error monitoring ChatGPT popup:', error);
-          }
-        }, 1000);
-
-        // Timeout after 5 minutes
-        setTimeout(() => {
-          if (!popup.closed) {
-            popup.close();
-          }
-          clearInterval(checkInterval);
-          setIsConnecting(false);
-          setConnectingPlatform(null);
-        }, 300000);
+        setIsConnecting(false);
+        setConnectingPlatform(null);
+        setShowChatGPTHelp(true);
 
         return true;
       }
@@ -793,6 +923,118 @@ export default function UniversalOnboarding({ onComplete }) {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Extracting chats...</h3>
               <p className="text-gray-600">Please wait while we retrieve your ChatGPT conversations.</p>
+            </div>
+          </div>
+        )}
+
+        {/* ChatGPT helper popup inside the onboarding popup */}
+        {showChatGPTHelp && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div
+              className="relative max-w-md w-full mx-4 p-6 rounded-3xl shadow-2xl"
+              style={{
+                background: 'linear-gradient(135deg, #ffffff, #ffe4f1 40%, #e0f0ff 100%)',
+                border: '1px solid rgba(248, 113, 113, 0.4)',
+                animation: 'modalFade 180ms ease-out',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowChatGPTHelp(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"
+                aria-label="Close ChatGPT instructions"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M10 8.586l4.95-4.95a1 1 0 111.414 1.414L11.414 10l4.95 4.95a1 1 0 01-1.414 1.414L10 11.414l-4.95 4.95a1 1 0 01-1.414-1.414L8.586 10l-4.95-4.95A1 1 0 115.05 3.636L10 8.586z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+              <h3 className="text-lg font-semibold text-indigo-900 mb-1.5">Bring in your ChatGPT memories</h3>
+              <p className="text-sm text-indigo-900 mb-3">
+                Follow these quick steps to let Onairos extract your recent conversations:
+              </p>
+
+              <div className="mb-3">
+                <div className="text-sm font-semibold text-indigo-900 mb-1.5">1 · Add the magic button</div>
+                <p className="text-xs text-indigo-900 mb-2">
+                  <span className="font-semibold underline">Drag this glowing button to your bookmarks bar</span>. It only runs when you
+                  click it on ChatGPT.
+                </p>
+                <div className="flex justify-center">
+                  <a
+                    href={CHATGPT_BOOKMARKLET}
+                    className="relative inline-flex items-center px-4 py-1.5 rounded-full text-xs font-semibold text-white shadow-lg"
+                    style={{
+                      background: 'linear-gradient(135deg, #fb7185, #3b82f6)',
+                      boxShadow:
+                        '0 0 0 0 rgba(248,113,113,0.6), 0 0 20px rgba(248,113,113,0.6), 0 0 40px rgba(59,130,246,0.5)',
+                      animation: 'pulseGlow 2s ease-in-out infinite',
+                    }}
+                  >
+                    <span className="mr-1.5 text-[10px]">✨</span>
+                    Onairos ChatGPT Link
+                  </a>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <div className="text-sm font-semibold text-indigo-900 mb-1.5">2 · Open ChatGPT</div>
+                <p className="text-xs text-indigo-900 mb-2">
+                  Click the button below to open ChatGPT in a new tab. We&apos;ll stay on this window so you can follow along.
+                </p>
+                <div className="flex justify-center mb-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        const popup = window.open('https://chatgpt.com/auth/login', '_blank');
+                        if (!popup) {
+                          alert('Popup blocked. Please allow popups for this site.');
+                          return;
+                        }
+                        try { popup.blur(); } catch {}
+                        try { window.focus(); } catch {}
+                      } catch (e) {
+                        console.error('Failed to open ChatGPT:', e);
+                      }
+                    }}
+                    className="px-4 py-1.5 rounded-full text-xs font-semibold text-white shadow-lg"
+                    style={{
+                      background: 'linear-gradient(135deg, #3b82f6, #fb7185)',
+                      boxShadow: '0 6px 12px rgba(59,130,246,0.35)',
+                    }}
+                  >
+                    Open ChatGPT
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <div className="text-sm font-semibold text-indigo-900 mb-1.5">3 · Tap it once on ChatGPT</div>
+                <p className="text-xs text-indigo-900">
+                  In the ChatGPT tab, make sure you&apos;re logged in, then click the{' '}
+                  <span className="font-semibold">“Onairos ChatGPT Link”</span> bookmark once. We&apos;ll receive a secure token and
+                  begin extracting your chats, bringing your last <span className="font-semibold">10 conversations</span> into your
+                  Onairos account.
+                </p>
+              </div>
+
+              <div className="flex justify-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowChatGPTHelp(false)}
+                  className="px-4 py-2 rounded-full text-sm font-semibold text-white"
+                  style={{
+                    background: 'linear-gradient(135deg, #fb7185, #3b82f6)',
+                    boxShadow: '0 8px 16px rgba(248,113,113,0.35)',
+                  }}
+                >
+                  Got it, let&apos;s go
+                </button>
+              </div>
             </div>
           </div>
         )}
