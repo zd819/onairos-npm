@@ -497,8 +497,16 @@ export function OnairosButton({
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
-                    onClick={handleCloseOverlay}
+                    onClick={() => setCurrentFlow('welcome')}
                     className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleCloseOverlay}
+                    className="absolute right-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
                   >
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -552,11 +560,27 @@ export function OnairosButton({
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
-                    onClick={() => setCurrentFlow('onboarding')}
+                    onClick={() => {
+                      // Go back to pin if user has created PIN, otherwise go to onboarding
+                      const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+                      if (userData.pinCreated) {
+                        setCurrentFlow('pin');
+                      } else {
+                        setCurrentFlow('onboarding');
+                      }
+                    }}
                     className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
                   >
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleCloseOverlay}
+                    className="absolute right-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
@@ -588,6 +612,14 @@ export function OnairosButton({
                   >
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleCloseOverlay}
+                    className="absolute right-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
