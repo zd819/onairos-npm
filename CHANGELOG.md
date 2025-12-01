@@ -2,6 +2,38 @@
 
 All notable changes to the Onairos SDK will be documented in this file.
 
+## [4.0.16] - 2025-12-01
+
+### 🎉 Major Fix: Full Tailwind CSS v3 & v4 Compatibility
+
+#### Fixed
+- ✅ **RESOLVED**: Peer dependency conflict error with Tailwind CSS v3
+- ✅ Package now works with **Tailwind v3.0+ and v4.0+** without any workarounds
+- ✅ Brandon's issue with `tailwindcss@3.4.18` now resolved
+- ✅ No need for `--force` or `--legacy-peer-deps` flags
+
+#### Added
+- `INSTALLATION_GUIDE.md` - Comprehensive installation guide for both Tailwind versions
+- Automatic version compatibility detection
+- Clear upgrade path documentation for developers who want to move to v4
+
+#### Changed
+- Peer dependency: `"tailwindcss": ">=3.0.0"` (supports all v3 and v4 versions)
+- Version bumped to 4.0.16
+
+#### Developer Instructions
+**No configuration changes needed!** Just run:
+```bash
+npm install onairos@latest
+```
+
+Works automatically with:
+- Tailwind CSS v3.4.x (Brandon's version with the error)
+- Tailwind CSS v4.1.x
+- All versions >=3.0.0
+
+---
+
 ## [4.0.1] - 2025-11-14
 
 ### 🎯 TypeScript Enhancement: onComplete Callback
