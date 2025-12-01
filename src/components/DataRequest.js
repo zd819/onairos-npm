@@ -214,7 +214,7 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [] }
             </span>
           </div>
 
-          {/* SLIDER: subtle rail, blended gradient progress, click-to-set */}
+          {/* SLIDER: subtle rail, monochrome progress, click-to-set */}
           <div
             className="relative h-2.5 rounded-full bg-gray-200/90 overflow-hidden mb-4 border border-black/5 shadow-inner cursor-pointer"
             onClick={handleRailClick}
@@ -223,8 +223,7 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [] }
               className="absolute h-full transition-all rounded-full"
               style={{
                 width: `${freqToPercent(freq)}%`,
-                background:
-                  "linear-gradient(90deg, rgba(255,59,48,0.9) 0%, rgba(255,214,10,0.9) 33%, rgba(10,132,255,0.9) 66%, rgba(191,90,242,0.9) 100%)",
+                background: "linear-gradient(90deg, rgba(31,41,55,0.95) 0%, rgba(107,114,128,0.9) 60%, rgba(209,213,219,0.85) 100%)",
               }}
             />
             {/* Tick marks for 3 stops */}
@@ -294,6 +293,13 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [] }
         <button
           className="w-full rounded-full py-3 bg-gray-900 text-white text-sm font-medium shadow-sm flex items-center justify-center gap-2 mb-3"
           disabled={selectedCount === 0}
+          onClick={() => {
+            if (selectedCount === 0) return;
+            onComplete?.({
+              approved: Array.from(selected).filter(id => selected[id]),
+              freq,
+            });
+          }}
         >
           Accept & Continue
           <svg className="w-4 h-4" fill="none" stroke="currentColor">
@@ -301,7 +307,16 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [] }
           </svg>
         </button>
 
-        <button className="w-full rounded-full py-3 bg-gray-100 text-gray-700 text-sm font-medium shadow-sm">
+        <button
+          className="w-full rounded-full py-3 bg-gray-100 text-gray-700 text-sm font-medium shadow-sm"
+          onClick={() => {
+            onComplete?.({
+              approved: [],
+              freq,
+              declined: true,
+            });
+          }}
+        >
           Decline
         </button>
       </div>

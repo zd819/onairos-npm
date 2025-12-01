@@ -9,6 +9,8 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
   const [step, setStep] = useState('email'); // 'email' | 'code' | 'success'
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailSent, setEmailSent] = useState(true); // Track if email was actually sent
+  const [emailServiceMessage, setEmailServiceMessage] = useState(''); // Store service message
 
   // Auto-focus first PIN input when code step loads
   useEffect(() => {
@@ -31,6 +33,8 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setEmailSent(true); // Reset email status
+    setEmailServiceMessage(''); // Reset service message
 
     if (!validateEmail(email)) {
       setError('Please enter a valid email address');
@@ -76,6 +80,10 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
 
         console.log('📧 Email request response:', data);
 
+        // Store email service status
+        setEmailSent(data.emailSent !== false); // Default to true if not specified
+        setEmailServiceMessage(data.message || '');
+
         setStep('code');
         setIsLoading(false);
       }
@@ -88,56 +96,261 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
 
   const handleGoogleAuth = async () => {
     try {
-      // Use the same Google OAuth logic as UniversalOnboarding
+      setIsLoading(true);
+      setError('');
+
+      // Create temporary account identifier for OAuth flow
+      const tempId = `google_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('onairos_temp_google_id', tempId);
+      console.log('✅ Temporary account created for Google OAuth');
+
       const sdkConfig = {
         baseUrl: 'https://api2.onairos.uk',
         apiKey: window.onairosApiKey || 'test-key',
-        enableHealthMonitoring: true,
-        enableAutoRefresh: true,
-        enableConnectionValidation: true
       };
 
-      const username = localStorage.getItem('username') || localStorage.getItem('onairosUser')?.email || 'user@example.com';
+      const username = localStorage.getItem('username') || 
+                      (JSON.parse(localStorage.getItem('onairosUser') || '{}')?.email) || 
+                      tempId;
       
-      const authorizeUrl = `${sdkConfig.baseUrl}/gmail/authorize`;
-      const params = new URLSearchParams({
-        username: username,
-        sdk_type: 'web',
-        return_url: window.location.origin + '/oauth-callback.html'
+      console.log('🔗 Requesting Gmail OAuth URL for Google authentication...');
+      
+      // Request OAuth URL from backend
+      const res = await fetch(`${sdkConfig.baseUrl}/gmail/authorize`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': sdkConfig.apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          session: { username }
+        })
       });
 
-      const fullUrl = `${authorizeUrl}?${params.toString()}`;
-      console.log('🔗 Starting Google OAuth from email flow...');
-      console.log('📋 Google OAuth URL:', fullUrl);
+      if (!res.ok) {
+        throw new Error('Failed to get OAuth URL');
+      }
+
+      const data = await res.json();
+      const oauthUrl = data.gmailURL || data.gmailUrl || data.gmail_url || data.url;
+      
+      if (!oauthUrl) {
+        throw new Error('No OAuth URL received from backend');
+      }
+
+      console.log('🚀 Opening Google OAuth popup...');
 
       // Open popup for OAuth
       const popup = window.open(
-        fullUrl,
+        oauthUrl,
         'google_oauth',
-        'width=500,height=600,scrollbars=yes,resizable=yes'
+        'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
       );
 
       if (!popup) {
         throw new Error('Popup blocked. Please allow popups for this site.');
       }
 
-      // Monitor popup for completion
-      const checkInterval = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkInterval);
-          console.log('✅ Google OAuth popup closed');
-          // Simulate successful OAuth for now
-          onSuccess({ 
-            email: 'user@gmail.com', 
-            method: 'google',
-            connectedAccounts: { Google: true }
-          });
+      // Set up postMessage listener for cross-origin communication
+      const messageHandler = (event) => {
+        // Only accept messages from onairos.uk origin
+        if (event.origin !== 'https://api2.onairos.uk' && 
+            event.origin !== 'https://onairos.uk' &&
+            !event.origin.includes('onairos.uk')) {
+          return;
+        }
+
+        if (event.data && event.data.type === 'oauth-success' && event.data.platform === 'gmail') {
+          console.log('✅ OAuth success received via postMessage:', event.data);
+          window.removeEventListener('message', messageHandler);
+          handleOAuthSuccess(event.data.email || event.data.gmailEmail);
+        }
+      };
+
+      window.addEventListener('message', messageHandler);
+      console.log('👂 [POSTMESSAGE] Listener registered, waiting for messages...');
+
+      // Poll localStorage for OAuth completion (oauth-callback.html sets this)
+      let pollCount = 0;
+      const maxPolls = 300; // 5 minutes max (300 * 1 second)
+      const localStorageKey = 'onairos_gmail_success';
+      const timestampKey = 'onairos_gmail_timestamp';
+
+      const pollInterval = setInterval(() => {
+        pollCount++;
+        
+        try {
+          // Check if popup is closed (user might have closed it manually)
+          // If closed after OAuth redirect (pollCount > 10 = ~10 seconds), try fallback
+          if (popup.closed && pollCount > 10) {
+            clearInterval(pollInterval);
+            window.removeEventListener('message', messageHandler);
+            console.log('⚠️ OAuth popup was closed, trying fallback to get email from backend...');
+            retrieveAndContinueWithGoogleEmail(username, tempId);
+            return;
+          }
+
+          // Check localStorage for success signal
+          const success = localStorage.getItem(localStorageKey);
+          const timestamp = localStorage.getItem(timestampKey);
+          
+          if (success === 'true' && timestamp) {
+            const timestampNum = parseInt(timestamp, 10);
+            const now = Date.now();
+            
+            // Only process if timestamp is recent (within last 30 seconds)
+            if (now - timestampNum < 30000) {
+              console.log('✅ Cross-origin detected - OAuth popup navigated to onairos.uk');
+              clearInterval(pollInterval);
+              window.removeEventListener('message', messageHandler);
+              
+              // Try to get email from URL params (stored by oauth-callback.html)
+              // The callback URL includes: ?success=true&platform=gmail&email=...
+              // We need to retrieve email from backend since we can't access popup.location
+              retrieveAndContinueWithGoogleEmail(username, tempId);
+            }
+          }
+
+          // Check for cross-origin navigation (don't access popup.location - causes COOP error)
+          // Instead, rely on localStorage and postMessage signals
+          if (pollCount === 1) {
+            console.log('✅ Cross-origin detected - waiting for postMessage/localStorage...');
+          }
+
+          // Timeout after max polls
+          if (pollCount >= maxPolls) {
+            clearInterval(pollInterval);
+            window.removeEventListener('message', messageHandler);
+            setIsLoading(false);
+            console.log('⏳ [TIMEOUT] PostMessage not received after 5 minutes, closing popup and trying fallback...');
+            
+            // Try fallback: retrieve email from backend
+            if (popup.closed) {
+              retrieveAndContinueWithGoogleEmail(username, tempId);
+            } else {
+              try {
+                popup.close();
+              } catch (e) {}
+              setError('OAuth timeout. Please try again.');
+            }
+          }
+        } catch (error) {
+          console.error('Error in OAuth polling:', error);
         }
       }, 1000);
+
+      // Cleanup function
+      const cleanup = () => {
+        clearInterval(pollInterval);
+        window.removeEventListener('message', messageHandler);
+        try {
+          localStorage.removeItem(localStorageKey);
+          localStorage.removeItem(timestampKey);
+        } catch (e) {}
+      };
+
+      // Store cleanup function for component unmount
+      if (typeof window !== 'undefined') {
+        window._onairosOAuthCleanup = cleanup;
+      }
 
     } catch (error) {
       console.error('❌ Google OAuth failed:', error);
       setError('Google authentication failed. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  // Helper function to retrieve Gmail email from backend and continue flow
+  const retrieveAndContinueWithGoogleEmail = async (username, tempId) => {
+    try {
+      console.log('📧 Retrieving Gmail email from backend for user:', username || tempId);
+      
+      // First, try to get email from localStorage (set by oauth-callback.html)
+      let gmailEmail = localStorage.getItem('onairos_gmail_email');
+      if (gmailEmail) {
+        console.log('✅ Gmail email retrieved from localStorage:', gmailEmail);
+        handleOAuthSuccess(gmailEmail);
+        return;
+      }
+
+      const sdkConfig = {
+        baseUrl: 'https://api2.onairos.uk',
+        apiKey: window.onairosApiKey || 'test-key',
+      };
+
+      // Try to get email from backend
+      const emailRes = await fetch(`${sdkConfig.baseUrl}/gmail/get-email`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': sdkConfig.apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: username || tempId
+        })
+      });
+
+      if (emailRes.ok) {
+        const emailData = await emailRes.json();
+        gmailEmail = emailData.email;
+        console.log('✅ Gmail email retrieved from backend:', gmailEmail);
+      } else {
+        console.warn('⚠️ Could not retrieve Gmail email from backend');
+        // Last resort: use temp username or prompt user
+        gmailEmail = username && username.includes('@') ? username : `${tempId}@gmail.com`;
+        console.log('⚠️ Using fallback email:', gmailEmail);
+      }
+
+      // Continue with email verification flow using Gmail email
+      handleOAuthSuccess(gmailEmail);
+
+    } catch (error) {
+      console.error('❌ Error retrieving Gmail email:', error);
+      // Continue anyway with fallback
+      handleOAuthSuccess(`${tempId}@gmail.com`);
+    }
+  };
+
+  // Helper function to handle OAuth success (Gmail)
+  const handleOAuthSuccess = async (gmailEmail) => {
+    try {
+      setIsLoading(true);
+      console.log('✅ Google OAuth completed successfully, email:', gmailEmail);
+
+      // For Gmail SSO we trust Google's email verification and skip the 6‑digit code.
+      // We still record the email locally and immediately continue into onboarding.
+      const normalizedEmail = (gmailEmail || '').trim().toLowerCase();
+      setEmail(normalizedEmail);
+
+      // Simulate a successful verification response and jump straight to success → UniversalOnboarding
+      setStep('success');
+      setIsLoading(false);
+
+      setTimeout(() => {
+        onSuccess({
+          email: normalizedEmail,
+          verified: true,
+          token: null,
+          userName: normalizedEmail.split('@')[0],
+          existingUser: false,
+          accountInfo: null,
+          isNewUser: true,
+          flowType: 'onboarding',
+          adminMode: false,
+          userCreated: true,
+          accountDetails: {
+            email: normalizedEmail,
+            createdAt: new Date().toISOString(),
+            ssoProvider: 'gmail'
+          }
+        });
+      }, 400);
+    
+    } catch (error) {
+      console.error('❌ Error handling OAuth success:', error);
+      setError('Failed to continue with Google authentication. Please try again.');
+      setIsLoading(false);
     }
   };
 
@@ -347,8 +560,28 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
             color: COLORS.textSecondary
           }}
         >
-          We've sent a 6-digit code to {email}
+          {emailSent ? `We've sent a 6-digit code to ${email}` : `A verification code has been generated for ${email}`}
         </p>
+        {!emailSent && (
+          <div 
+            className="mb-4 mx-auto max-w-sm px-4 py-3 rounded-lg border"
+            style={{ 
+              backgroundColor: '#FEF3C7',
+              borderColor: '#FCD34D',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontSize: '14px',
+              lineHeight: '20px',
+              color: '#92400E'
+            }}
+          >
+            <p className="font-medium mb-1">⚠️ Email service unavailable</p>
+            <p className="text-sm">
+              {emailServiceMessage.includes('testing mode') || emailServiceMessage.includes('server logs') 
+                ? 'Any 6-digit code will be accepted. Check server logs for the actual code.'
+                : 'The verification code was generated but could not be sent. Please check server logs or contact support.'}
+            </p>
+          </div>
+        )}
       </div>
 
 

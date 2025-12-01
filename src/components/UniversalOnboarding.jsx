@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useState, useRef } from 'react';
 import Lottie from 'lottie-react';
 import personaAnim from '../../public/persona-anim.json';
+import ChatGPTConnector from './connectors/ChatGPTConnector';
 const chatgptIcon = 'https://anushkasirv.sirv.com/openai.png';
 const claudeIcon = 'https://anushkasirv.sirv.com/claude-color.png';
 const geminiIcon = 'https://anushkasirv.sirv.com/gemini-color.png';
@@ -32,6 +33,7 @@ export default function UniversalOnboarding({ onComplete }) {
   const [connectingPlatform, setConnectingPlatform] = useState(null);
   const [selected, setSelected] = useState('Instagram');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showChatGPTModal, setShowChatGPTModal] = useState(false);
 
   // swipe state
   const touchStartX = useRef(0);
@@ -334,7 +336,10 @@ export default function UniversalOnboarding({ onComplete }) {
                       type="button"
                       onClick={() => { 
                         setSelected(p.name);
-                        if (p.directLink) {
+                        if (p.name === 'ChatGPT') {
+                          // Show ChatGPT connector modal
+                          setShowChatGPTModal(true);
+                        } else if (p.directLink) {
                           // For direct link platforms (AI tools), connect immediately and open link
                           if (!connectedAccounts[p.name]) {
                             setConnectedAccounts((s) => ({ ...s, [p.name]: true }));
@@ -409,6 +414,18 @@ export default function UniversalOnboarding({ onComplete }) {
           <div onClick={() => onComplete?.({ connectedAccounts: [], totalConnections: 0 })} className="w-full text-gray-600 text-base font-medium py-2 text-center cursor-pointer hover:text-gray-800 transition-colors">Skip</div>
         </div>
       </div>
+
+      {/* ChatGPT Connector Modal */}
+      <ChatGPTConnector
+        open={showChatGPTModal}
+        onClose={() => setShowChatGPTModal(false)}
+        onConnectionChange={(platform, connected) => {
+          if (connected) {
+            setConnectedAccounts((s) => ({ ...s, [platform]: true }));
+          }
+          setShowChatGPTModal(false);
+        }}
+      />
     </div>
   );
 }
