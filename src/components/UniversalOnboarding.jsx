@@ -20,16 +20,6 @@ const fadeSlideInKeyframes = `
   from { opacity: 0; transform: translateX(var(--slide-x)); }
   to { opacity: 1; transform: translateX(0); }
 }
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
-}
 `;
 
 export default function UniversalOnboarding({ onComplete }) {
@@ -214,27 +204,12 @@ export default function UniversalOnboarding({ onComplete }) {
       
       const username = localStorage.getItem('username') || (JSON.parse(localStorage.getItem('onairosUser') || '{}')?.email) || 'user@example.com';
 
-      console.log(`🔗 Requesting ${name} OAuth URL for username:`, username);
       const res = await fetch(`${sdkConfig.baseUrl}/${plat.connector}/authorize`, {
-        method: 'POST', 
-        headers: { 
-          'x-api-key': sdkConfig.apiKey, 
-          'Content-Type': 'application/json' 
-        },
+        method: 'POST', headers: { 'x-api-key': sdkConfig.apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({ session: { username } }),
       });
-      
-      console.log(`📡 ${name} authorize response status:`, res.status, res.ok);
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        const errorMsg = errorData.error || errorData.message || `Authentication failed (${res.status})`;
-        console.error(`❌ ${name} authorization failed:`, errorData);
-        throw new Error(errorMsg);
-      }
-      
+      if (!res.ok) throw new Error('auth failed');
       const data = await res.json();
-      console.log(`✅ ${name} authorize successful, response keys:`, Object.keys(data));
 
       const candidates = (
         {
@@ -255,56 +230,13 @@ export default function UniversalOnboarding({ onComplete }) {
       const popup = window.open(oauthUrl, `${plat.connector}_oauth`, 'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no');
       if (!popup) throw new Error('popup blocked');
 
-      let touched = false; 
-      const it = setInterval(() => {
-        try { 
-          if (popup.location && popup.location.hostname === 'onairos.uk') { 
-            touched = true; 
-            // Store platform name for callback detection
-            localStorage.setItem('onairos_oauth_platform', plat.connector);
-            // Don't close immediately - let callback page handle it
-          } 
-        } catch { 
-          if (!touched) touched = true; 
-        }
-        try { 
-          if (popup.closed) { 
-            clearInterval(it); 
-            setIsConnecting(false); 
-            setConnectingPlatform(null);
-            
-            // Check if OAuth was successful via localStorage
-            const oauthPlatform = localStorage.getItem('onairos_oauth_platform');
-            if (oauthPlatform === plat.connector) {
-              // Success - platform is already marked as connected
-              localStorage.removeItem('onairos_oauth_platform');
-              console.log(`✅ ${name} OAuth completed successfully`);
-            } else if (touched) {
-              // Popup was closed after callback, assume success
-              console.log(`✅ ${name} OAuth likely completed`);
-            }
-          } 
-        } catch {}
+      let touched = false; const it = setInterval(() => {
+        try { if (popup.location && popup.location.hostname === 'onairos.uk') { touched = true; popup.close(); } } catch { if (!touched) touched = true; }
+        try { if (popup.closed) { clearInterval(it); setIsConnecting(false); setConnectingPlatform(null); } } catch {}
       }, 800);
 
-      // Close popup after callback if still open (10 seconds after callback detected)
-      setTimeout(() => { 
-        try { 
-          if (!popup.closed && touched) {
-            popup.close(); 
-          }
-        } catch {} 
-      }, 10000);
-      
-      // Final timeout after 5 minutes
-      setTimeout(() => { 
-        if (!popup.closed) { 
-          popup.close(); 
-          clearInterval(it); 
-          setIsConnecting(false); 
-          setConnectingPlatform(null); 
-        } 
-      }, 300000);
+      setTimeout(() => { try { if (!popup.closed && touched) popup.close(); } catch {} }, 10000);
+      setTimeout(() => { if (!popup.closed) { popup.close(); clearInterval(it); setIsConnecting(false); setConnectingPlatform(null); } }, 300000);
       return true;
     } catch {
       // On failure, revert the optimistic toggle
@@ -416,31 +348,11 @@ export default function UniversalOnboarding({ onComplete }) {
                       style={{ width: SLOT, height: SLOT }}
                       title={p.name}
                     >
-                      <div 
-                        className={`rounded-full border-3 transition-all duration-150 ease-out flex items-center justify-center shadow-lg ${on ? 'border-blue-600 bg-white text-black shadow-blue-500/70' : 'border-gray-300 hover:border-gray-400 bg-white text-black'}`}
-                        style={{ 
-                          width: CIRCLE, 
-                          height: CIRCLE, 
-                          transform: `scale(${isSel ? ACTIVE_SCALE : 1})`, 
-                          transformOrigin: 'center',
-                          position: 'relative'
-                        }}
-                      >
-                        {/* Glowy blue ring for connected platforms */}
-                        {on && (
-                          <div 
-                            className="absolute inset-0 rounded-full"
-                            style={{
-                              boxShadow: '0 0 20px rgba(37, 99, 235, 0.6), 0 0 40px rgba(37, 99, 235, 0.4), 0 0 60px rgba(37, 99, 235, 0.2)',
-                              animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                              pointerEvents: 'none',
-                              zIndex: -1
-                            }}
-                          />
-                        )}
-                        <div className="flex items-center justify-center relative z-10" style={{ width: 20, height: 20 }}>
+                      <div className={`rounded-full border-3 transition-all duration-150 ease-out flex items-center justify-center shadow-lg ${on ? 'border-blue-600 bg-white text-black shadow-blue-500/70' : 'border-gray-300 hover:border-gray-400 bg-white text-black'}`}
+                           style={{ width: CIRCLE, height: CIRCLE, transform: `scale(${isSel ? ACTIVE_SCALE : 1})`, transformOrigin: 'center' }}>
+                        <div className="flex items-center justify-center" style={{ width: 20, height: 20 }}>
                           {p.icon}
-                        </div>
+                    </div>
                       </div>
                     </button>
                   </div>
