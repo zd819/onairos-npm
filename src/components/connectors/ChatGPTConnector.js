@@ -102,14 +102,20 @@ class ChatGPTConnector extends Component {
         <style>{`
           @keyframes gentlePulse {
             0%, 100% {
-              box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.2);
+              box-shadow: 0 0 0 0 rgba(148, 163, 184, 0.35);
             }
             50% {
-              box-shadow: 0 0 0 6px rgba(244, 114, 182, 0);
+              box-shadow: 0 0 0 10px rgba(148, 163, 184, 0);
             }
           }
           .bookmarklet-button {
-            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            background: rgba(15, 23, 42, 0.85);
+            border-radius: 9999px;
+            border: 1px solid rgba(255,255,255,0.16);
+            backdrop-filter: blur(18px);
+          }
+          .bookmarklet-button:hover {
+            background: rgba(15, 23, 42, 0.92);
           }
           @keyframes fadeInScale {
             0% { opacity: 0; transform: translateY(8px) scale(0.96); }
@@ -119,45 +125,45 @@ class ChatGPTConnector extends Component {
             animation: fadeInScale 200ms cubic-bezier(0.16, 1, 0.3, 1);
           }
           .step-circle {
-            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            background: rgba(15, 23, 42, 0.9);
             min-width: 28px;
             width: 28px;
             height: 28px;
           }
         `}</style>
         
-        {/* Backdrop */}
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
+        {/* Backdrop (transparent so it feels like a sheet on top of the existing modal) */}
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
           
           {/* Compact Modal Container */}
-          <div className="w-full max-w-md">
-            <div className="chatgpt-modal-card bg-white rounded-2xl shadow-2xl overflow-hidden">
+          <div className="w-full max-w-md pointer-events-auto">
+            <div className="chatgpt-modal-card rounded-3xl overflow-hidden shadow-[0_30px_80px_rgba(15,23,42,0.70)] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.22),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(15,23,42,0.9),_rgba(15,23,42,1))] backdrop-blur-3xl">
               
               {/* Header */}
-              <div className="relative bg-gradient-to-br from-pink-50 to-purple-50 px-5 py-4 border-b border-pink-100">
+              <div className="relative px-5 py-4 border-b border-white/10 bg-white/10">
                 <button
                   onClick={this.handleClose}
-                  className="absolute right-4 top-4 p-1.5 hover:bg-white/70 rounded-full transition-colors"
+                  className="absolute right-4 top-4 p-1.5 hover:bg-white/20 rounded-full transition-colors"
                   aria-label="Close"
                 >
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-slate-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
 
-                <h2 className="text-xl font-bold text-gray-900 pr-8">
+                <h2 className="text-xl font-semibold text-slate-50 pr-8">
                   Connect ChatGPT
                 </h2>
-                <p className="text-sm text-gray-600 mt-0.5">
+                <p className="text-sm text-slate-300 mt-0.5">
                   Three quick steps to import your conversations
                 </p>
                 
                 {/* Privacy Notice */}
-                <div className="mt-3 flex items-start gap-2 bg-white/60 rounded-lg px-3 py-2">
-                  <svg className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <div className="mt-3 flex items-start gap-2 bg-white/12 rounded-2xl px-3 py-2">
+                  <svg className="w-4 h-4 text-emerald-300 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  <p className="text-xs text-gray-700 leading-relaxed">
+                  <p className="text-xs text-slate-100/90 leading-relaxed">
                     <strong className="font-semibold">Private & secure.</strong> We only access your chat history. No one else sees this data.
                   </p>
                 </div>
@@ -174,11 +180,11 @@ class ChatGPTConnector extends Component {
                     </div>
                   </div>
                   <div className="flex-1 pt-0.5">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                    <h3 className="text-sm font-semibold text-slate-50 mb-1">
                       Drag this button to your bookmarks bar
                     </h3>
                     <div className="relative inline-block mt-2">
-                      <div className="absolute inset-0 rounded-xl" style={{ animation: 'gentlePulse 2s ease-in-out infinite' }}></div>
+                      <div className="absolute inset-0 rounded-full" style={{ animation: 'gentlePulse 2s ease-in-out infinite' }}></div>
                       <a
                         href={bookmarkletCode}
                         draggable="true"
@@ -190,23 +196,20 @@ class ChatGPTConnector extends Component {
                           e.preventDefault();
                           alert('Please drag this button to your bookmarks bar');
                         }}
-                        className="bookmarklet-button relative inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-white cursor-move select-none transition-all hover:scale-105"
-                        style={{
-                          boxShadow: '0 4px 16px rgba(236, 72, 153, 0.35)'
-                        }}
+                        className="bookmarklet-button relative inline-flex items-center gap-1.5 px-4 py-2 font-medium text-slate-50 cursor-move select-none transition-all hover:scale-[1.03]"
                       >
                         <span className="text-base">✨</span>
                         <span className="text-sm">Onairos ChatGPT</span>
                       </a>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">Ctrl+Shift+B</kbd> to show bookmarks bar
+                    <p className="text-xs text-slate-300 mt-2">
+                      <kbd className="px-1.5 py-0.5 bg-white/10 rounded-full text-[10px] font-mono text-slate-100 border border-white/10">Ctrl+Shift+B</kbd> to show bookmarks bar
                     </p>
                   </div>
                 </div>
 
                 {/* Divider */}
-                <div className="border-t border-gray-200 ml-10"></div>
+                <div className="border-t border-white/10 ml-10"></div>
 
                 {/* Step 2 */}
                 <div className="flex gap-3">
@@ -216,17 +219,17 @@ class ChatGPTConnector extends Component {
                     </div>
                   </div>
                   <div className="flex-1 pt-0.5">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                    <h3 className="text-sm font-semibold text-slate-50 mb-1">
                       Open ChatGPT and log in
                     </h3>
-                    <p className="text-xs text-gray-600 mb-2">
+                    <p className="text-xs text-slate-300 mb-2">
                       Make sure you're logged into your ChatGPT account
                     </p>
                     <button
                       onClick={() => {
                         window.open('https://chatgpt.com', '_blank');
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-medium transition-colors"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-400/90 hover:bg-emerald-300 text-slate-900 text-xs font-medium transition-colors shadow-[0_0_25px_rgba(52,211,153,0.35)]"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -237,7 +240,7 @@ class ChatGPTConnector extends Component {
                 </div>
 
                 {/* Divider */}
-                <div className="border-t border-gray-200 ml-10"></div>
+                <div className="border-t border-white/10 ml-10"></div>
 
                 {/* Step 3 */}
                 <div className="flex gap-3">
@@ -247,10 +250,10 @@ class ChatGPTConnector extends Component {
                     </div>
                   </div>
                   <div className="flex-1 pt-0.5">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                    <h3 className="text-sm font-semibold text-slate-50 mb-1">
                       Click the bookmark on ChatGPT
                     </h3>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-slate-300">
                       Click the <strong>"Onairos ChatGPT"</strong> bookmark you added. We'll securely import your last 10 conversations.
                     </p>
                   </div>
@@ -259,16 +262,12 @@ class ChatGPTConnector extends Component {
               </div>
 
               {/* Footer */}
-              <div className="px-5 py-4 bg-gray-50 border-t border-gray-200">
+              <div className="px-5 py-4 bg-white/5 border-t border-white/10">
                 <button
                   onClick={() => {
                     this.setConnected();
                   }}
-                  className="w-full px-4 py-2.5 rounded-xl font-semibold text-white text-sm transition-all hover:scale-[1.01] active:scale-[0.99]"
-                  style={{
-                    background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
-                    boxShadow: '0 2px 8px rgba(236, 72, 153, 0.3)'
-                  }}
+                  className="w-full px-4 py-2.5 rounded-full font-medium text-slate-900 text-sm transition-all hover:scale-[1.01] active:scale-[0.99] bg-slate-100/90 hover:bg-white shadow-[0_10px_30px_rgba(15,23,42,0.45)] border border-white/40"
                 >
                   Got it! ✓
                 </button>
