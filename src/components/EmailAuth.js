@@ -464,9 +464,10 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
-            className="w-full max-w-sm mx-auto px-4 py-4 text-base bg-gray-50 border-0 rounded-xl placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-gray-200 outline-none transition-all duration-200"
+            className="w-full max-w-sm mx-auto px-4 py-4 text-base bg-gray-50 border-0 rounded-xl !text-black placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-gray-200 outline-none transition-all duration-200"
             style={{ 
-              fontFamily: 'Inter, system-ui, sans-serif'
+              fontFamily: 'Inter, system-ui, sans-serif',
+              WebkitTextFillColor: '#000000'
             }}
             required
           />
@@ -477,11 +478,17 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         </div>
 
         <div className="mb-8">
+          <style>{`
+            .google-button-text {
+              color: #000000 !important;
+            }
+          `}</style>
           <button
             type="button"
-            className="w-full max-w-sm mx-auto py-4 text-base font-medium rounded-xl border border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-3 bg-transparent transition-colors"
+            className="w-full max-w-sm mx-auto py-4 text-base font-medium rounded-xl border border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-3 bg-transparent transition-colors google-button-text"
             style={{ 
-              fontFamily: 'Inter, system-ui, sans-serif'
+              fontFamily: 'Inter, system-ui, sans-serif',
+              color: '#000000'
             }}
             onClick={handleGoogleAuth}
           >
@@ -503,7 +510,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Continue with Google
+            <span className="google-button-text" style={{ color: '#000000' }}>Continue with Google</span>
           </button>
         </div>
 
@@ -639,6 +646,8 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
             loading={isLoading}
             disabled={isLoading || code.length !== 6}
             testId="verify-code-button"
+            className="!text-white"
+            textStyle={{ color: '#FFFFFF' }}
           />
         </div>
       </div>

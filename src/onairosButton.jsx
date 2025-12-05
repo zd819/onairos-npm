@@ -6,7 +6,9 @@ import PinSetup from './components/PinSetup.js';
 import DataRequest from './components/DataRequest.js';
 import TrainingComponent from './components/TrainingComponent.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
+import WrappedLoadingPage from './components/WrappedLoadingPage.jsx';
 import { formatOnairosResponse } from './utils/responseFormatter.js';
+import { logFormattedUserData } from './utils/userDataFormatter.js';
 import { ModalPageLayout } from './components/ui/PageLayout.jsx';
 
 export function OnairosButton({
@@ -34,7 +36,7 @@ export function OnairosButton({
 }) {
 
   const [showOverlay, setShowOverlay] = useState(false);
-  const [currentFlow, setCurrentFlow] = useState('welcome'); // 'welcome' | 'email' | 'onboarding' | 'pin' | 'dataRequest' (training is within onboarding)
+  const [currentFlow, setCurrentFlow] = useState('welcome'); // 'welcome' | 'email' | 'onboarding' | 'pin' | 'dataRequest' | 'wrappedLoading' (training is within onboarding)
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
 
@@ -231,8 +233,150 @@ export function OnairosButton({
     };
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
-    // Do NOT auto-trigger training here. The host app (e.g., DelphiDemo)
-    // will call the backend-chosen apiUrl for combined training/inference.
+
+    // Handle data fetching if autoFetch is enabled
+    let finalResult = requestResult;
+    
+    if (autoFetch && requestResult.approved?.length > 0) {
+      console.log('🚀 Auto-fetching data from Onairos API...');
+      
+      try {
+        // 1. Get the API URL from the backend
+        const urlResponse = await fetch('https://api2.onairos.uk/getAPIurlMobile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            Info: {
+              appId: webpageName,
+              account: userData?.email || userData?.username,
+              confirmations: requestResult.approved.map(id => ({ data: id === 'personality' ? 'Large' : id === 'basic' ? 'Basic' : id })),
+              EncryptedUserPin: userData?.EncryptedUserPin || 'pending_pin_integration',
+              storage: 's3',
+              proofMode: proofMode
+            }
+          })
+        });
+
+        const urlData = await urlResponse.json();
+        console.log('🔗 API URL received:', urlData.apiUrl);
+
+        if (urlData.apiUrl && urlData.token) {
+          // Show wrapped loading page when API call starts
+          setCurrentFlow('wrappedLoading');
+          
+          // Emit custom event for host app
+          if (typeof window !== 'undefined') {
+            const eventDetail = { apiUrl: urlData.apiUrl, approved: requestResult.approved };
+            window.dispatchEvent(new CustomEvent('onairos-api-call-start', { detail: eventDetail }));
+            console.log('📡 Emitted onairos-api-call-start event');
+          }
+          
+          // 2. Fetch the actual data
+          // Always use POST for consistency and to support body data
+          // traits-only endpoint requires POST
+          const method = 'POST';
+          
+          console.log(`📡 Fetching data from ${urlData.apiUrl} (${method})...`);
+          console.log(`🔑 Using token: ${urlData.token ? urlData.token.substring(0, 20) + '...' : 'NO TOKEN'}`);
+          
+          let dataResponse;
+          let apiResponse;
+          
+          try {
+            dataResponse = await fetch(urlData.apiUrl, {
+              method: method,
+              headers: {
+                'Authorization': `Bearer ${urlData.token}`,
+                'Content-Type': 'application/json'
+              },
+              // Only send body for POST
+              body: method === 'POST' ? JSON.stringify({
+                email: userData?.email,
+                includeLlmData: requestResult.approved.includes('rawMemories')
+              }) : undefined
+            });
+
+            console.log(`📥 Response status: ${dataResponse.status} ${dataResponse.statusText}`);
+            console.log(`📥 Response headers:`, Object.fromEntries(dataResponse.headers.entries()));
+
+            apiResponse = await dataResponse.json();
+            console.log('📦📦📦 FULL API RESPONSE RECEIVED:', JSON.stringify(apiResponse, null, 2));
+            console.log('📦 Data received - has slides?', !!apiResponse.slides);
+            console.log('📦 Data received - slides keys:', apiResponse.slides ? Object.keys(apiResponse.slides) : 'NO SLIDES');
+          } catch (fetchErr) {
+            console.error('🚨 FETCH ERROR:', fetchErr);
+            console.error('🚨 Error name:', fetchErr.name);
+            console.error('🚨 Error message:', fetchErr.message);
+            
+            // If it's a CORS error, the backend is returning data but browser blocks it
+            // The backend logs show the data IS being generated successfully
+            if (fetchErr.message?.includes('CORS') || fetchErr.message?.includes('Failed to fetch')) {
+              console.error('🚨🚨🚨 CORS BLOCKING RESPONSE - Backend generated data but browser cannot read it');
+              console.error('🚨 Backend successfully generated dashboard (see server logs)');
+              console.error('🚨 Backend needs to add CORS headers:');
+              console.error('   Access-Control-Allow-Origin: http://localhost:3000');
+              console.error('   Access-Control-Allow-Methods: POST, GET, OPTIONS');
+              console.error('   Access-Control-Allow-Headers: Authorization, Content-Type');
+              
+              // Even though fetch failed, we still have the token and URL
+              // Set apiResponse to null but keep token and apiUrl for retry
+              apiResponse = null;
+            } else {
+              throw fetchErr;
+            }
+          }
+
+          // Merge into result - include token and apiUrl even if fetch failed
+          finalResult = {
+            ...requestResult,
+            apiResponse: apiResponse, // Raw response (null if CORS blocked)
+            token: urlData.token,     // Token used - ALWAYS include this
+            apiUrl: urlData.apiUrl    // URL used - ALWAYS include this
+          };
+          
+          console.log('🔗🔗🔗 FINAL RESULT WITH API RESPONSE:', JSON.stringify(finalResult, null, 2));
+          console.log('🔗 Final result - apiResponse present?', !!finalResult.apiResponse);
+          console.log('🔗 Final result - apiResponse.slides?', !!finalResult.apiResponse?.slides);
+          
+          // Add to updated user data - include token even if apiResponse is null
+          updatedUserData.apiResponse = apiResponse;
+          if (urlData.token) {
+            updatedUserData.token = urlData.token;
+            // Also store in localStorage for persistence
+            try {
+              localStorage.setItem('onairos_user_token', urlData.token);
+            } catch (e) {
+              console.warn('⚠️ Could not store token in localStorage:', e);
+            }
+          }
+          setUserData(updatedUserData);
+          
+          console.log('💾 Updated userData with apiResponse:', !!updatedUserData.apiResponse);
+          console.log('💾 Updated userData with token:', !!updatedUserData.token);
+        } else {
+          console.warn('⚠️ Failed to get API URL:', urlData);
+        }
+      } catch (fetchError) {
+        console.error('❌ Error auto-fetching data:', fetchError);
+        
+        // Check if it's a timeout/abort error
+        if (fetchError.name === 'AbortError' || fetchError.message?.includes('timeout')) {
+          console.error('⏱️ Request timed out - backend took longer than 2 minutes');
+        }
+        // Check if it's a CORS error
+        else if (fetchError.message?.includes('CORS') || 
+                 fetchError.message?.includes('Failed to fetch') ||
+                 fetchError.name === 'TypeError') {
+          console.error('🚨 CORS ERROR DETECTED');
+          console.error('🚨 Backend needs to allow CORS for:', window.location.origin);
+        }
+        
+        // Continue with what we have - don't block the flow
+        // The app can still proceed without apiResponse
+      }
+    }
 
     // Close overlay immediately
     console.log('🔥 Closing overlay after data request completion');
@@ -240,8 +384,8 @@ export function OnairosButton({
     handleCloseOverlay();
 
     // Format response if requested and API response is present
-    let formattedResult = requestResult;
-    if (formatResponse && requestResult?.apiResponse) {
+    let formattedResult = finalResult;
+    if (formatResponse && finalResult?.apiResponse) {
       try {
         formattedResult = {
           ...requestResult,
@@ -254,20 +398,24 @@ export function OnairosButton({
       }
     }
 
-    // Enhanced user data formatting for better display
-    const { logFormattedUserData } = require('./utils/userDataFormatter');
-    
     // Add user data to the result for comprehensive formatting
     const completeResult = {
       ...formattedResult,
       userData: updatedUserData
     };
 
-    // Log formatted user data for better readability
-    const enhancedResult = logFormattedUserData(completeResult);
+    // Enhanced user data formatting for better display
+    let enhancedResult = completeResult;
+    try {
+        // Log formatted user data for better readability
+        enhancedResult = logFormattedUserData(completeResult);
+    } catch (formatError) {
+        console.warn('⚠️ Error formatting user data for display:', formatError);
+        // Continue with unformatted result to ensure app doesn't break
+    }
 
     // Call onComplete callback if provided
-    console.log('🔥 Calling onComplete callback with enhanced result');
+    console.log('🔥 Calling onComplete callback');
     console.log('🔥 onComplete data structure:', {
       token: enhancedResult.token ? '✅ Present (JWT string)' : '❌ Missing',
       apiUrl: enhancedResult.apiUrl ? '✅ Present (URL string)' : '❌ Missing',
@@ -574,6 +722,16 @@ export function OnairosButton({
                   rawMemoriesOnly={rawMemoriesOnly}
                   rawMemoriesConfig={rawMemoriesConfig}
                 />
+              </div>
+            </div>
+          ) : currentFlow === 'wrappedLoading' ? (
+            // Special case for wrapped loading - render directly without PageLayout wrapper
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center p-6" style={{ zIndex: 2147483647 }}>
+              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
+                {/* WrappedLoading Content */}
+                <div className="flex-1 min-h-0">
+                  <WrappedLoadingPage />
+                </div>
               </div>
             </div>
           ) : currentFlow === 'pin' ? (

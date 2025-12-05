@@ -43,11 +43,10 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
             type="password"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-center text-lg font-medium focus:border-gray-900 focus:outline-none bg-white"
+            className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-center text-lg font-medium focus:border-gray-900 focus:outline-none bg-white !text-black"
             placeholder="Enter your PIN"
             maxLength={20}
             style={{
-              color: '#000000',
               WebkitTextFillColor: '#000000',
               backgroundColor: '#FFFFFF'
             }}
@@ -105,7 +104,7 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
         <div
           className={`w-full rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 transition-colors ${
             allRequirementsMet 
-              ? "bg-gray-900 hover:bg-gray-800 text-white cursor-pointer" 
+              ? "bg-gray-900 hover:bg-gray-800 !text-white cursor-pointer" 
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
           onClick={allRequirementsMet ? handleSubmit : undefined}

@@ -404,7 +404,8 @@ export default function UniversalOnboarding({ onComplete }) {
 
         {/* footer — anchored at bottom using flex */}
         <div className="px-6 flex-shrink-0" style={{ paddingBottom: 16, background: 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
-          <div className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" onClick={() => {
+          <div className="w-full bg-gray-900 hover:bg-gray-800 !text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" 
+            onClick={() => {
             const connected = Object.entries(connectedAccounts).filter(([, v]) => v).map(([k]) => k);
             onComplete?.({ connectedAccounts: connected, totalConnections: connected.length });
           }}>

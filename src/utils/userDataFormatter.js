@@ -101,6 +101,26 @@ function formatAIResponseData(apiResponse) {
     dataTypes: []
   };
 
+  // Check for Onairos Wrapped Dashboard
+  if (apiResponse.data?.dashboard || apiResponse.dashboard || apiResponse.slides) {
+    aiData.dataTypes.push({
+      type: 'wrapped_dashboard',
+      available: true,
+      data: apiResponse.data?.dashboard || apiResponse.dashboard || apiResponse,
+      summary: 'Onairos Wrapped / Neural Recall Dashboard'
+    });
+    
+    // Add apps if available
+    if (apiResponse.data?.apps || apiResponse.apps) {
+      aiData.dataTypes.push({
+        type: 'connected_apps',
+        available: true,
+        data: apiResponse.data?.apps || apiResponse.apps,
+        summary: `Connected apps list (${(apiResponse.data?.apps || apiResponse.apps).length})`
+      });
+    }
+  }
+
   // Check for personality data
   if (apiResponse.InferenceResult?.traits || apiResponse.personalityDict || apiResponse.traits) {
     const personalityData = {
