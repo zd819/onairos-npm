@@ -136,7 +136,7 @@ class ChatGPTConnector extends Component {
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
           
           {/* Compact Modal Container */}
-          <div className="w-full max-w-md pointer-events-auto">
+          <div className="w-full max-w-md pointer-events-auto !text-white">
             <div className="chatgpt-modal-card rounded-3xl overflow-hidden shadow-[0_30px_80px_rgba(15,23,42,0.70)] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.22),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(15,23,42,0.9),_rgba(15,23,42,1))] backdrop-blur-3xl">
               
               {/* Header */}
@@ -151,10 +151,10 @@ class ChatGPTConnector extends Component {
                   </svg>
                 </button>
 
-                <h2 className="text-xl font-semibold text-slate-50 pr-8">
+                <h2 className="text-xl font-semibold pr-8" style={{ color: '#FFFFFF' }}>
                   Connect ChatGPT
                 </h2>
-                <p className="text-sm text-slate-300 mt-0.5">
+                <p className="text-sm mt-0.5" style={{ color: '#FFFFFF' }}>
                   Three quick steps to import your conversations
                 </p>
                 
@@ -163,7 +163,7 @@ class ChatGPTConnector extends Component {
                   <svg className="w-4 h-4 text-emerald-300 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  <p className="text-xs text-slate-100/90 leading-relaxed">
+                  <p className="text-xs leading-relaxed" style={{ color: '#FFFFFF' }}>
                     <strong className="font-semibold">Private & secure.</strong> We only access your chat history. No one else sees this data.
                   </p>
                 </div>
@@ -180,7 +180,7 @@ class ChatGPTConnector extends Component {
                     </div>
                   </div>
                   <div className="flex-1 pt-0.5">
-                    <h3 className="text-sm font-semibold text-slate-50 mb-1">
+                    <h3 className="text-sm font-semibold mb-1" style={{ color: '#FFFFFF' }}>
                       Drag this button to your bookmarks bar
                     </h3>
                     <div className="relative inline-block mt-2">
@@ -196,14 +196,15 @@ class ChatGPTConnector extends Component {
                           e.preventDefault();
                           alert('Please drag this button to your bookmarks bar');
                         }}
-                        className="bookmarklet-button relative inline-flex items-center gap-1.5 px-4 py-2 font-medium text-slate-50 cursor-move select-none transition-all hover:scale-[1.03]"
+                        className="bookmarklet-button relative inline-flex items-center gap-1.5 px-4 py-2 font-medium cursor-move select-none transition-all hover:scale-[1.03]"
+                        style={{ color: '#FFFFFF' }}
                       >
-                        <span className="text-base">✨</span>
-                        <span className="text-sm">Onairos ChatGPT</span>
+                        <span className="text-base" style={{ color: '#FFFFFF' }}>✨</span>
+                        <span className="text-sm" style={{ color: '#FFFFFF' }}>Onairos ChatGPT</span>
                       </a>
                     </div>
-                    <p className="text-xs text-slate-300 mt-2">
-                      <kbd className="px-1.5 py-0.5 bg-white/10 rounded-full text-[10px] font-mono text-slate-100 border border-white/10">Ctrl+Shift+B</kbd> to show bookmarks bar
+                    <p className="text-xs mt-2" style={{ color: '#E2E8F0' }}>
+                      <kbd className="px-1.5 py-0.5 bg-white/10 rounded-full text-[10px] font-mono border border-white/10" style={{ color: '#F1F5F9' }}>Ctrl+Shift+B</kbd> to show bookmarks bar
                     </p>
                   </div>
                 </div>
@@ -219,10 +220,10 @@ class ChatGPTConnector extends Component {
                     </div>
                   </div>
                   <div className="flex-1 pt-0.5">
-                    <h3 className="text-sm font-semibold text-slate-50 mb-1">
+                    <h3 className="text-sm font-semibold mb-1" style={{ color: '#FFFFFF' }}>
                       Open ChatGPT and log in
                     </h3>
-                    <p className="text-xs text-slate-300 mb-2">
+                    <p className="text-xs mb-2" style={{ color: '#E2E8F0' }}>
                       Make sure you're logged into your ChatGPT account
                     </p>
                     <button
@@ -250,11 +251,11 @@ class ChatGPTConnector extends Component {
                     </div>
                   </div>
                   <div className="flex-1 pt-0.5">
-                    <h3 className="text-sm font-semibold text-slate-50 mb-1">
+                    <h3 className="text-sm font-semibold mb-1" style={{ color: '#FFFFFF' }}>
                       Click the bookmark on ChatGPT
                     </h3>
-                    <p className="text-xs text-slate-300">
-                      Click the <strong>"Onairos ChatGPT"</strong> bookmark you added. We'll securely import your last 10 conversations.
+                    <p className="text-xs" style={{ color: '#E2E8F0' }}>
+                      Click the <strong style={{ color: '#FFFFFF' }}>"Onairos ChatGPT"</strong> bookmark you added. We'll securely import your last 10 conversations.
                     </p>
                   </div>
                 </div>
@@ -263,13 +264,29 @@ class ChatGPTConnector extends Component {
 
               {/* Footer */}
               <div className="px-5 py-4 bg-white/5 border-t border-white/10">
+                <style>{`
+                  .chatgpt-got-it-button {
+                    color: #FFFFFF !important;
+                    background-color: rgba(15, 23, 42, 0.8) !important;
+                  }
+                  .chatgpt-got-it-button:hover {
+                    background-color: rgba(15, 23, 42, 0.9) !important;
+                  }
+                  .chatgpt-got-it-button * {
+                    color: #FFFFFF !important;
+                  }
+                  .chatgpt-got-it-button span {
+                    color: #FFFFFF !important;
+                  }
+                `}</style>
                 <button
                   onClick={() => {
                     this.setConnected();
                   }}
-                  className="w-full px-4 py-2.5 rounded-full font-medium text-slate-900 text-sm transition-all hover:scale-[1.01] active:scale-[0.99] bg-slate-100/90 hover:bg-white shadow-[0_10px_30px_rgba(15,23,42,0.45)] border border-white/40"
+                  className="w-full px-4 py-2.5 rounded-full font-medium text-sm transition-all hover:scale-[1.01] active:scale-[0.99] shadow-[0_10px_30px_rgba(15,23,42,0.45)] border border-white/40 chatgpt-got-it-button"
+                  style={{ color: '#FFFFFF' }}
                 >
-                  Got it! ✓
+                  <span style={{ color: '#FFFFFF' }}>Got it! ✓</span>
                 </button>
               </div>
               

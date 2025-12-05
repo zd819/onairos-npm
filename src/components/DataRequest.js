@@ -291,24 +291,40 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [] }
       {/* FOOTER */}
       <div className="px-6 py-5 bg-white/80 backdrop-blur border-t border-black/5">
         <button
-          className="w-full rounded-full py-3 bg-gray-900 text-white text-sm font-medium shadow-sm flex items-center justify-center gap-2 mb-3"
+          className="w-full rounded-full py-3 bg-gray-900 !text-white text-sm font-medium shadow-sm flex items-center justify-center mb-3"
           disabled={selectedCount === 0}
           onClick={() => {
             if (selectedCount === 0) return;
             onComplete?.({
-              approved: Array.from(selected).filter(id => selected[id]),
+              approved: Object.keys(selected).filter(id => selected[id]),
               freq,
             });
           }}
         >
           Accept & Continue
-          <svg className="w-4 h-4" fill="none" stroke="currentColor">
-            <path strokeWidth={2} strokeLinecap="round" d="M9 5l7 7-7 7"/>
-          </svg>
         </button>
 
+        <style>{`
+          .decline-button {
+            color: #000000 !important;
+          }
+          .decline-button * {
+            color: #000000 !important;
+          }
+          .decline-button span {
+            color: #000000 !important;
+          }
+          button.decline-button {
+            color: #000000 !important;
+          }
+          .decline-button-text {
+            color: #000000 !important;
+            -webkit-text-fill-color: #000000 !important;
+          }
+        `}</style>
         <button
-          className="w-full rounded-full py-3 bg-gray-100 text-gray-700 text-sm font-medium shadow-sm"
+          className="w-full rounded-full py-3 bg-gray-100 text-sm font-medium shadow-sm decline-button"
+          style={{ color: '#000000' }}
           onClick={() => {
             onComplete?.({
               approved: [],
@@ -317,7 +333,7 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [] }
             });
           }}
         >
-          Decline
+          <span className="decline-button-text" style={{ color: '#000000' }}>Decline</span>
         </button>
       </div>
     </div>
