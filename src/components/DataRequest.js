@@ -116,7 +116,7 @@ const options = [
   { id: "personality", name: "Personality Traits", icon: "Brain" },
 ];
 
-const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [] }) => {
+const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], showTime = false }) => {
   const [selected, setSelected] = useState({
     basic: true,
     rawMemories: false,
@@ -149,6 +149,20 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [] }
     return [];
   };
   const platforms = getConnected();
+
+  // Check if user has any LLM connections
+  const hasLLMConnections = () => {
+    const llmPlatforms = ['chatgpt', 'claude', 'gemini', 'grok', 'ChatGPT', 'Claude', 'Gemini', 'Grok'];
+    return platforms.some(p => llmPlatforms.includes(p));
+  };
+
+  // Filter options based on LLM connections
+  const availableOptions = options.filter(opt => {
+    if (opt.id === 'rawMemories') {
+      return hasLLMConnections();
+    }
+    return true;
+  });
 
   const freqToPercent = (f) => (f === "once" ? 0 : f === "weekly" ? 50 : 100);
   const handleRailClick = (e) => {
@@ -189,7 +203,7 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [] }
 
         {/* TOGGLES */}
         <div className="grid grid-cols-2 gap-4 mb-10">
-          {options.map((opt) => (
+          {availableOptions.map((opt) => (
             <DataTypeToggle
               key={opt.id}
               dataType={opt}
@@ -199,56 +213,58 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [] }
           ))}
         </div>
 
-        {/* FREQUENCY PANEL */}
-        <div className="p-5 rounded-3xl bg-white/50 backdrop-blur-md border border-black/5 shadow-sm">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm font-medium text-gray-900">
-              How often can {appName} receive updates?
-            </span>
-            <span className="text-[11px] text-gray-500">
-              {freq === "once"
-                ? "one-time only"
-                : freq === "weekly"
-                ? "once per week"
-                : "once per day"}
-            </span>
-          </div>
+        {/* FREQUENCY PANEL - Only shown if showTime is true */}
+        {showTime && (
+          <div className="p-5 rounded-3xl bg-white/50 backdrop-blur-md border border-black/5 shadow-sm">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm font-medium text-gray-900">
+                How often can {appName} receive updates?
+              </span>
+              <span className="text-[11px] text-gray-500">
+                {freq === "once"
+                  ? "one-time only"
+                  : freq === "weekly"
+                  ? "once per week"
+                  : "once per day"}
+              </span>
+            </div>
 
-          {/* SLIDER: subtle rail, monochrome progress, click-to-set */}
-          <div
-            className="relative h-2.5 rounded-full bg-gray-200/90 overflow-hidden mb-4 border border-black/5 shadow-inner cursor-pointer"
-            onClick={handleRailClick}
-          >
+            {/* SLIDER: subtle rail, monochrome progress, click-to-set */}
             <div
-              className="absolute h-full transition-all rounded-full"
-              style={{
-                width: `${freqToPercent(freq)}%`,
-                background: "linear-gradient(90deg, rgba(31,41,55,0.95) 0%, rgba(107,114,128,0.9) 60%, rgba(209,213,219,0.85) 100%)",
-              }}
-            />
-            {/* Tick marks for 3 stops */}
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-3 bg-black/10" />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[2px] h-3 bg-black/10" />
-            <span className="absolute right-0 top-1/2 -translate-y-1/2 w-[2px] h-3 bg-black/10" />
-            {/* Thumb indicator (sleek) */}
-            <span
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4.5 h-4.5 rounded-full bg-white border border-black/20 shadow-md"
-              style={{
-                left: `${freqToPercent(freq)}%`,
-              }}
-            />
-          </div>
+              className="relative h-2.5 rounded-full bg-gray-200/90 overflow-hidden mb-4 border border-black/5 shadow-inner cursor-pointer"
+              onClick={handleRailClick}
+            >
+              <div
+                className="absolute h-full transition-all rounded-full"
+                style={{
+                  width: `${freqToPercent(freq)}%`,
+                  background: "linear-gradient(90deg, rgba(31,41,55,0.95) 0%, rgba(107,114,128,0.9) 60%, rgba(209,213,219,0.85) 100%)",
+                }}
+              />
+              {/* Tick marks for 3 stops */}
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-3 bg-black/10" />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[2px] h-3 bg-black/10" />
+              <span className="absolute right-0 top-1/2 -translate-y-1/2 w-[2px] h-3 bg-black/10" />
+              {/* Thumb indicator (sleek) */}
+              <span
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4.5 h-4.5 rounded-full bg-white border border-black/20 shadow-md"
+                style={{
+                  left: `${freqToPercent(freq)}%`,
+                }}
+              />
+            </div>
 
-          <div className="grid grid-cols-3 text-center text-[12px] font-medium">
-            <button onClick={() => setFreq("once")} className="text-gray-700">1× only</button>
-            <button onClick={() => setFreq("weekly")} className="text-gray-900 font-semibold">1× weekly</button>
-            <button onClick={() => setFreq("daily")} className="text-gray-700">1× daily</button>
-          </div>
+            <div className="grid grid-cols-3 text-center text-[12px] font-medium">
+              <button onClick={() => setFreq("once")} className="text-gray-700">1× only</button>
+              <button onClick={() => setFreq("weekly")} className="text-gray-900 font-semibold">1× weekly</button>
+              <button onClick={() => setFreq("daily")} className="text-gray-700">1× daily</button>
+            </div>
 
-          <p className="text-[11px] text-gray-500 mt-3 leading-snug">
-            This only controls update frequency; It does not grant more access.
-          </p>
-        </div>
+            <p className="text-[11px] text-gray-500 mt-3 leading-snug">
+              This only controls update frequency; It does not grant more access.
+            </p>
+          </div>
+        )}
 
         {/* CONNECTED PLATFORMS (appears at the bottom of content; no overlap with footer) */}
         {platforms && platforms.length > 0 ? (

@@ -32,7 +32,8 @@ export function OnairosButton({
   responseFormat = { includeDictionary: true, includeArray: true },
   priorityPlatform = null, // Platform to prioritize (e.g., 'gmail', 'pinterest', 'linkedin')
   rawMemoriesOnly = false, // Show only LLM connections when true
-  rawMemoriesConfig = null // Configuration for RAW memories collection
+  rawMemoriesConfig = null, // Configuration for RAW memories collection
+  time = false // Show time frequency slider (default: false)
 }) {
 
   const [showOverlay, setShowOverlay] = useState(false);
@@ -567,9 +568,10 @@ export function OnairosButton({
             autoFetch={autoFetch}
             testMode={testMode}
             appIcon={appIcon}
-            connectedAccounts={userData?.connectedAccounts || {}}
+            connectedPlatforms={userData?.connectedAccounts || {}}
             rawMemoriesOnly={rawMemoriesOnly}
             rawMemoriesConfig={rawMemoriesConfig}
+            showTime={time}
           />
         );
       
@@ -718,9 +720,10 @@ export function OnairosButton({
                   autoFetch={autoFetch}
                   testMode={testMode}
                   appIcon={appIcon}
-                  connectedAccounts={userData?.connectedAccounts || {}}
+                  connectedPlatforms={userData?.connectedAccounts || {}}
                   rawMemoriesOnly={rawMemoriesOnly}
                   rawMemoriesConfig={rawMemoriesConfig}
+                  showTime={time}
                 />
               </div>
             </div>
