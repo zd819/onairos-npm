@@ -1,6 +1,6 @@
 {
   "name": "onairos",
-  "version": "4.0.17",
+  "version": "4.0.18",
   "dependencies": {
     "@react-oauth/google": "^0.12.1",
     "@telegram-apps/sdk-react": "^2.0.25",
@@ -161,6 +161,7 @@
     "dist",
     "src/assets",
     "package.json",
-    "README.md"
+    "README.md",
+    "llm.txt"
   ]
 }
