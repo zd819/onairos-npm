@@ -11,4 +11,33 @@ export { Onairos };
 // Export the new Onairos SDK
 export { OnairosClient };
 
-// You can also export additional functions or constants if needed
+// Export Capacitor/Mobile detection utilities
+export {
+  isCapacitor,
+  isReactNative,
+  isMobileApp,
+  isIOS,
+  isAndroid,
+  getPlatformInfo,
+  isMobileBrowser,
+  getEnvironmentType,
+  supportsBrowserExtensions,
+  logPlatformInfo
+} from './utils/capacitorDetection.js';
+
+// Export Capacitor LLM data collection functions (native method - no extension needed)
+export {
+  storeCapacitorLLMData,
+  storeBatchLLMData,
+  getLLMHistory,
+  getLLMStats,
+  formatConversationData
+} from './utils/capacitorLLMHelper.js';
+
+// Export browser extension utilities (for web browsers only)
+export {
+  storeLLMConversationData,
+  detectOnairosExtension,
+  sendUserInfoToExtension,
+  getUserInfoFromStorage
+} from './utils/extensionDetection.js';

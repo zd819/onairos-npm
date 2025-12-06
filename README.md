@@ -10,9 +10,11 @@
 
 ### 1. Create a Developer Account
 
-Create a Developer account to access Onairos services. Register your domain to ensure secure API access.
+Create a Developer account to access Onairos services at:
 
 https://Onairos.uk/dev-board
+
+**Important:** Once you have a developer account and API key, domain registration is handled manually by the Onairos team. If you don't have an API key yet, you'll need to register your domain through the developer portal for secure API access.
 
 ### 2. Installation
 
@@ -159,6 +161,61 @@ export default defineConfig({
 });
 ```
 
+#### Capacitor Mobile App Integration (React Native, iOS, Android)
+
+For mobile applications using Capacitor with React + Vite:
+
+```jsx
+// Works identically to web - no special configuration needed
+import { OnairosButton } from "onairos";
+
+function MyMobileApp() {
+  return (
+    <OnairosButton
+      requestData={["email", "profile", "social"]}
+      webpageName="My Mobile App"
+      autoFetch={true}
+      onComplete={(result) => {
+        if (result.apiResponse) {
+          // Handle user data in your mobile app
+          console.log("User data:", result.apiResponse);
+        }
+      }}
+    />
+  );
+}
+```
+
+**Mobile-Specific Notes:**
+- ✅ All React components work identically in Capacitor
+- ✅ API calls and authentication work the same
+- ✅ OAuth flows automatically use mobile-friendly redirects instead of popups
+- ✅ Touch interactions are fully supported
+- ✅ **LLM data collection available via native method** (no browser extension needed)
+- 📱 Tested on iOS 13+ and Android 8+
+
+**LLM Data Collection in Capacitor:**
+```jsx
+import { storeCapacitorLLMData } from 'onairos';
+
+// Store LLM conversation data directly (no browser extension needed)
+const result = await storeCapacitorLLMData(
+  {
+    messages: [
+      { role: 'user', content: 'Hello!' },
+      { role: 'assistant', content: 'Hi there!' }
+    ],
+    timestamp: new Date().toISOString()
+  },
+  userInfo, // From OnairosButton onComplete callback
+  'chatgpt' // Platform: 'chatgpt', 'claude', 'gemini', or 'grok'
+);
+```
+
+For detailed Capacitor integration including LLM data collection, see:
+- 🚀 [Capacitor Quick Start Guide](./CAPACITOR_QUICK_START.md) - 5-minute setup
+- 📖 [Full Capacitor Integration Guide](./CAPACITOR_IOS_INTEGRATION.md) - Complete documentation
+
 #### Custom Persona Images
 
 The library includes default persona images that change based on connected platforms. In Vite dev environments, these may show as gradient fallbacks due to asset processing. To use custom images:
@@ -299,20 +356,40 @@ The component includes comprehensive error handling:
 />
 ```
 
-### 9. Browser Compatibility
+### 9. Browser & Platform Compatibility
 
+**Desktop Browsers:**
 - ✅ Chrome 80+
 - ✅ Firefox 75+
 - ✅ Safari 13+
 - ✅ Edge 80+
 
+**Mobile Browsers:**
+- ✅ iOS Safari 13+
+- ✅ Chrome Mobile (Android)
+- ✅ Samsung Internet
+- ✅ Firefox Mobile
+
+**Mobile Frameworks:**
+- ✅ Capacitor (iOS/Android)
+- ✅ React Native WebView
+- ✅ Ionic
+
 ### 10. Troubleshooting
 
-**Popup Blocked**: Ensure popups are allowed for your domain in browser settings.
+**Popup Blocked**: Ensure popups are allowed for your domain in browser settings. On mobile devices, OAuth automatically uses redirects instead of popups.
 
-**API Calls Failing**: Verify your domain is registered in the developer console.
+**API Calls Failing**: 
+- If you have a developer account with an API key, domain registration is handled manually by the Onairos team
+- If you don't have an API key, verify your domain is registered in the [developer console](https://Onairos.uk/dev-board)
+- Check that your API key is included in requests if using the SDK
 
 **Data Not Loading**: Check browser console for errors and ensure proper integration.
+
+**Mobile/Capacitor Issues**: 
+- OAuth popups automatically convert to redirects on mobile
+- Browser extension features are not available in Capacitor apps
+- Ensure localStorage is enabled in your Capacitor configuration
 
 ### 11. Support
 
