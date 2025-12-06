@@ -164,6 +164,18 @@ export function OnairosButton({
       pinCreated: !isNewUser // Assume returning users have PIN, new users need to create it
     };
     
+    // Ensure token is stored in userData and localStorage
+    const emailToken = authData.token || authData.jwtToken || authData.accessToken;
+    if (emailToken) {
+      newUserData.token = emailToken;
+      try {
+        localStorage.setItem('onairos_user_token', emailToken);
+        console.log('✅ Token from email verification saved to localStorage');
+      } catch (e) {
+        console.warn('⚠️ Could not save token to localStorage:', e);
+      }
+    }
+    
     setUserData(newUserData);
     localStorage.setItem('onairosUser', JSON.stringify(newUserData));
     
@@ -275,58 +287,124 @@ export function OnairosButton({
           }
           
           // 2. Fetch the actual data
+          // IMPORTANT: This endpoint can take 1-3 minutes as it runs Python LLM scripts
+          // We MUST wait for the actual response before proceeding
           // Always use POST for consistency and to support body data
           // traits-only endpoint requires POST
           const method = 'POST';
           
           console.log(`📡 Fetching data from ${urlData.apiUrl} (${method})...`);
           console.log(`🔑 Using token: ${urlData.token ? urlData.token.substring(0, 20) + '...' : 'NO TOKEN'}`);
+          console.log(`⏳ Waiting for backend response - this may take 1-3 minutes for LLM processing...`);
           
           let dataResponse;
           let apiResponse;
+          let fetchCompleted = false;
+          let fetchError = null;
           
           try {
-            dataResponse = await fetch(urlData.apiUrl, {
-              method: method,
-              headers: {
-                'Authorization': `Bearer ${urlData.token}`,
-                'Content-Type': 'application/json'
-              },
-              // Only send body for POST
-              body: method === 'POST' ? JSON.stringify({
-                email: userData?.email,
-                includeLlmData: requestResult.approved.includes('rawMemories')
-              }) : undefined
-            });
+            // CRITICAL: Wait for the actual fetch response - don't proceed until we get data or a real error
+            // The backend Python script needs time to generate the wrapped dashboard
+            console.log(`🔄 Starting fetch request - will wait for complete response...`);
+            
+            // Create abort controller with 5-minute timeout for LLM-heavy endpoints
+            // This prevents the BROWSER from timing out, even if the server might
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
+
+            try {
+              dataResponse = await fetch(urlData.apiUrl, {
+                method: method,
+                headers: {
+                  'Authorization': `Bearer ${urlData.token}`,
+                  'Content-Type': 'application/json'
+                },
+                // Only send body for POST
+                body: method === 'POST' ? JSON.stringify({
+                  email: userData?.email,
+                  includeLlmData: requestResult.approved.includes('rawMemories')
+                }) : undefined,
+                signal: controller.signal
+              });
+            } finally {
+              clearTimeout(timeoutId);
+            }
 
             console.log(`📥 Response status: ${dataResponse.status} ${dataResponse.statusText}`);
             console.log(`📥 Response headers:`, Object.fromEntries(dataResponse.headers.entries()));
 
+            // Check for 504 Gateway Timeout - implies backend is still working
+            if (dataResponse.status === 504) {
+               console.warn('⏱️ 504 Gateway Timeout received - Backend is likely still processing');
+               throw new Error('Gateway Timeout (504) - Backend processing continued');
+            }
+
+            // CRITICAL: Check if response is ok before parsing JSON
+            if (!dataResponse.ok) {
+              throw new Error(`HTTP ${dataResponse.status}: ${dataResponse.statusText}`);
+            }
+
+            // CRITICAL: Wait for JSON parsing to complete
             apiResponse = await dataResponse.json();
+            
+            // Mark fetch as completed successfully
+            fetchCompleted = true;
+            
+            console.log('✅✅✅ API RESPONSE FULLY RECEIVED AND PARSED');
             console.log('📦📦📦 FULL API RESPONSE RECEIVED:', JSON.stringify(apiResponse, null, 2));
             console.log('📦 Data received - has slides?', !!apiResponse.slides);
             console.log('📦 Data received - slides keys:', apiResponse.slides ? Object.keys(apiResponse.slides) : 'NO SLIDES');
+            
           } catch (fetchErr) {
+            // Mark that we encountered an error during fetch
+            fetchError = fetchErr;
+            fetchCompleted = false;
+            
             console.error('🚨 FETCH ERROR:', fetchErr);
             console.error('🚨 Error name:', fetchErr.name);
             console.error('🚨 Error message:', fetchErr.message);
             
+            // Check if it's a timeout error (504 Gateway Timeout)
+            if (fetchErr.message?.includes('504') || fetchErr.message?.includes('Gateway Timeout')) {
+              console.error('⏱️⏱️⏱️ GATEWAY TIMEOUT (504) - Backend is still processing');
+              console.error('⏱️ This means the backend Python LLM script is still running');
+              console.error('⏱️ DO NOT fall back to mocks yet - backend is generating data');
+              // Don't set apiResponse to null yet - we want to retry or wait
+              apiResponse = null;
+              
+              // Flag this as a timeout specifically so the app knows to wait/retry
+              requestResult.isTimeout = true;
+            }
             // If it's a CORS error, the backend is returning data but browser blocks it
-            // The backend logs show the data IS being generated successfully
-            if (fetchErr.message?.includes('CORS') || fetchErr.message?.includes('Failed to fetch')) {
+            else if (fetchErr.message?.includes('CORS') || fetchErr.message?.includes('Failed to fetch')) {
               console.error('🚨🚨🚨 CORS BLOCKING RESPONSE - Backend generated data but browser cannot read it');
+              console.error('🚨 This usually means a 504/502 timeout from load balancer stripping headers');
               console.error('🚨 Backend successfully generated dashboard (see server logs)');
-              console.error('🚨 Backend needs to add CORS headers:');
-              console.error('   Access-Control-Allow-Origin: http://localhost:3000');
-              console.error('   Access-Control-Allow-Methods: POST, GET, OPTIONS');
-              console.error('   Access-Control-Allow-Headers: Authorization, Content-Type');
               
               // Even though fetch failed, we still have the token and URL
               // Set apiResponse to null but keep token and apiUrl for retry
               apiResponse = null;
+              
+              // Treat CORS errors on this endpoint as timeouts/processing
+              // The backend likely finished but the LB cut the connection
+              requestResult.isTimeout = true;
             } else {
-              throw fetchErr;
+              // For other errors, still set to null but log the error
+              console.error('❌ Fetch failed with error:', fetchErr);
+              apiResponse = null;
             }
+          }
+          
+          // CRITICAL: Log fetch completion status
+          if (fetchCompleted) {
+            console.log('✅✅✅ FETCH COMPLETED SUCCESSFULLY - Response data is ready');
+          } else if (requestResult.isTimeout) {
+             console.log('⏱️⏱️⏱️ REQUEST TIMED OUT - Passing timeout flag to app');
+          } else if (fetchError) {
+            console.error('❌❌❌ FETCH FAILED - Response data is NOT ready');
+            console.error('❌ Error details:', fetchError);
+          } else {
+            console.warn('⚠️⚠️⚠️ FETCH STATUS UNKNOWN - This should not happen');
           }
 
           // Merge into result - include token and apiUrl even if fetch failed
@@ -399,9 +477,29 @@ export function OnairosButton({
       }
     }
 
+    // Ensure token is included from userData if not already in finalResult
+    if (!finalResult.token && updatedUserData.token) {
+      finalResult.token = updatedUserData.token;
+      console.log('🔑 Added token from userData to finalResult');
+    }
+    
+    // Also check localStorage as fallback
+    if (!finalResult.token) {
+      try {
+        const storedToken = localStorage.getItem('onairos_user_token');
+        if (storedToken) {
+          finalResult.token = storedToken;
+          console.log('🔑 Added token from localStorage to finalResult');
+        }
+      } catch (e) {
+        console.warn('⚠️ Could not read token from localStorage:', e);
+      }
+    }
+
     // Add user data to the result for comprehensive formatting
     const completeResult = {
       ...formattedResult,
+      token: finalResult.token || formattedResult.token || updatedUserData.token, // Ensure token is at root level
       userData: updatedUserData
     };
 
@@ -414,6 +512,14 @@ export function OnairosButton({
         console.warn('⚠️ Error formatting user data for display:', formatError);
         // Continue with unformatted result to ensure app doesn't break
     }
+    
+    // Ensure token is still present after formatting
+    if (!enhancedResult.token && completeResult.token) {
+      enhancedResult.token = completeResult.token;
+    }
+    if (!enhancedResult.token && updatedUserData.token) {
+      enhancedResult.token = updatedUserData.token;
+    }
 
     // Call onComplete callback if provided
     console.log('🔥 Calling onComplete callback');
@@ -422,6 +528,7 @@ export function OnairosButton({
       apiUrl: enhancedResult.apiUrl ? '✅ Present (URL string)' : '❌ Missing',
       apiResponse: enhancedResult.apiResponse ? '✅ Present (object)' : '❌ Missing',
       userData: enhancedResult.userData ? '✅ Present (object)' : '❌ Missing',
+      userDataToken: enhancedResult.userData?.token ? '✅ Present in userData' : '❌ Missing',
       success: enhancedResult.success,
       testMode: enhancedResult.testMode,
       allKeys: Object.keys(enhancedResult)
