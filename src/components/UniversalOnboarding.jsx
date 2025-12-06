@@ -156,9 +156,49 @@ export default function UniversalOnboarding({ onComplete }) {
   const platforms = getPlatformsForPage(currentPage);
 
   useEffect(() => {
-    // Load OAuth platform returns
+    // Check for OAuth success on mount (after redirect back from mobile)
+    const checkOAuthSuccess = () => {
+      const oauthContext = localStorage.getItem('onairos_oauth_context');
+      const platformConnector = localStorage.getItem('onairos_oauth_platform');
+      
+      // Only process if we're coming back from platform connector flow
+      if (oauthContext === 'platform-connector' && platformConnector) {
+        const localStorageKey = `onairos_${platformConnector}_success`;
+        const timestampKey = `onairos_${platformConnector}_timestamp`;
+        const success = localStorage.getItem(localStorageKey);
+        const timestamp = localStorage.getItem(timestampKey);
+        
+        if (success === 'true' && timestamp) {
+          const timestampNum = parseInt(timestamp, 10);
+          const now = Date.now();
+          
+          // Only process if timestamp is recent (within last 30 seconds)
+          if (now - timestampNum < 30000) {
+            console.log(`✅ ${platformConnector} OAuth completed - processing redirect back`);
+            
+            // Find platform by connector
+            const plat = allPlatforms.find((p) => p.connector === platformConnector);
+            if (plat) {
+              // Mark as connected
+              setConnectedAccounts((s) => ({ ...s, [plat.name]: true }));
+            }
+            
+            // Clean up localStorage
+            localStorage.removeItem(localStorageKey);
+            localStorage.removeItem(timestampKey);
+            localStorage.removeItem('onairos_oauth_context');
+            localStorage.removeItem('onairos_oauth_platform');
+            localStorage.removeItem('onairos_return_url');
+          }
+        }
+      }
+    };
+
+    checkOAuthSuccess();
+    
+    // Legacy: Load OAuth platform returns (for backward compatibility)
     const p = localStorage.getItem('onairos_oauth_platform');
-    if (p) {
+    if (p && !localStorage.getItem('onairos_oauth_context')) {
       localStorage.removeItem('onairos_oauth_platform');
       localStorage.removeItem('onairos_oauth_return');
       setConnectedAccounts((s) => ({ ...s, [p]: true }));
@@ -239,20 +279,25 @@ export default function UniversalOnboarding({ onComplete }) {
       const isMobile = typeof navigator !== 'undefined' &&
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-      // On mobile, prefer full-page redirect and keep the toggle ON
+      // On mobile, use same-page redirect
       if (isMobile) {
-        console.log(`📱 Mobile: redirecting to ${plat.connector} OAuth in same tab`);
+        console.log(`📱 Mobile: redirecting to ${plat.connector} OAuth in same page`);
+        
+        // Store return URL and context for redirect back
+        const returnUrl = window.location.href;
+        localStorage.setItem('onairos_return_url', returnUrl);
+        localStorage.setItem('onairos_oauth_context', 'platform-connector');
+        localStorage.setItem('onairos_oauth_platform', plat.connector);
+        console.log(`📌 Stored return URL for ${plat.connector}:`, returnUrl);
+        
+        // Use same-page redirect on mobile
         setIsConnecting(false);
         setConnectingPlatform(null);
-        try {
-          window.location.href = oauthUrl;
-        } catch (e) {
-          console.warn('⚠️ Failed to redirect to OAuth URL on mobile:', e);
-        }
+        window.location.href = oauthUrl;
         return true;
       }
 
-      // Desktop: open popup, fall back to redirect if blocked
+      // Desktop: open popup, use localStorage polling + postMessage
       const popup = window.open(
         oauthUrl,
         `${plat.connector}_oauth`,
@@ -267,34 +312,98 @@ export default function UniversalOnboarding({ onComplete }) {
         return true;
       }
 
-      let touched = false;
-      const it = setInterval(() => {
-        try {
-          if (popup.location && popup.location.hostname && popup.location.hostname.includes('onairos.uk')) {
-            touched = true;
-            popup.close();
-          }
-        } catch {
-          if (!touched) touched = true;
+      // Set up postMessage listener for cross-origin communication
+      const messageHandler = (event) => {
+        // Only accept messages from onairos.uk origin
+        if (event.origin !== 'https://api2.onairos.uk' && 
+            event.origin !== 'https://onairos.uk' &&
+            !event.origin.includes('onairos.uk')) {
+          return;
         }
-        try {
-          if (popup.closed) {
-            clearInterval(it);
-            setIsConnecting(false);
-            setConnectingPlatform(null);
-          }
-        } catch {}
-      }, 800);
 
-      setTimeout(() => { try { if (!popup.closed && touched) popup.close(); } catch {} }, 10000);
-      setTimeout(() => {
-        if (!popup.closed) {
-          popup.close();
-          clearInterval(it);
+        if (event.data && event.data.type === 'oauth-success' && event.data.platform === plat.connector) {
+          console.log(`✅ ${plat.connector} OAuth success received via postMessage:`, event.data);
+          window.removeEventListener('message', messageHandler);
+          clearInterval(pollInterval);
           setIsConnecting(false);
           setConnectingPlatform(null);
+          // Toggle is already ON from optimistic update
         }
-      }, 300000);
+      };
+
+      window.addEventListener('message', messageHandler);
+
+      // Poll localStorage for OAuth completion (oauth-callback.html sets this)
+      const localStorageKey = `onairos_${plat.connector}_success`;
+      const timestampKey = `onairos_${plat.connector}_timestamp`;
+      let pollCount = 0;
+      const maxPolls = 300; // 5 minutes max
+
+      const pollInterval = setInterval(() => {
+        pollCount++;
+        
+        try {
+          // Check if popup is closed (works for popups, not tabs)
+          if (popup.closed && pollCount > 10) {
+            clearInterval(pollInterval);
+            window.removeEventListener('message', messageHandler);
+            setIsConnecting(false);
+            setConnectingPlatform(null);
+            console.log(`⚠️ ${plat.connector} popup was closed`);
+            return;
+          }
+
+          // Check localStorage for success signal
+          const success = localStorage.getItem(localStorageKey);
+          const timestamp = localStorage.getItem(timestampKey);
+          
+          if (success === 'true' && timestamp) {
+            const timestampNum = parseInt(timestamp, 10);
+            const now = Date.now();
+            
+            // Only process if timestamp is recent (within last 30 seconds)
+            if (now - timestampNum < 30000) {
+              console.log(`✅ ${plat.connector} OAuth completed successfully`);
+              clearInterval(pollInterval);
+              window.removeEventListener('message', messageHandler);
+              setIsConnecting(false);
+              setConnectingPlatform(null);
+              // Toggle is already ON from optimistic update
+              
+              // Try to close popup if still open
+              try {
+                if (!popup.closed) {
+                  popup.close();
+                }
+              } catch (e) {
+                // Ignore errors closing popup
+              }
+              return;
+            }
+          }
+
+          // Timeout after max polls
+          if (pollCount >= maxPolls) {
+            clearInterval(pollInterval);
+            window.removeEventListener('message', messageHandler);
+            setIsConnecting(false);
+            setConnectingPlatform(null);
+            console.log(`⏳ [TIMEOUT] ${plat.connector} OAuth polling timed out after 5 minutes`);
+            
+            // Try to close popup if still open
+            try {
+              if (!popup.closed) {
+                popup.close();
+              }
+            } catch (e) {
+              // Ignore errors closing popup
+            }
+          }
+        } catch (error) {
+          console.error(`Error in ${plat.connector} OAuth polling:`, error);
+        }
+      }, 1000);
+
       return true;
     } catch {
       // On failure, revert the optimistic toggle

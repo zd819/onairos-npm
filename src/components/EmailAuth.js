@@ -12,6 +12,128 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
   const [emailSent, setEmailSent] = useState(true); // Track if email was actually sent
   const [emailServiceMessage, setEmailServiceMessage] = useState(''); // Store service message
 
+  // Helper function to handle OAuth success (Gmail) - defined early for useEffect
+  const handleOAuthSuccess = async (gmailEmail) => {
+    try {
+      setIsLoading(true);
+      console.log('✅ Google OAuth completed successfully, email:', gmailEmail);
+
+      // For Gmail SSO we trust Google's email verification and skip the 6‑digit code.
+      // We still record the email locally and immediately continue into onboarding.
+      const normalizedEmail = (gmailEmail || '').trim().toLowerCase();
+      setEmail(normalizedEmail);
+
+      // Simulate a successful verification response and jump straight to success → UniversalOnboarding
+      setStep('success');
+      setIsLoading(false);
+
+      setTimeout(() => {
+        onSuccess({
+          email: normalizedEmail,
+          verified: true,
+          token: null,
+          userName: normalizedEmail.split('@')[0],
+          existingUser: false,
+          accountInfo: null,
+          isNewUser: true,
+          flowType: 'onboarding',
+          adminMode: false,
+          userCreated: true,
+          accountDetails: {
+            email: normalizedEmail,
+            createdAt: new Date().toISOString(),
+            ssoProvider: 'gmail'
+          }
+        });
+      }, 400);
+    
+    } catch (error) {
+      console.error('❌ Error handling OAuth success:', error);
+      setError('Failed to continue with Google authentication. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  // Check for Gmail OAuth success on mount (after redirect back)
+  useEffect(() => {
+    const checkGmailOAuthSuccess = () => {
+      const gmailSuccess = localStorage.getItem('onairos_gmail_success');
+      const gmailTimestamp = localStorage.getItem('onairos_gmail_timestamp');
+      const oauthContext = localStorage.getItem('onairos_oauth_context');
+      
+      // Only process if we're coming back from Gmail auth flow
+      if (gmailSuccess === 'true' && gmailTimestamp && oauthContext === 'gmail-auth') {
+        const timestampNum = parseInt(gmailTimestamp, 10);
+        const now = Date.now();
+        
+        // Only process if timestamp is recent (within last 30 seconds)
+        if (now - timestampNum < 30000) {
+          console.log('✅ Gmail OAuth completed - processing redirect back');
+          
+          // Get email from localStorage
+          const gmailEmail = localStorage.getItem('onairos_gmail_email') || 
+                           localStorage.getItem('onairos_oauth_email');
+          
+          // Clean up localStorage
+          localStorage.removeItem('onairos_gmail_success');
+          localStorage.removeItem('onairos_gmail_timestamp');
+          localStorage.removeItem('onairos_oauth_context');
+          localStorage.removeItem('onairos_return_url');
+          
+          if (gmailEmail) {
+            // Process OAuth success
+            handleOAuthSuccess(gmailEmail);
+          }
+        }
+      }
+    };
+
+    checkGmailOAuthSuccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
+  // Check for OAuth completion on mount (for same-page redirect flow)
+  useEffect(() => {
+    const checkOAuthCompletion = () => {
+      // Check URL params for OAuth completion
+      const urlParams = new URLSearchParams(window.location.search);
+      const oauthSuccess = urlParams.get('onairos_oauth_success');
+      const oauthPlatform = urlParams.get('onairos_oauth_platform');
+      const oauthEmail = urlParams.get('onairos_oauth_email');
+
+      if (oauthSuccess === 'true' && oauthPlatform === 'gmail' && oauthEmail) {
+        console.log('✅ Gmail OAuth completion detected on page load');
+        // Clean up URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+        // Handle OAuth success
+        handleOAuthSuccess(oauthEmail);
+      } else {
+        // Check localStorage for OAuth completion (fallback)
+        const success = localStorage.getItem('onairos_gmail_success');
+        const timestamp = localStorage.getItem('onairos_gmail_timestamp');
+        const gmailEmail = localStorage.getItem('onairos_gmail_email');
+
+        if (success === 'true' && timestamp && gmailEmail) {
+          const timestampNum = parseInt(timestamp, 10);
+          const now = Date.now();
+          
+          // Only process if timestamp is recent (within last 60 seconds)
+          if (now - timestampNum < 60000) {
+            console.log('✅ Gmail OAuth completion detected via localStorage');
+            // Clean up localStorage
+            localStorage.removeItem('onairos_gmail_success');
+            localStorage.removeItem('onairos_gmail_timestamp');
+            // Handle OAuth success
+            handleOAuthSuccess(gmailEmail);
+          }
+        }
+      }
+    };
+
+    checkOAuthCompletion();
+  }, []); // Run once on mount
+
   // Auto-focus first PIN input when code step loads
   useEffect(() => {
     if (step === 'code') {
@@ -138,21 +260,43 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         throw new Error('No OAuth URL received from backend');
       }
 
-      console.log('🚀 Opening Google OAuth...');
-
-      // Try popup first (works on most mobile & desktop browsers when triggered by user click),
-      // fall back to full-page redirect if blocked.
-      const popup = window.open(
-        oauthUrl,
-        'google_oauth',
-        'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
-      );
-
-      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-        console.warn('⚠️ Popup was blocked, falling back to full-page redirect');
+      // Detect mobile devices
+      const isMobile = typeof navigator !== 'undefined' && 
+                      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      let popup;
+      
+      if (isMobile) {
+        console.log('📱 Mobile device detected - using same-page redirect');
+        // Store return URL and context for redirect back
+        const returnUrl = window.location.href;
+        localStorage.setItem('onairos_return_url', returnUrl);
+        localStorage.setItem('onairos_oauth_context', 'gmail-auth'); // Mark this as Gmail auth flow
+        console.log('📌 Stored return URL:', returnUrl);
+        
+        // Use same-page redirect on mobile
         setIsLoading(false);
         window.location.href = oauthUrl;
         return;
+      } else {
+        console.log('🖥️ Desktop device - opening in popup window');
+        // On desktop, use popup window
+        popup = window.open(
+          oauthUrl,
+          'google_oauth',
+          'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
+        );
+
+        if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+          console.warn('⚠️ Popup was blocked, falling back to same-page redirect');
+          // Store return URL for fallback redirect
+          const returnUrl = window.location.href;
+          localStorage.setItem('onairos_return_url', returnUrl);
+          localStorage.setItem('onairos_oauth_context', 'gmail-auth');
+          setIsLoading(false);
+          window.location.href = oauthUrl;
+          return;
+        }
       }
 
       // Set up postMessage listener for cross-origin communication
@@ -184,9 +328,9 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         pollCount++;
         
         try {
-          // Check if popup is closed (user might have closed it manually)
-          // If closed after OAuth redirect (pollCount > 10 = ~10 seconds), try fallback
-          if (popup.closed && pollCount > 10) {
+          // Check if popup is closed (only works for popups, not tabs)
+          // Skip this check on mobile since we can't reliably detect if tab closed
+          if (!isMobile && popup && popup.closed && pollCount > 10) {
             clearInterval(pollInterval);
             window.removeEventListener('message', messageHandler);
             console.log('⚠️ OAuth popup was closed, trying fallback to get email from backend...');
@@ -316,47 +460,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     }
   };
 
-  // Helper function to handle OAuth success (Gmail)
-  const handleOAuthSuccess = async (gmailEmail) => {
-    try {
-      setIsLoading(true);
-      console.log('✅ Google OAuth completed successfully, email:', gmailEmail);
-
-      // For Gmail SSO we trust Google's email verification and skip the 6‑digit code.
-      // We still record the email locally and immediately continue into onboarding.
-      const normalizedEmail = (gmailEmail || '').trim().toLowerCase();
-      setEmail(normalizedEmail);
-
-      // Simulate a successful verification response and jump straight to success → UniversalOnboarding
-      setStep('success');
-      setIsLoading(false);
-
-      setTimeout(() => {
-        onSuccess({
-          email: normalizedEmail,
-          verified: true,
-          token: null,
-          userName: normalizedEmail.split('@')[0],
-          existingUser: false,
-          accountInfo: null,
-          isNewUser: true,
-          flowType: 'onboarding',
-          adminMode: false,
-          userCreated: true,
-          accountDetails: {
-            email: normalizedEmail,
-            createdAt: new Date().toISOString(),
-            ssoProvider: 'gmail'
-          }
-        });
-      }, 400);
-    
-    } catch (error) {
-      console.error('❌ Error handling OAuth success:', error);
-      setError('Failed to continue with Google authentication. Please try again.');
-      setIsLoading(false);
-    }
-  };
+  // handleOAuthSuccess is defined at the top of the component for use in useEffect
 
   const handleCodeSubmit = async (e) => {
     e.preventDefault();
