@@ -138,17 +138,21 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         throw new Error('No OAuth URL received from backend');
       }
 
-      console.log('🚀 Opening Google OAuth popup...');
+      console.log('🚀 Opening Google OAuth...');
 
-      // Open popup for OAuth
+      // Try popup first (works on most mobile & desktop browsers when triggered by user click),
+      // fall back to full-page redirect if blocked.
       const popup = window.open(
         oauthUrl,
         'google_oauth',
         'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
       );
 
-      if (!popup) {
-        throw new Error('Popup blocked. Please allow popups for this site.');
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        console.warn('⚠️ Popup was blocked, falling back to full-page redirect');
+        setIsLoading(false);
+        window.location.href = oauthUrl;
+        return;
       }
 
       // Set up postMessage listener for cross-origin communication

@@ -457,10 +457,21 @@ export function OnairosButton({
       }
     }
 
-    // Close overlay immediately
+    console.log('🔥 OnairosButton: Data request completed:', requestResult);
+    console.log('🔥 OnairosButton: Final result before callback:', finalResult);
+
+    // Decide whether to keep the overlay open (wrappedLoading) or close it
+    const shouldKeepOverlayOpen = autoFetch && requestResult.approved?.length > 0 && (
+      requestResult.isTimeout === true || !finalResult?.apiResponse?.slides
+    );
+
+    if (shouldKeepOverlayOpen) {
+      console.log('⏱️ Keeping overlay open on wrappedLoading page while backend finishes');
+    } else {
     console.log('🔥 Closing overlay after data request completion');
     // Use centralized close to also reset flow and session
     handleCloseOverlay();
+    }
 
     // Format response if requested and API response is present
     let formattedResult = finalResult;
@@ -495,7 +506,7 @@ export function OnairosButton({
         console.warn('⚠️ Could not read token from localStorage:', e);
       }
     }
-
+    
     // Add user data to the result for comprehensive formatting
     const completeResult = {
       ...formattedResult,
@@ -506,7 +517,7 @@ export function OnairosButton({
     // Enhanced user data formatting for better display
     let enhancedResult = completeResult;
     try {
-        // Log formatted user data for better readability
+    // Log formatted user data for better readability
         enhancedResult = logFormattedUserData(completeResult);
     } catch (formatError) {
         console.warn('⚠️ Error formatting user data for display:', formatError);

@@ -48,19 +48,20 @@ export default function UniversalOnboarding({ onComplete }) {
 
   const FOOTER_H = 88;
 
-  // persona stays as requested (background, unchanged placement)
-  const personaSide = Math.min(vh * 0.52, 500);
-  const PERSONA_TOP = 96;
+  // persona placement / sizing (tune for small mobile)
+  const isSmallMobile = vh < 700;
+  const personaSide = isSmallMobile ? Math.min(vh * 0.45, 420) : Math.min(vh * 0.52, 500);
+  const PERSONA_TOP = isSmallMobile ? 72 : 96;
 
   // icon layout (restore tighter spacing on page 1; place the band lower)
-  const SLOT = Math.max(56, Math.min(64, Math.floor(vh * 0.07)));
-  const CIRCLE = 42;
+  const SLOT = Math.max(52, Math.min(64, Math.floor(vh * 0.07)));
+  const CIRCLE = isSmallMobile ? 38 : 42;
   const GAP_PAGE1 = 12;
   const GAP_PAGE2 = 20;
   const ACTIVE_SCALE = vh < 760 ? 1.12 : 1.22;
 
-  const ICONS_H = 84;
-  const ICONS_TOP_OFFSET = Math.max(180, Math.min(240, Math.round(vh * 0.28))); // ~28vh, clamped for all screens
+  const ICONS_H = isSmallMobile ? 74 : 84;
+  const ICONS_TOP_OFFSET = Math.max(160, Math.min(240, Math.round(vh * 0.26))); // slightly tighter on small screens
 
   const igGradId = useId();
 
@@ -226,19 +227,74 @@ export default function UniversalOnboarding({ onComplete }) {
         }[plat.connector]
       ) || [`${plat.connector}URL`, `${plat.connector}Url`, `${plat.connector}_url`, 'platformURL', 'authUrl', 'url'];
 
-      let oauthUrl = null; for (const k of candidates) if (data[k]) { oauthUrl = data[k]; break; }
+      let oauthUrl = null;
+      for (const k of candidates) {
+        if (data[k]) {
+          oauthUrl = data[k];
+          break;
+        }
+      }
       if (!oauthUrl) throw new Error('no url');
 
-      const popup = window.open(oauthUrl, `${plat.connector}_oauth`, 'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no');
-      if (!popup) throw new Error('popup blocked');
+      const isMobile = typeof navigator !== 'undefined' &&
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-      let touched = false; const it = setInterval(() => {
-        try { if (popup.location && popup.location.hostname === 'onairos.uk') { touched = true; popup.close(); } } catch { if (!touched) touched = true; }
-        try { if (popup.closed) { clearInterval(it); setIsConnecting(false); setConnectingPlatform(null); } } catch {}
+      // On mobile, prefer full-page redirect and keep the toggle ON
+      if (isMobile) {
+        console.log(`📱 Mobile: redirecting to ${plat.connector} OAuth in same tab`);
+        setIsConnecting(false);
+        setConnectingPlatform(null);
+        try {
+          window.location.href = oauthUrl;
+        } catch (e) {
+          console.warn('⚠️ Failed to redirect to OAuth URL on mobile:', e);
+        }
+        return true;
+      }
+
+      // Desktop: open popup, fall back to redirect if blocked
+      const popup = window.open(
+        oauthUrl,
+        `${plat.connector}_oauth`,
+        'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
+      );
+
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        console.warn(`⚠️ ${plat.connector} popup blocked, falling back to full-page redirect`);
+        setIsConnecting(false);
+        setConnectingPlatform(null);
+        window.location.href = oauthUrl;
+        return true;
+      }
+
+      let touched = false;
+      const it = setInterval(() => {
+        try {
+          if (popup.location && popup.location.hostname && popup.location.hostname.includes('onairos.uk')) {
+            touched = true;
+            popup.close();
+          }
+        } catch {
+          if (!touched) touched = true;
+        }
+        try {
+          if (popup.closed) {
+            clearInterval(it);
+            setIsConnecting(false);
+            setConnectingPlatform(null);
+          }
+        } catch {}
       }, 800);
 
       setTimeout(() => { try { if (!popup.closed && touched) popup.close(); } catch {} }, 10000);
-      setTimeout(() => { if (!popup.closed) { popup.close(); clearInterval(it); setIsConnecting(false); setConnectingPlatform(null); } }, 300000);
+      setTimeout(() => {
+        if (!popup.closed) {
+          popup.close();
+          clearInterval(it);
+          setIsConnecting(false);
+          setConnectingPlatform(null);
+        }
+      }, 300000);
       return true;
     } catch {
       // On failure, revert the optimistic toggle
