@@ -30,7 +30,7 @@ const fadeSlideInKeyframes = `
 }
 `;
 
-export default function UniversalOnboarding({ onComplete }) {
+export default function UniversalOnboarding({ onComplete, onBack, appIcon, appName, username, testMode, priorityPlatform, rawMemoriesOnly, rawMemoriesConfig, isMobile: isMobileProp = false }) {
   const lottieRef = useRef(null);
   const lastFrameRef = useRef(0);
   const rafRef = useRef(null);
@@ -45,8 +45,8 @@ export default function UniversalOnboarding({ onComplete }) {
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
 
-  // Mobile detection
-  const isMobile = isMobileApp() || isMobileBrowser() || 
+  // Mobile detection - use prop if provided (from layout), else detect
+  const isMobile = isMobileProp || isMobileApp() || isMobileBrowser() || 
     (typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
 
   const [vh, setVh] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 800));
@@ -60,32 +60,36 @@ export default function UniversalOnboarding({ onComplete }) {
 
   // MOBILE ONLY: persona placement / sizing - GIVE MORE SPACE TO PERSONA
   const isSmallMobile = isMobile && vh < 700;
+  // Desktop adjustments: Reduce persona size and top position to fit modal without scroll
+  // We allow overlap on desktop if needed
   const personaSide = isMobile 
     ? (isSmallMobile ? Math.min(vh * 0.5, 450) : Math.min(vh * 0.58, 520))
-    : Math.min(vh * 0.52, 500); // Desktop: original size
+    : Math.min(vh * 0.45, 420); // Desktop: allow larger size, will position absolutely
+  
   const PERSONA_TOP = isMobile 
-    ? (isSmallMobile ? 40 : 60) // Mobile: Higher up for more prominence
-    : 96; // Desktop: original position
+    ? (isSmallMobile ? 40 : 60) 
+    : 40; // Desktop: Higher up
 
   // MOBILE ONLY: icon layout - PUSH ICONS DOWN significantly
+  // Desktop: Adjust spacing to fit
   const SLOT = isMobile 
     ? Math.max(50, Math.min(60, Math.floor(vh * 0.07)))
-    : Math.max(52, Math.min(64, Math.floor(vh * 0.07))); // Desktop: original
+    : 60; // Desktop: fixed reasonable size
   const CIRCLE = isMobile 
     ? (isSmallMobile ? 36 : 40)
-    : 42; // Desktop: original
+    : 40; // Desktop: fixed reasonable size
   const GAP_PAGE1 = isMobile ? 10 : 12; // Desktop: original
   const GAP_PAGE2 = isMobile ? 18 : 20; // Desktop: original
   const ACTIVE_SCALE = isMobile 
     ? (vh < 760 ? 1.15 : 1.25)
-    : (vh < 760 ? 1.12 : 1.22); // Desktop: original
+    : 1.2; // Desktop: standard scale
 
   const ICONS_H = isMobile 
     ? (isSmallMobile ? 70 : 80)
-    : 84; // Desktop: original
+    : 76; // Desktop: tighter height
   const ICONS_TOP_OFFSET = isMobile 
-    ? Math.max(200, Math.min(280, Math.round(vh * 0.32))) // Mobile: Push icons lower
-    : Math.max(160, Math.min(240, Math.round(vh * 0.26))); // Desktop: original
+    ? Math.max(200, Math.min(280, Math.round(vh * 0.32)))
+    : 200; // Desktop: unused but kept for ref
 
   const igGradId = useId();
 
@@ -319,13 +323,18 @@ export default function UniversalOnboarding({ onComplete }) {
       const isMobileBrowser = typeof navigator !== 'undefined' &&
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
+      // Effective mobile check for flow control (use prop or detection)
+      const effectiveMobile = isMobileProp || isMobileBrowser;
+
       let returnUrl = ''; // Default to empty for Desktop Web
       
       if (isCapacitorNative) {
          returnUrl = `mobiletest://oauth-callback?success=true&platform=${plat.connector}`;
-      } else if (isMobileBrowser) {
+      } else if (effectiveMobile) {
          // Mobile Web needs redirect back to self
-         returnUrl = window.location.href;
+         // Sanitize URL to prevent recursive params if user is already on a return URL
+         const cleanUrl = window.location.origin + window.location.pathname;
+         returnUrl = cleanUrl;
       }
 
       console.log(`🔗 Authorizing ${plat.connector} with returnUrl:`, returnUrl || '(none/desktop)');
@@ -422,8 +431,8 @@ export default function UniversalOnboarding({ onComplete }) {
       }
 
       // PRIORITY 2: Mobile browser - use same-page redirect
-      if (isMobileBrowser) {
-        console.log(`📱 Mobile browser: redirecting to ${plat.connector} OAuth in same page`);
+      if (effectiveMobile) {
+        console.log(`📱 Mobile browser/view: redirecting to ${plat.connector} OAuth in same page`);
         
         // Store return URL and context for redirect back
         const returnUrl = window.location.href;
@@ -599,7 +608,17 @@ export default function UniversalOnboarding({ onComplete }) {
       <style>{fadeSlideInKeyframes}</style>
 
       {/* persona as background (unchanged) */}
-      <div aria-hidden style={{ position: 'absolute', left: '50%', top: PERSONA_TOP, transform: 'translateX(-50%)', width: personaSide, height: personaSide, zIndex: 0, pointerEvents: 'none', opacity: 0.95 }}>
+      <div aria-hidden style={{ 
+        position: 'absolute', 
+        left: '50%', 
+        top: PERSONA_TOP, 
+        transform: 'translateX(-50%)', 
+        width: personaSide, 
+        height: personaSide, 
+        zIndex: 0, 
+        pointerEvents: 'none', 
+        opacity: 0.95 
+      }}>
         <div className="overflow-hidden rounded-[28px] w-full h-full">
           <Lottie lottieRef={lottieRef} animationData={personaAnim} autoplay={false} loop={false} style={{ width: '100%', height: '100%' }} />
         </div>
@@ -608,13 +627,16 @@ export default function UniversalOnboarding({ onComplete }) {
       {/* content above persona */}
       <div className="relative z-10 h-full flex flex-col">
         {/* header - MOBILE ONLY: smaller top padding to give persona space */}
-        <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? '2.5rem' : '4rem', paddingBottom: isMobile ? '0.75rem' : '1rem' }}>
+        {/* Desktop: Reduced padding to fit everything */}
+        <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? '2.5rem' : '1.5rem', paddingBottom: isMobile ? '0.75rem' : '0.25rem' }}>
           <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
           <p className="text-gray-600 text-base">More Connections, Better Personalization.</p>
         </div>
 
         {/* Spacer - MOBILE ONLY: push icons/card WAY down so PERSONA SHINES */}
-        <div className="flex-1" style={{ minHeight: isMobile ? (isSmallMobile ? 140 : 180) : 40 }} />
+        {/* Desktop: Remove spacer completely to use available space and allow overlap via z-index if needed */}
+        {isMobile && <div className="flex-1" style={{ minHeight: isSmallMobile ? 140 : 180 }} />}
+        {!isMobile && <div className="flex-1" style={{ minHeight: 0 }} />}
 
         {/* icons band */}
         <div className="px-6 flex-shrink-0" style={{ height: ICONS_H }}>

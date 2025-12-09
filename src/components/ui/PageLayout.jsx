@@ -204,6 +204,9 @@ const ModalPageLayout = ({
     transform: 'translateY(0)',
     transition: 'transform 220ms ease, opacity 220ms ease',
     willChange: 'transform, opacity',
+    // Ensure the modal is horizontally centered on desktop
+    marginLeft: isCapacitorNative ? '0' : 'auto',
+    marginRight: isCapacitorNative ? '0' : 'auto',
     // Ensure full height on mobile
     ...(isCapacitorNative && {
       position: 'absolute',
@@ -215,6 +218,30 @@ const ModalPageLayout = ({
     }),
     ...modalStyle
   };
+
+  // 🔍 Layout debug logging (desktop vs native)
+  try {
+    if (typeof window !== 'undefined') {
+      const width = window.innerWidth;
+      const isDesktop = width >= 1024 && !isCapacitorNative;
+      // Only spam logs in desktop where sizing issues occur
+      if (isDesktop) {
+        // Keep this fairly compact but detailed
+        console.log('[Onairos SDK][Layout][ModalPageLayout]', {
+          width,
+          isCapacitorNative,
+          modalClassName,
+          modalStyleKeys: Object.keys(modalStyle || {}),
+          backdropStyleKeys: Object.keys(backdropStyle || {}),
+          modalMaxWidth: modalStyles.maxWidth,
+          modalMinHeight: modalStyles.minHeight,
+          modalHeight: modalStyles.height,
+        });
+      }
+    }
+  } catch (e) {
+    // Never let logging break rendering
+  }
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {

@@ -50,22 +50,136 @@ export function OnairosButton({
   const [isMobileDevice, setIsMobileDevice] = useState(false);
   
   useEffect(() => {
-    // Determine mobile state after mount to avoid hydration mismatches
-    const checkMobile = () => {
+    // Determine mobile vs desktop based on viewport width + native runtime,
+    // and keep it updated on resize.
+    const computeMobile = () => {
       try {
-        const isCap = isMobileApp();
-        const isMobBrowser = isMobileBrowser();
-        const userAgentMobile = typeof window !== 'undefined' && 
-          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        setIsMobileDevice(isCap || isMobBrowser || userAgentMobile);
+        const hasWindow = typeof window !== 'undefined';
+        if (!hasWindow) {
+          setIsMobileDevice(false);
+          return;
+        }
+
+        // Base width from current window
+        let width = window.innerWidth || document.documentElement?.clientWidth || document.body?.clientWidth || 0;
+
+        // If running inside an iframe, try to use the parent window width as well
+        // so desktop pages embedding the SDK don't get misclassified as mobile.
+        try {
+          if (window.parent && window.parent !== window && window.parent.innerWidth) {
+            width = Math.max(width, window.parent.innerWidth);
+          }
+        } catch (_) {
+          // Cross-origin access can fail; ignore and fall back to local width.
+        }
+
+        const isCapNative = !!window.Capacitor?.isNativePlatform?.();
+
+        // ✅ Final, explicit rule:
+        // - Capacitor native: ALWAYS mobile
+        // - Otherwise: viewport < 1024px (taking parent if available) → mobile; >= 1024px → desktop
+        const detectedMobile = isCapNative || width < 1024;
+
+        console.log('[Onairos SDK][Layout][MobileDetection simple]', {
+          width,
+          isCapNative,
+          detectedMobile,
+        });
+
+        setIsMobileDevice(detectedMobile);
       } catch (e) {
-        // Fallback if detection fails
         setIsMobileDevice(false);
       }
     };
-    checkMobile();
+
+    computeMobile();
+
+    // Desktop resize listener to keep classification accurate when user resizes window.
+    // This runs in all environments, but the rule above ensures iPhone/Capacitor
+    // keep their correct classification.
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', computeMobile);
+      return () => window.removeEventListener('resize', computeMobile);
+    }
   }, []);
+
+  // Lock background scroll on DESKTOP while modal is open (do not touch mobile/Capacitor)
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const body = document.body;
+    if (!body) return;
+
+    if (showOverlay && !isMobileDevice) {
+      // Remember previous overflow so we can restore it precisely
+      if (!body.dataset.onairosPrevOverflow) {
+        body.dataset.onairosPrevOverflow = body.style.overflow || '';
+      }
+      body.style.overflow = 'hidden';
+    } else {
+      // Restore previous overflow when modal closes or when switching back to mobile
+      if (body.dataset.onairosPrevOverflow !== undefined) {
+        body.style.overflow = body.dataset.onairosPrevOverflow;
+        delete body.dataset.onairosPrevOverflow;
+      }
+    }
+  }, [showOverlay, isMobileDevice]);
+
+  // 🔍 High-level layout debug for desktop vs mobile
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const width = window.innerWidth;
+    const isDesktop = width >= 1024 && !isMobileDevice;
+    console.log('[Onairos SDK][Layout][OnairosButton state]', {
+      width,
+      isDesktop,
+      isMobileDevice,
+      currentFlow,
+      showOverlay,
+    });
+  }, [isMobileDevice, currentFlow, showOverlay]);
+
+  // 🔍 DOM-level layout debug (only on desktop web)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const width = window.innerWidth;
+    const isDesktopWeb = width >= 1024 && !isMobileDevice && !window.Capacitor?.isNativePlatform?.();
+    if (!isDesktopWeb || !showOverlay) return;
+
+    // Defer to allow React layout to flush
+    const id = window.setTimeout(() => {
+      try {
+        const modal = document.querySelector('.onairos-modal');
+        const pageContent = document.querySelector('.onairos-page-content');
+        const shell = document.querySelector('.onairos-modal-shell');
+
+        const getMetrics = (el) => {
+          if (!el) return null;
+          const rect = el.getBoundingClientRect();
+          const styles = window.getComputedStyle(el);
+          return {
+            width: rect.width,
+            height: rect.height,
+            maxWidth: styles.maxWidth,
+            paddingInline: styles.paddingLeft + ' / ' + styles.paddingRight,
+            classList: Array.from(el.classList || []),
+          };
+        };
+
+        console.log('[Onairos SDK][Layout][DOM snapshot]', {
+          currentFlow,
+          viewportWidth: width,
+          modal: getMetrics(modal),
+          pageContent: getMetrics(pageContent),
+          shell: getMetrics(shell),
+        });
+      } catch (e) {
+        console.log('[Onairos SDK][Layout][DOM snapshot] failed', e?.message);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(id);
+  }, [currentFlow, showOverlay, isMobileDevice]);
   
   // Logic to process return URLs (Login & Connectors)
   const handleDeepLink = (url) => {
@@ -1018,51 +1132,56 @@ export function OnairosButton({
     }
   };
 
-  const renderCurrentFlow = () => {
+  const renderContent = () => {
+    const commonProps = {
+      isMobile: isMobileDevice,
+      testMode: testMode
+    };
+
     switch (currentFlow) {
       case 'welcome':
         return (
           <WelcomeScreen 
+            {...commonProps}
             onContinue={handleWelcomeContinue}
             onClose={handleCloseOverlay}
             webpageName={webpageName}
             appIcon={appIcon}
-            testMode={testMode}
           />
         );
       case 'email':
         return (
-          <div className="flex-1 min-h-0 flex flex-col">
-          <EmailAuth 
-            onSuccess={handleEmailAuthSuccess}
-            testMode={testMode} // Use the testMode prop from initialization
-          />
+          <div className={isMobileDevice ? "flex-1 min-h-0 flex flex-col" : "flex-1 min-h-0 flex flex-col"}>
+            <EmailAuth 
+              {...commonProps}
+              onSuccess={handleEmailAuthSuccess}
+            />
           </div>
         );
-      
       case 'onboarding':
         return (
           <UniversalOnboarding 
+            {...commonProps}
             onComplete={handleOnboardingComplete}
             onBack={() => setCurrentFlow('email')}
             appIcon={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"}
             appName={webpageName}
             username={userData?.email || userData?.username}
-            testMode={testMode}
             priorityPlatform={priorityPlatform}
             rawMemoriesOnly={rawMemoriesOnly}
             rawMemoriesConfig={rawMemoriesConfig}
           />
         );
-      
       case 'pin':
         return (
-          <PinSetup 
-            onComplete={handlePinSetupComplete}
-            userEmail={userData?.email}
-          />
+          <div className={isMobileDevice ? "flex-1 min-h-0" : ""}>
+            <PinSetup 
+              onComplete={handlePinSetupComplete}
+              onBack={() => setCurrentFlow('onboarding')}
+              userEmail={userData?.email}
+            />
+          </div>
         );
-      
       case 'training':
         return (
           <TrainingComponent 
@@ -1073,14 +1192,7 @@ export function OnairosButton({
             testMode={testMode}
           />
         );
-      
       case 'dataRequest':
-        console.log('🔍 [DEBUG] Rendering DataRequest with userData:', {
-          email: userData?.email,
-          userName: userData?.userName,
-          hasUserData: !!userData,
-          userDataKeys: userData ? Object.keys(userData) : []
-        });
         return (
           <DataRequest 
             onComplete={handleDataRequestComplete}
@@ -1096,7 +1208,14 @@ export function OnairosButton({
             showTime={time}
           />
         );
-      
+      case 'wrappedLoading':
+        return (
+          <div className="flex-1 min-h-0">
+            <WrappedLoadingPage appName={webpageName} />
+          </div>
+        );
+      case 'loading':
+        return <LoadingScreen onComplete={handleLoadingComplete} />;
       default:
         return (
           <div className="flex flex-col items-center space-y-4 p-6">
@@ -1162,156 +1281,68 @@ export function OnairosButton({
       {/* Modal with New Design */}
       {showOverlay && (
         <>
-          {currentFlow === 'email' && isMobileDevice ? (
-            // Special case for email - render directly without PageLayout wrapper
+          {isMobileDevice ? (
+            // Unified Mobile Wrapper for ALL flows
             <div className={`fixed inset-0 bg-gray-500 bg-opacity-50 block`} style={{ zIndex: 2147483647 }}>
-              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[90vh]`} style={{ maxWidth: '100%' }}>
-                {/* Header */}
+              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[95vh]`} style={{ maxWidth: '100%' }}>
+                {/* Header Logic */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
-                  <button
-                    onClick={handleCloseOverlay}
-                    className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  {currentFlow === 'welcome' || currentFlow === 'email' ? (
+                    <button
+                      onClick={handleCloseOverlay}
+                      className={`absolute ${currentFlow === 'welcome' ? 'right-4' : 'left-4'} top-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10`}
+                    >
+                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  ) : currentFlow !== 'loading' && currentFlow !== 'wrappedLoading' ? (
+                    <button
+                      onClick={() => {
+                        if (currentFlow === 'onboarding') setCurrentFlow('email');
+                        else if (currentFlow === 'pin') setCurrentFlow('onboarding');
+                        else if (currentFlow === 'dataRequest') setCurrentFlow('onboarding');
+                        else if (currentFlow === 'training') setCurrentFlow('pin');
+                      }}
+                      className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                  ) : null}
                 </div>
 
-                {/* Email Content */}
-                <div className="h-[min(85vh,700px)]">
-                  <EmailAuth 
-                    onSuccess={handleEmailAuthSuccess}
-                    testMode={testMode}
-                  />
+                {/* Content */}
+                <div className="flex-1 min-h-0 flex flex-col relative">
+                  {renderContent()}
                 </div>
               </div>
             </div>
-          ) : currentFlow === 'onboarding' && isMobileDevice ? (
-            // Special case for onboarding - render directly without PageLayout wrapper
-            <div className={`fixed inset-0 bg-gray-500 bg-opacity-50 block`} style={{ zIndex: 2147483647 }}>
-              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[90vh]`} style={{ maxWidth: '100%' }}>
-                {/* Header */}
-                <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
-                  <button
-                    onClick={() => setCurrentFlow('email')}
-                    className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Onboarding Content */}
-                <UniversalOnboarding 
-                  onComplete={handleOnboardingComplete}
-                  onBack={() => setCurrentFlow('email')}
-                  appIcon={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"}
-                  appName={webpageName}
-                  username={userData?.email || userData?.username}
-                  testMode={testMode}
-                  priorityPlatform={priorityPlatform}
-                  rawMemoriesOnly={rawMemoriesOnly}
-                  rawMemoriesConfig={rawMemoriesConfig}
-                />
-              </div>
-            </div>
-          ) : currentFlow === 'dataRequest' && isMobileDevice ? (
-            // Special case for dataRequest - render directly without PageLayout wrapper
-            <div className={`fixed inset-0 bg-gray-500 bg-opacity-50 block`} style={{ zIndex: 2147483647 }}>
-              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[90vh]`} style={{ maxWidth: '100%' }}>
-                {/* Header */}
-                <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
-                  <button
-                    onClick={() => setCurrentFlow('onboarding')}
-                    className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* DataRequest Content */}
-                <DataRequest 
-                  onComplete={handleDataRequestComplete}
-                  userEmail={userData?.email || userData?.userName}
-                  requestData={requestData}
-                  appName={webpageName}
-                  autoFetch={autoFetch}
-                  testMode={testMode}
-                  appIcon={appIcon}
-                  connectedPlatforms={userData?.connectedAccounts || {}}
-                  rawMemoriesOnly={rawMemoriesOnly}
-                  rawMemoriesConfig={rawMemoriesConfig}
-                  showTime={time}
-                />
-              </div>
-            </div>
-          ) : currentFlow === 'wrappedLoading' && isMobileDevice ? (
-            // Special case for wrapped loading - render directly without PageLayout wrapper
-            <div className={`fixed inset-0 bg-gray-500 bg-opacity-50 block`} style={{ zIndex: 2147483647 }}>
-              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[90vh]`} style={{ maxWidth: '100%' }}>
-                {/* WrappedLoading Content */}
-                <div className="flex-1 min-h-0">
-                  <WrappedLoadingPage appName={webpageName} />
-                </div>
-              </div>
-            </div>
-          ) : currentFlow === 'pin' && isMobileDevice ? (
-            // Special case for pin - render directly without PageLayout wrapper
-            <div className={`fixed inset-0 bg-gray-500 bg-opacity-50 block`} style={{ zIndex: 2147483647 }}>
-              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[90vh]`} style={{ maxWidth: '100%' }}>
-                {/* Header */}
-                <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
-                  <button
-                    onClick={() => setCurrentFlow('onboarding')}
-                    className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* PinSetup Content - Must take remaining height */}
-                <div className="flex-1 min-h-0">
-                  <PinSetup 
-                    onComplete={handlePinSetupComplete}
-                    onBack={() => setCurrentFlow('onboarding')}
-                    userEmail={userData?.email}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : currentFlow === 'loading' ? (
-            // Loading screen
-            <LoadingScreen onComplete={handleLoadingComplete} />
-        ) : (
-            // All other flows use PageLayout wrapper
-          <ModalPageLayout
-            visible={showOverlay}
-            onClose={handleCloseOverlay}
-            showBackButton={currentFlow === 'training' || currentFlow === 'onboarding' || currentFlow === 'pin' || currentFlow === 'dataRequest'}
-            onBack={() => {
+          ) : (
+            // Desktop Layout
+            <ModalPageLayout
+              visible={showOverlay}
+              onClose={handleCloseOverlay}
+              showBackButton={currentFlow === 'training' || currentFlow === 'onboarding' || currentFlow === 'pin' || currentFlow === 'dataRequest'}
+              onBack={() => {
                 if (currentFlow === 'email') setCurrentFlow('welcome');
-              if (currentFlow === 'onboarding') setCurrentFlow('email');
-              if (currentFlow === 'pin') setCurrentFlow('onboarding'); 
-              if (currentFlow === 'training') setCurrentFlow('pin');
-              if (currentFlow === 'dataRequest') setCurrentFlow('onboarding');
-            }}
-            title=""
-            subtitle=""
-            icon={null}
-            centerContent={true}
-            contentClassName={currentFlow !== 'welcome' ? "!p-0" : ""}
-            modalClassName="onairos-modal"
-          >
-            <div className="onairos-modal-shell">
-              {renderCurrentFlow()}
-            </div>
-          </ModalPageLayout>
+                if (currentFlow === 'onboarding') setCurrentFlow('email');
+                if (currentFlow === 'pin') setCurrentFlow('onboarding'); 
+                if (currentFlow === 'training') setCurrentFlow('pin');
+                if (currentFlow === 'dataRequest') setCurrentFlow('onboarding');
+              }}
+              title=""
+              subtitle=""
+              icon={null}
+              centerContent={true}
+              contentClassName={currentFlow !== 'welcome' ? "!p-0" : ""}
+              modalClassName="onairos-modal"
+            >
+              <div className="onairos-modal-shell">
+                {renderContent()}
+              </div>
+            </ModalPageLayout>
           )}
         </>
       )}
