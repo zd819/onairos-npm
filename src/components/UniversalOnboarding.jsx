@@ -3,6 +3,7 @@ import { Browser } from '@capacitor/browser';
 import Lottie from 'lottie-react';
 import personaAnim from '../../public/persona-anim.json';
 import { isMobileApp, isMobileBrowser } from '../utils/capacitorDetection';
+import ConnectChatGPTModal from './ConnectChatGPTModal.jsx';
 
 // Mobile detection
 const isMobile = () => {
@@ -40,14 +41,19 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   const [connectingPlatform, setConnectingPlatform] = useState(null);
   const [selected, setSelected] = useState('Instagram');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showChatGPTModal, setShowChatGPTModal] = useState(false);
 
   // swipe state
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
 
   // Mobile detection - use prop if provided (from layout), else detect
-  const isMobile = isMobileProp || isMobileApp() || isMobileBrowser() || 
-    (typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+  // Only use actual mobile device detection, not window width (to avoid false positives from dev tools)
+  const isActualMobileDevice = typeof navigator !== 'undefined' && 
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isNativePlatform = typeof window !== 'undefined' && 
+    window.Capacitor?.isNativePlatform?.() === true;
+  const isMobile = isMobileProp || isNativePlatform || isActualMobileDevice;
 
   const [vh, setVh] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 800));
   useEffect(() => {
@@ -329,22 +335,42 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       let returnUrl = ''; // Default to empty for Desktop Web
       
       if (isCapacitorNative) {
-         returnUrl = `mobiletest://oauth-callback?success=true&platform=${plat.connector}`;
+        returnUrl = `mobiletest://oauth-callback?success=true&platform=${plat.connector}`;
       } else if (effectiveMobile) {
-         // Mobile Web needs redirect back to self
-         // Sanitize URL to prevent recursive params if user is already on a return URL
-         const cleanUrl = window.location.origin + window.location.pathname;
-         returnUrl = cleanUrl;
+        // Mobile Web needs redirect back to self
+        // Sanitize URL to prevent recursive params if user is already on a return URL
+        const cleanUrl = window.location.origin + window.location.pathname;
+        returnUrl = cleanUrl;
       }
 
       console.log(`🔗 Authorizing ${plat.connector} with returnUrl:`, returnUrl || '(none/desktop)');
 
+      // Build session payload for backend (SDK-aware)
+      const sessionPayload = {
+        username,
+      };
+
+      // For mobile web flows, let backend know this is coming from the web SDK
+      // and pass returnUrl inside session for connectors that use parseEnhancedSession (e.g. Reddit)
+      if (effectiveMobile) {
+        sessionPayload.sdkType = 'web';
+        sessionPayload.returnUrl = returnUrl;
+      }
+
+      const bodyPayload = {
+        session: sessionPayload,
+      };
+
+      // Backward compatibility for YouTube route which currently reads req.body.returnUrl
+      // Desktop flows don't need a returnUrl; only send it for mobile web
+      if (!isCapacitorNative && effectiveMobile) {
+        bodyPayload.returnUrl = returnUrl;
+      }
+
       const res = await fetch(`${sdkConfig.baseUrl}/${plat.connector}/authorize`, {
-        method: 'POST', headers: { 'x-api-key': sdkConfig.apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          session: { username },
-          returnUrl: returnUrl
-        }),
+        method: 'POST',
+        headers: { 'x-api-key': sdkConfig.apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyPayload),
       });
       if (!res.ok) throw new Error('auth failed');
       const data = await res.json();
@@ -634,9 +660,9 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         </div>
 
         {/* Spacer - MOBILE ONLY: push icons/card WAY down so PERSONA SHINES */}
-        {/* Desktop: Remove spacer completely to use available space and allow overlap via z-index if needed */}
-        {isMobile && <div className="flex-1" style={{ minHeight: isSmallMobile ? 140 : 180 }} />}
-        {!isMobile && <div className="flex-1" style={{ minHeight: 0 }} />}
+        {/* Desktop: Increased spacer to push content lower on page */}
+        {isMobile && <div className="flex-1" style={{ minHeight: isSmallMobile ? 160 : 200 }} />}
+        {!isMobile && <div className="flex-1" style={{ minHeight: 80 }} />}
 
         {/* icons band */}
         <div className="px-6 flex-shrink-0" style={{ height: ICONS_H }}>
@@ -667,12 +693,33 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                       type="button"
                       onClick={() => { 
                         setSelected(p.name);
+                        
+                        // Properly detect native platform (not just Capacitor presence)
+                        const isNativePlatform = typeof window !== 'undefined' && 
+                          window.Capacitor?.isNativePlatform?.() === true;
+                        
+                        // Debug logging
+                        console.log('UniversalOnboarding Click:', { 
+                          platform: p.name, 
+                          isMobile, 
+                          isMobileProp, 
+                          isNativePlatform,
+                          hasCapacitor: typeof window !== 'undefined' && !!window.Capacitor,
+                          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'
+                        });
+
+                        // For ChatGPT, show modal on all WEB platforms (Desktop + Mobile Web).
+                        // We check connector ID to be safe, and ensure we're NOT in a native app.
+                        if (p.connector === 'chatgpt' && !isNativePlatform) {
+                          console.log('🤖 Opening ChatGPT Connect Modal (Web Mode)');
+                          setShowChatGPTModal(true);
+                          return;
+                        }
+
                         if (p.directLink) {
-                          // For direct link platforms (AI tools including ChatGPT), connect immediately and open link
-                          if (!connectedAccounts[p.name]) {
-                            setConnectedAccounts((s) => ({ ...s, [p.name]: true }));
-                          }
-                          window.open(p.directLink, '_blank');
+                          // For other direct-link AI tools, open in a new tab.
+                          console.log(`Opening ${p.name} in new tab:`, p.directLink);
+                          window.open(p.directLink, '_blank', 'noopener,noreferrer');
                         } else {
                           handleSwitch(p.name);
                         }
@@ -696,7 +743,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         </div>
 
         {/* dots navigation (no numbers) - directly under icons, above card */}
-        <div className="relative flex items-center justify-center gap-3 select-none flex-shrink-0" style={{ marginTop: isMobile ? 8 : 20, marginBottom: isMobile ? 18 : 16, zIndex: 25 }}>
+        <div className="relative flex items-center justify-center gap-3 select-none flex-shrink-0" style={{ marginTop: isMobile ? 12 : 24, marginBottom: isMobile ? 20 : 20, zIndex: 25 }}>
           {[1,2,3].map(n => (
             <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }}>
               <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-125' : 'bg-gray-300'} transition-transform`} style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }} />
@@ -705,7 +752,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         </div>
 
         {/* info sheet — positioned using flex, MOBILE ONLY: LOWER */}
-        <div className="px-6 flex-shrink-0" style={{ marginBottom: isMobile ? 20 : 24, zIndex: 20 }}>
+        <div className="px-6 flex-shrink-0" style={{ marginBottom: isMobile ? 24 : 28, zIndex: 20 }}>
           <div className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5" style={{ width: 'min(680px,92%)', maxHeight: isMobile ? (vh * 0.18) : (vh * 0.2) }}>
             <div className="flex items-center justify-between">
               <div className="text-gray-900 font-medium">{selected}</div>
@@ -719,13 +766,47 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                 className={`relative inline-flex items-center transition-colors disabled:opacity-50 ${connectedAccounts[selected] ? 'bg-black' : 'bg-gray-200'} rounded-full`}
                 style={{ width: 56, height: 32 }}
               >
-                <span className="absolute bg-white rounded-full shadow" style={{ width: 24, height: 24, transform: connectedAccounts[selected] ? 'translateX(26px)' : 'translateX(6px)', transition: 'transform 160ms ease' }} />
+                <span
+                  className="absolute bg-white rounded-full shadow"
+                  style={{
+                    width: 24,
+                    height: 24,
+                    transform: connectedAccounts[selected] ? 'translateX(26px)' : 'translateX(6px)',
+                    transition: 'transform 160ms ease',
+                  }}
+                />
               </button>
             </div>
             <div className="mt-3">
               <div className="rounded-2xl bg-gray-50 text-gray-700 text-sm leading-6 px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
                 {descriptions[selected] || null}
               </div>
+              {!isMobile && selected === 'ChatGPT' && (
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowChatGPTModal(true)}
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900"
+                  >
+                    <span>Connect ChatGPT</span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 6h8m0 0v8m0-8L6 18"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -744,6 +825,14 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           <div onClick={() => onComplete?.({ connectedAccounts: [], totalConnections: 0 })} className="w-full text-gray-600 text-base font-medium py-2 text-center cursor-pointer hover:text-gray-800 transition-colors">Skip</div>
         </div>
       </div>
+      {/* Modal - Always render if state is true, regardless of isMobile prop */}
+      <ConnectChatGPTModal
+        open={showChatGPTModal}
+        onClose={() => setShowChatGPTModal(false)}
+        onConnected={() => {
+          setConnectedAccounts((s) => ({ ...s, ChatGPT: true }));
+        }}
+      />
     </div>
   );
 }

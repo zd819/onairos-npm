@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ChatGPTConnector from './connectors/ChatGPTConnector';
+import ConnectChatGPTModal from './ConnectChatGPTModal.jsx';
 import YoutubeConnector from './connectors/YoutubeConnector';
 import LinkedInConnector from './connectors/LinkedInConnector';
 import InstagramConnector from './connectors/InstagramConnector';
@@ -38,6 +39,7 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeConnector, setActiveConnector] = useState(null);
+  const [showChatGPTModal, setShowChatGPTModal] = useState(false);
 
   // Debug log on component mount
   useEffect(() => {
@@ -76,22 +78,10 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
       console.log(`✅ Disconnected from ${platformName}`);
     } else {
       // Connect
-      // Special behavior for ChatGPT: Always open chatgpt.com in new tab
+      // Special behavior for ChatGPT: Show modal instead of opening tab
       if (connectorType === 'chatgpt') {
-        console.log(`🤖 ChatGPT toggle: Opening chatgpt.com in new tab...`);
-        const chatGPTWindow = window.open('https://chatgpt.com', '_blank');
-        
-        if (chatGPTWindow) {
-          // Simulate connection
-          setConnectedAccounts(prev => ({
-            ...prev,
-            [platformName]: true
-          }));
-          console.log(`✅ ChatGPT opened in new tab and marked as connected`);
-        } else {
-          console.error(`❌ Failed to open ChatGPT - popup blocked`);
-          alert('Popup blocked. Please allow popups for this site to open ChatGPT.');
-        }
+        console.log(`🤖 ChatGPT: Opening Connect Modal...`);
+        setShowChatGPTModal(true);
         return;
       }
       
@@ -277,6 +267,14 @@ export default function UniversalOnboarding({ onComplete, appIcon, appName = 'Ap
           />
         </>
       )}
+      
+      <ConnectChatGPTModal
+        open={showChatGPTModal}
+        onClose={() => setShowChatGPTModal(false)}
+        onConnected={() => {
+          setConnectedAccounts((s) => ({ ...s, ChatGPT: true }));
+        }}
+      />
     </div>
   );
 }
