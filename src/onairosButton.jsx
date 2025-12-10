@@ -317,12 +317,16 @@ export function OnairosButton({
            
            // Restore session if possible (only for Login flow really, but safe to update)
            if (email) {
+             // MERGE with existing userData to preserve connectedAccounts
+             const existingUserData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
              const userData = {
+                ...existingUserData, // Preserve existing data (like connectedAccounts)
                 email: email,
                 verified: true,
                 onboardingComplete: false,
                 provider: platform
              };
+             console.log('📦 Merging OAuth return with existing userData:', { existing: existingUserData.connectedAccounts, merged: userData.connectedAccounts });
              localStorage.setItem('onairosUser', JSON.stringify(userData));
              setUserData(userData);
            }
@@ -455,13 +459,16 @@ export function OnairosButton({
             provider: 'google'
           };
           
-          // Save to localStorage
+          // Save to localStorage - MERGE with existing to preserve connectedAccounts
+          const existingUserData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
           const userData = {
+            ...existingUserData, // Preserve existing data (like connectedAccounts)
             email: oauthEmail,
             verified: true,
             onboardingComplete: false,
             provider: 'google'
           };
+          console.log('📦 Merging Google OAuth with existing userData:', { existing: existingUserData.connectedAccounts, merged: userData.connectedAccounts });
           localStorage.setItem('onairosUser', JSON.stringify(userData));
           setUserData(userData);
           
@@ -514,13 +521,16 @@ export function OnairosButton({
           console.log('✅ Gmail OAuth return detected in localStorage');
           setOauthReturnDetected(true);
           
-          // Create user data from OAuth
+          // Create user data from OAuth - MERGE with existing to preserve connectedAccounts
+          const existingUserData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
           const userData = {
+            ...existingUserData, // Preserve existing data (like connectedAccounts)
             email: gmailEmail,
             verified: true,
             onboardingComplete: false,
             provider: 'google'
           };
+          console.log('📦 Merging Gmail OAuth with existing userData:', { existing: existingUserData.connectedAccounts, merged: userData.connectedAccounts });
           localStorage.setItem('onairosUser', JSON.stringify(userData));
           setUserData(userData);
           
@@ -674,12 +684,14 @@ export function OnairosButton({
   };
 
   const handleOnboardingComplete = (onboardingData) => {
-    console.log('Onboarding completed:', onboardingData);
+    console.log('🎯 Onboarding completed:', onboardingData);
+    console.log('🔍 Connected accounts from onboarding:', onboardingData.connectedAccounts);
     const updatedUserData = {
       ...userData,
       onboardingComplete: true,
       connectedAccounts: onboardingData.connectedAccounts || []
     };
+    console.log('💾 Saving userData with connectedAccounts:', updatedUserData.connectedAccounts);
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
     setCurrentFlow('pin');
@@ -1193,6 +1205,11 @@ export function OnairosButton({
           />
         );
       case 'dataRequest':
+        console.log('🎯 Rendering DataRequest:', {
+          connectedAccounts: userData?.connectedAccounts,
+          isArray: Array.isArray(userData?.connectedAccounts),
+          userData: userData
+        });
         return (
           <DataRequest 
             onComplete={handleDataRequestComplete}
@@ -1202,7 +1219,7 @@ export function OnairosButton({
             autoFetch={autoFetch}
             testMode={testMode}
             appIcon={appIcon}
-            connectedPlatforms={userData?.connectedAccounts || {}}
+            connectedPlatforms={userData?.connectedAccounts || []}
             rawMemoriesOnly={rawMemoriesOnly}
             rawMemoriesConfig={rawMemoriesConfig}
             showTime={time}
@@ -1282,43 +1299,29 @@ export function OnairosButton({
       {showOverlay && (
         <>
           {isMobileDevice ? (
-            // Unified Mobile Wrapper for ALL flows
-            <div className={`fixed inset-0 bg-gray-500 bg-opacity-50 block`} style={{ zIndex: 2147483647 }}>
-              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[95vh]`} style={{ maxWidth: '100%' }}>
-                {/* Header Logic */}
-                <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
-                  {currentFlow === 'welcome' || currentFlow === 'email' ? (
-                    <button
-                      onClick={handleCloseOverlay}
-                      className={`absolute ${currentFlow === 'welcome' ? 'right-4' : 'left-4'} top-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10`}
-                    >
-                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  ) : currentFlow !== 'loading' && currentFlow !== 'wrappedLoading' ? (
-                    <button
-                      onClick={() => {
-                        if (currentFlow === 'onboarding') setCurrentFlow('email');
-                        else if (currentFlow === 'pin') setCurrentFlow('onboarding');
-                        else if (currentFlow === 'dataRequest') setCurrentFlow('onboarding');
-                        else if (currentFlow === 'training') setCurrentFlow('pin');
-                      }}
-                      className="absolute left-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-                  ) : null}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-h-0 flex flex-col relative">
-                  {renderContent()}
-                </div>
+            // Mobile Browser: Use ModalPageLayout with mobile-optimized props
+            <ModalPageLayout
+              visible={showOverlay}
+              onClose={handleCloseOverlay}
+              showBackButton={currentFlow !== 'welcome' && currentFlow !== 'email' && currentFlow !== 'loading' && currentFlow !== 'wrappedLoading'}
+              onBack={() => {
+                if (currentFlow === 'onboarding') setCurrentFlow('email');
+                else if (currentFlow === 'pin') setCurrentFlow('onboarding');
+                else if (currentFlow === 'dataRequest') setCurrentFlow('onboarding');
+                else if (currentFlow === 'training') setCurrentFlow('pin');
+              }}
+              showCloseButton={currentFlow === 'welcome' || currentFlow === 'email'}
+              title=""
+              subtitle=""
+              icon={null}
+              centerContent={true}
+              contentClassName="!p-0"
+              modalClassName="onairos-modal onairos-modal-mobile"
+            >
+              <div className="onairos-modal-shell flex-1 min-h-0 flex flex-col">
+                {renderContent()}
               </div>
-            </div>
+            </ModalPageLayout>
           ) : (
             // Desktop Layout
             <ModalPageLayout

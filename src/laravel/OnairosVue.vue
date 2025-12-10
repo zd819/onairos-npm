@@ -193,7 +193,7 @@ async function initializeOnairosConnection() {
     });
   } else {
     // Fallback: dynamic import of OnairosButton
-    const { OnairosButton } = await import('onairos');
+    const { OnairosButton } = await import(/* @vite-ignore */ 'onairos');
     
     return new Promise((resolve, reject) => {
       // Create a temporary React component mount

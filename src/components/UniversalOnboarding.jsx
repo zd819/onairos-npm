@@ -196,7 +196,22 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
        console.log(`⚡️ Event received: OAuth success for ${platform}`);
        const plat = allPlatforms.find((p) => p.connector === platform);
        if (plat) {
-          setConnectedAccounts((s) => ({ ...s, [plat.name]: true }));
+          setConnectedAccounts((s) => {
+            // Read existing connections from localStorage, not from stale state
+            const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+            const existingArray = userData.connectedAccounts || [];
+            const existingObj = Array.isArray(existingArray) 
+              ? existingArray.reduce((acc, p) => ({ ...acc, [p]: true }), {})
+              : {};
+            
+            // Merge with new connection
+            const updated = { ...existingObj, [plat.name]: true };
+            const connectedArray = Object.entries(updated).filter(([, v]) => v).map(([k]) => k);
+            userData.connectedAccounts = connectedArray;
+            localStorage.setItem('onairosUser', JSON.stringify(userData));
+            console.log(`💾 Saved ${plat.name} to localStorage (event):`, connectedArray);
+            return updated;
+          });
        }
     };
     if (typeof window !== 'undefined') {
@@ -214,7 +229,22 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         console.log(`✅ ${sessionPlatform} OAuth detected via session signal`);
         const plat = allPlatforms.find((p) => p.connector === sessionPlatform);
         if (plat) {
-          setConnectedAccounts((s) => ({ ...s, [plat.name]: true }));
+          setConnectedAccounts((s) => {
+            // Read existing connections from localStorage, not from stale state
+            const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+            const existingArray = userData.connectedAccounts || [];
+            const existingObj = Array.isArray(existingArray) 
+              ? existingArray.reduce((acc, p) => ({ ...acc, [p]: true }), {})
+              : {};
+            
+            // Merge with new connection
+            const updated = { ...existingObj, [plat.name]: true };
+            const connectedArray = Object.entries(updated).filter(([, v]) => v).map(([k]) => k);
+            userData.connectedAccounts = connectedArray;
+            localStorage.setItem('onairosUser', JSON.stringify(userData));
+            console.log(`💾 Saved ${plat.name} to localStorage (session):`, connectedArray);
+            return updated;
+          });
         }
         // Clean up
         sessionStorage.removeItem('onairos_oauth_return_success');
@@ -245,7 +275,22 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
             const plat = allPlatforms.find((p) => p.connector === platformConnector);
             if (plat) {
               // Mark as connected
-              setConnectedAccounts((s) => ({ ...s, [plat.name]: true }));
+              setConnectedAccounts((s) => {
+                // Read existing connections from localStorage, not from stale state
+                const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+                const existingArray = userData.connectedAccounts || [];
+                const existingObj = Array.isArray(existingArray) 
+                  ? existingArray.reduce((acc, p) => ({ ...acc, [p]: true }), {})
+                  : {};
+                
+                // Merge with new connection
+                const updated = { ...existingObj, [plat.name]: true };
+                const connectedArray = Object.entries(updated).filter(([, v]) => v).map(([k]) => k);
+                userData.connectedAccounts = connectedArray;
+                localStorage.setItem('onairosUser', JSON.stringify(userData));
+                console.log(`💾 Saved ${plat.name} to localStorage (context):`, connectedArray);
+                return updated;
+              });
             }
             
             // Clean up localStorage
@@ -266,22 +311,41 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     if (p && !localStorage.getItem('onairos_oauth_context')) {
       localStorage.removeItem('onairos_oauth_platform');
       localStorage.removeItem('onairos_oauth_return');
-      setConnectedAccounts((s) => ({ ...s, [p]: true }));
+      setConnectedAccounts((s) => {
+        // Read existing connections from localStorage, not from stale state
+        const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+        const existingArray = userData.connectedAccounts || [];
+        const existingObj = Array.isArray(existingArray) 
+          ? existingArray.reduce((acc, platform) => ({ ...acc, [platform]: true }), {})
+          : {};
+        
+        // Merge with new connection
+        const updated = { ...existingObj, [p]: true };
+        const connectedArray = Object.entries(updated).filter(([, v]) => v).map(([k]) => k);
+        userData.connectedAccounts = connectedArray;
+        localStorage.setItem('onairosUser', JSON.stringify(userData));
+        console.log(`💾 Saved ${p} to localStorage (legacy):`, connectedArray);
+        return updated;
+      });
     }
     
     // Load persisted connected accounts from user data
     try {
       const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+      console.log('🔄 UniversalOnboarding mount: Loading persisted accounts from localStorage:', userData.connectedAccounts);
       if (userData.connectedAccounts && Array.isArray(userData.connectedAccounts)) {
         // Convert array to object format
         const accountsObj = userData.connectedAccounts.reduce((acc, platform) => {
           acc[platform] = true;
           return acc;
         }, {});
+        console.log('✅ Converted to object format:', accountsObj);
         setConnectedAccounts(accountsObj);
+      } else {
+        console.log('⚠️ No valid connectedAccounts in localStorage');
       }
     } catch (error) {
-      console.warn('Failed to load persisted connected accounts:', error);
+      console.error('❌ Failed to load persisted connected accounts:', error);
     }
     
     return () => {
@@ -304,7 +368,12 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       }
 
       // Immediately reflect selection in UI without spinner while starting OAuth
-      setConnectedAccounts((s) => ({ ...s, [name]: true }));
+      console.log(`🔌 Connecting to ${name} - updating connectedAccounts state`);
+      setConnectedAccounts((s) => {
+        const updated = { ...s, [name]: true };
+        console.log('📊 Updated connectedAccounts:', updated);
+        return updated;
+      });
       setIsConnecting(true);
       setConnectingPlatform(name);
       
@@ -630,8 +699,26 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   };
 
   return (
-    <div className="w-full h-full relative" style={{ height: '100%' }}>
-      <style>{fadeSlideInKeyframes}</style>
+    <div className="w-full h-full relative" style={{ 
+      height: '100%',
+      // Hide scrollbars for mobile browser only
+      ...(isMobile && {
+        scrollbarWidth: 'none', /* Firefox */
+        msOverflowStyle: 'none', /* IE/Edge */
+      })
+    }}>
+      <style>
+        {fadeSlideInKeyframes}
+        {/* Hide scrollbar for webkit browsers on mobile */}
+        {isMobile && `
+          .w-full::-webkit-scrollbar,
+          *::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+          }
+        `}
+      </style>
 
       {/* persona as background (unchanged) */}
       <div aria-hidden style={{ 
@@ -651,7 +738,13 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       </div>
 
       {/* content above persona */}
-      <div className="relative z-10 h-full flex flex-col">
+      <div className="relative z-10 h-full flex flex-col" style={{
+        // Hide scrollbars for mobile browser only
+        ...(isMobile && {
+          scrollbarWidth: 'none', /* Firefox */
+          msOverflowStyle: 'none', /* IE/Edge */
+        })
+      }}>
         {/* header - MOBILE ONLY: smaller top padding to give persona space */}
         {/* Desktop: Reduced padding to fit everything */}
         <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? '2.5rem' : '1.5rem', paddingBottom: isMobile ? '0.75rem' : '0.25rem' }}>
@@ -698,15 +791,27 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                         const isNativePlatform = typeof window !== 'undefined' && 
                           window.Capacitor?.isNativePlatform?.() === true;
                         
+                        // Detect mobile browser (not Capacitor native)
+                        const isMobileBrowser = typeof window !== 'undefined' && 
+                          window.innerWidth <= 768 && 
+                          !isNativePlatform;
+                        
                         // Debug logging
                         console.log('UniversalOnboarding Click:', { 
                           platform: p.name, 
                           isMobile, 
                           isMobileProp, 
                           isNativePlatform,
+                          isMobileBrowser,
                           hasCapacitor: typeof window !== 'undefined' && !!window.Capacitor,
                           userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'
                         });
+
+                        // MOBILE BROWSER ONLY: Disable Instagram clicks (show visual selection but don't connect)
+                        if (p.name === 'Instagram' && isMobileBrowser) {
+                          console.log('📱 Instagram disabled on mobile browser - visual selection only');
+                          return;
+                        }
 
                         // For ChatGPT, show modal on all WEB platforms (Desktop + Mobile Web).
                         // We check connector ID to be safe, and ensure we're NOT in a native app.
@@ -816,7 +921,10 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           <div className="w-full bg-gray-900 hover:bg-gray-800 rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" 
             style={{ color: '#ffffff' }}
             onClick={() => {
+            console.log('🔥 UniversalOnboarding: Update clicked');
+            console.log('🔍 Current connectedAccounts state:', connectedAccounts);
             const connected = Object.entries(connectedAccounts).filter(([, v]) => v).map(([k]) => k);
+            console.log('✅ Sending to onComplete:', { connectedAccounts: connected, totalConnections: connected.length });
             onComplete?.({ connectedAccounts: connected, totalConnections: connected.length });
           }}>
             Update

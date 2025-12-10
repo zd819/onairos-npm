@@ -166,9 +166,26 @@ const ModalPageLayout = ({
     window.Capacitor && 
     typeof window.Capacitor.isNativePlatform === 'function' && 
     window.Capacitor.isNativePlatform();
+  
+  // Detect mobile browser (not Capacitor native)
+  const isMobileBrowser = typeof window !== 'undefined' && 
+    window.innerWidth <= 768 && 
+    !isCapacitorNative;
     
-  // Debug log to ensure this runs
-  // console.log('ModalPageLayout rendered, isCapacitorNative:', isCapacitorNative);
+  // ENHANCED DEBUG LOGGING for mobile browser height issues
+  if (typeof window !== 'undefined') {
+    console.log('[Onairos SDK][ModalPageLayout] Mobile Detection', {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      isCapacitorNative,
+      isMobileBrowser,
+      modalHeight: isMobileBrowser ? '90vh' : (isCapacitorNative ? '100vh' : 'auto'),
+      modalMaxHeight: isMobileBrowser ? '90vh' : (isCapacitorNative ? '100vh' : '90vh'),
+      modalMaxWidth: isMobileBrowser ? '100%' : '500px',
+      backdropAlign: (isCapacitorNative || isMobileBrowser) ? 'flex-end' : 'center',
+      backdropPadding: isMobileBrowser ? '0' : '16px'
+    });
+  }
 
   const backdropStyles = {
     position: 'fixed',
@@ -179,24 +196,34 @@ const ModalPageLayout = ({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     zIndex: 2147483647,
     display: 'flex',
-    alignItems: isCapacitorNative ? 'flex-end' : 'center',
+    alignItems: (isCapacitorNative || isMobileBrowser) ? 'flex-end' : 'center',
     justifyContent: 'center',
+    padding: isMobileBrowser ? '0' : '16px',
     transition: 'opacity 200ms ease',
     willChange: 'opacity',
     ...backdropStyle
   };
   
+  console.log('[Onairos SDK][ModalPageLayout] 🎯 Backdrop Styles COMPUTED:', {
+    alignItems: backdropStyles.alignItems,
+    padding: backdropStyles.padding,
+    display: backdropStyles.display,
+    hasBackdropStyleOverride: Object.keys(backdropStyle).length > 0,
+    backdropStyleOverride: backdropStyle
+  });
+  
   const modalStyles = {
     backgroundColor: COLORS.background,
     borderTopLeftRadius: '24px',
     borderTopRightRadius: '24px',
-    borderBottomLeftRadius: isCapacitorNative ? '0px' : '24px',
-    borderBottomRightRadius: isCapacitorNative ? '0px' : '24px',
-    height: isCapacitorNative ? '100vh' : 'auto', // Auto height for desktop
-    maxHeight: isCapacitorNative ? '100vh' : '90vh', // Max height for desktop
-    minHeight: isCapacitorNative ? '100vh' : '600px', // Min height for desktop
+    borderBottomLeftRadius: (isCapacitorNative || isMobileBrowser) ? '0px' : '24px',
+    borderBottomRightRadius: (isCapacitorNative || isMobileBrowser) ? '0px' : '24px',
+    // Force height on mobile browser with !important via inline style
+    height: isMobileBrowser ? '90vh' : (isCapacitorNative ? '100vh' : 'auto'),
+    maxHeight: isMobileBrowser ? '90vh' : (isCapacitorNative ? '100vh' : '90vh'),
+    minHeight: (isCapacitorNative || isMobileBrowser) ? 'auto' : '600px',
     width: '100%',
-    maxWidth: '500px',
+    maxWidth: isMobileBrowser ? '100%' : '500px',
     boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.3)',
     overflow: 'hidden',
     display: 'flex',
@@ -204,10 +231,11 @@ const ModalPageLayout = ({
     transform: 'translateY(0)',
     transition: 'transform 220ms ease, opacity 220ms ease',
     willChange: 'transform, opacity',
-    // Ensure the modal is horizontally centered on desktop
-    marginLeft: isCapacitorNative ? '0' : 'auto',
-    marginRight: isCapacitorNative ? '0' : 'auto',
-    // Ensure full height on mobile
+    marginLeft: (isCapacitorNative || isMobileBrowser) ? '0' : 'auto',
+    marginRight: (isCapacitorNative || isMobileBrowser) ? '0' : 'auto',
+    marginBottom: isMobileBrowser ? '0' : 'auto',
+    marginTop: isMobileBrowser ? 'auto' : 'auto',
+    // Ensure full height on Capacitor native
     ...(isCapacitorNative && {
       position: 'absolute',
       bottom: 0,
@@ -216,8 +244,30 @@ const ModalPageLayout = ({
       top: 0,
       borderRadius: 0
     }),
-    ...modalStyle
+    // Position mobile browser modal at bottom
+    ...(isMobileBrowser && {
+      flexShrink: 0
+    }),
+    // CRITICAL: Do NOT spread modalStyle on mobile browser - it breaks height
+    ...(isMobileBrowser ? {} : modalStyle)
   };
+  
+  console.log('[Onairos SDK][ModalPageLayout] 🎨 Modal Styles COMPUTED:', {
+    height: modalStyles.height,
+    maxHeight: modalStyles.maxHeight,
+    minHeight: modalStyles.minHeight,
+    width: modalStyles.width,
+    maxWidth: modalStyles.maxWidth,
+    borderRadius: `${modalStyles.borderTopLeftRadius} / ${modalStyles.borderBottomLeftRadius}`,
+    hasModalStyleOverride: Object.keys(modalStyle).length > 0,
+    modalStyleWasApplied: isMobileBrowser ? 'NO (blocked for mobile)' : 'YES',
+    modalStyleOverride: modalStyle
+  });
+  
+  // Warn if modalStyle is trying to override on mobile browser
+  if (isMobileBrowser && modalStyle && Object.keys(modalStyle).length > 0) {
+    console.warn('[Onairos SDK][ModalPageLayout] ⚠️ BLOCKED modalStyle override on mobile browser. Ignoring:', modalStyle);
+  }
 
   // 🔍 Layout debug logging (desktop vs native)
   try {
@@ -254,8 +304,20 @@ const ModalPageLayout = ({
   };
 
   return (
-    <div style={backdropStyles} onClick={handleBackdropClick}>
-      <div style={modalStyles} className={modalClassName}>
+    <div 
+      style={backdropStyles} 
+      onClick={handleBackdropClick}
+      data-onairos-backdrop="true"
+      data-mobile-browser={isMobileBrowser ? 'true' : 'false'}
+      data-capacitor-native={isCapacitorNative ? 'true' : 'false'}
+    >
+      <div 
+        style={modalStyles} 
+        className={modalClassName}
+        data-onairos-modal="true"
+        data-mobile-browser={isMobileBrowser ? 'true' : 'false'}
+        data-modal-height={modalStyles.height}
+      >
         <PageLayout
           showHeader={true}
           showCloseButton={true}

@@ -268,9 +268,9 @@ async function mountReactOverlay(config) {
     container.id = containerId;
     document.body.appendChild(container);
 
-    const React = (await import('react')).default || (await import('react'));
-    const ReactDOM = (await import('react-dom')).default || (await import('react-dom'));
-    const { OnairosButton } = await import('../onairosButton.jsx');
+    const React = (await import(/* @vite-ignore */ 'react')).default || (await import(/* @vite-ignore */ 'react'));
+    const ReactDOM = (await import(/* @vite-ignore */ 'react-dom')).default || (await import(/* @vite-ignore */ 'react-dom'));
+    const { OnairosButton } = await import(/* @vite-ignore */ '../onairosButton.jsx');
 
     const onComplete = (result) => {
       if (config.onComplete && typeof config.onComplete === 'function') {

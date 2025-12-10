@@ -3,6 +3,7 @@ import Lottie from 'lottie-react';
 
 export default function WrappedLoadingPage({ appName }) {
   const [animationData, setAnimationData] = useState(null);
+  const [progress, setProgress] = useState(0);
   
   // Only show "Updating your digital brain for 2025..." if app name contains "wrapped"
   const isWrappedApp = appName && appName.toLowerCase().includes('wrapped');
@@ -22,6 +23,23 @@ export default function WrappedLoadingPage({ appName }) {
       });
   }, []);
 
+  // Animate progress bar over ~2 minutes (API can take 1-3 minutes)
+  useEffect(() => {
+    const duration = 120000; // 2 minutes in ms
+    const interval = 100; // Update every 100ms
+    const increment = (interval / duration) * 100;
+    
+    const timer = setInterval(() => {
+      setProgress(prev => {
+        const next = prev + increment;
+        // Cap at 95% to avoid reaching 100% before API completes
+        return next >= 95 ? 95 : next;
+      });
+    }, interval);
+
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 py-4">
       {/* Content is centered vertically inside the modal card */}
@@ -32,6 +50,25 @@ export default function WrappedLoadingPage({ appName }) {
           </h2>
           <p className="text-xs md:text-sm text-gray-600">
             {isWrappedApp ? 'Crafting your personalized insights from your digital footprint' : 'This will just take a moment'}
+          </p>
+        </div>
+
+        {/* Loading Progress Bar */}
+        <div className="w-full max-w-md">
+          <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-300 ease-out"
+              style={{ 
+                width: `${progress}%`,
+                boxShadow: '0 0 10px rgba(139, 92, 246, 0.5)'
+              }}
+            />
+          </div>
+          <p className="text-center text-xs text-gray-500 mt-2">
+            {progress < 30 ? 'Analyzing your data...' : 
+             progress < 60 ? 'Generating insights...' : 
+             progress < 90 ? 'Almost there...' : 
+             'Finalizing your wrapped...'}
           </p>
         </div>
 

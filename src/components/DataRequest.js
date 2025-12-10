@@ -133,22 +133,50 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
 
   // Ensure we actually show connected platforms even if prop isn't passed
   const getConnected = () => {
+    console.log('📊 DataRequest getConnected:', { 
+      connectedPlatforms, 
+      isArray: Array.isArray(connectedPlatforms),
+      type: typeof connectedPlatforms 
+    });
+    
     // If array provided, use it
-    if (Array.isArray(connectedPlatforms) && connectedPlatforms.length > 0) return connectedPlatforms;
+    if (Array.isArray(connectedPlatforms) && connectedPlatforms.length > 0) {
+      console.log('✅ Using connectedPlatforms prop (array):', connectedPlatforms);
+      return connectedPlatforms;
+    }
+    
     // If object provided, map truthy keys
     if (connectedPlatforms && typeof connectedPlatforms === "object" && !Array.isArray(connectedPlatforms)) {
-      return Object.entries(connectedPlatforms).filter(([_, v]) => Boolean(v)).map(([k]) => k);
+      const mapped = Object.entries(connectedPlatforms).filter(([_, v]) => Boolean(v)).map(([k]) => k);
+      console.log('✅ Using connectedPlatforms prop (object):', mapped);
+      return mapped;
     }
+    
     // Fallback: try localStorage onairosUser
     try {
       const u = JSON.parse(localStorage.getItem("onairosUser") || "{}");
-      if (u && u.connectedAccounts && typeof u.connectedAccounts === "object") {
-        return Object.entries(u.connectedAccounts).filter(([_, v]) => Boolean(v)).map(([k]) => k);
+      if (u && u.connectedAccounts) {
+        // Check if it's an array
+        if (Array.isArray(u.connectedAccounts) && u.connectedAccounts.length > 0) {
+          console.log('✅ Using localStorage connectedAccounts (array):', u.connectedAccounts);
+          return u.connectedAccounts;
+        }
+        // Check if it's an object
+        if (typeof u.connectedAccounts === "object") {
+          const mapped = Object.entries(u.connectedAccounts).filter(([_, v]) => Boolean(v)).map(([k]) => k);
+          console.log('✅ Using localStorage connectedAccounts (object):', mapped);
+          return mapped;
+        }
       }
-    } catch {}
+    } catch (e) {
+      console.error('❌ Failed to read localStorage:', e);
+    }
+    
+    console.log('⚠️ No connected platforms found');
     return [];
   };
   const platforms = getConnected();
+  console.log('🎯 Final platforms to display:', platforms);
 
   const isCapacitorNative = typeof window !== 'undefined' && 
     window.Capacitor && 
@@ -286,7 +314,7 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
                   Instagram: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png',
                   YouTube: 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg',
                   LinkedIn: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
-                  Reddit: 'https://www.redditinc.com/assets/images/site/reddit-logo.png',
+                  Reddit: 'https://upload.wikimedia.org/wikipedia/en/b/bd/Reddit_Logo_Icon.svg',
                   Pinterest: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Pinterest-logo.png',
                   GitHub: 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png',
                   Facebook: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg',

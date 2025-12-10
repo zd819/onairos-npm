@@ -72,14 +72,31 @@ export default function ConnectChatGPTModal({ open, onClose, onConnected }) {
         .chatgpt-got-it-button span {
           color: #FFFFFF !important;
         }
+        /* Mobile browser specific styling */
+        @media (max-width: 768px) {
+          .chatgpt-modal-backdrop {
+            align-items: flex-end !important;
+            padding: 0 !important;
+          }
+          .chatgpt-modal-card {
+            max-width: 100% !important;
+            height: 90vh !important;
+            border-radius: 24px 24px 0 0 !important;
+            animation: slideUpFromBottom 300ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+          }
+        }
+        @keyframes slideUpFromBottom {
+          0% { transform: translateY(100%); }
+          100% { transform: translateY(0); }
+        }
       `}</style>
 
       <div 
-        className="fixed inset-0 flex items-center justify-center p-4 bg-black/60" 
+        className="chatgpt-modal-backdrop fixed inset-0 flex items-center justify-center p-4 bg-black/60" 
         style={{ zIndex: 2147483647 }}
       >
         <div 
-          className="w-full max-w-md rounded-3xl shadow-2xl border border-white/10 overflow-hidden text-white relative chatgpt-modal-card"
+          className="chatgpt-modal-card w-full max-w-md rounded-3xl shadow-2xl border border-white/10 overflow-hidden text-white relative"
           style={{
             background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.92) 50%, rgba(15, 23, 42, 0.95) 100%)',
             boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.1), 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(148, 163, 184, 0.15)'
