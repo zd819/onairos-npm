@@ -166,7 +166,7 @@ const ModalPageLayout = ({
     window.Capacitor && 
     typeof window.Capacitor.isNativePlatform === 'function' && 
     window.Capacitor.isNativePlatform();
-  
+    
   // Detect mobile browser (not Capacitor native)
   const isMobileBrowser = typeof window !== 'undefined' && 
     window.innerWidth <= 768 && 
@@ -295,9 +295,12 @@ const ModalPageLayout = ({
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
+      console.log('🔘 Backdrop clicked outside modal');
       if (onBackdropClick) {
+        console.log('📞 Calling onBackdropClick handler');
         onBackdropClick();
       } else if (onClose) {
+        console.log('❌ Calling onClose handler');
         onClose();
       }
     }
@@ -314,6 +317,7 @@ const ModalPageLayout = ({
       <div 
         style={modalStyles} 
         className={modalClassName}
+        onClick={(e) => e.stopPropagation()}
         data-onairos-modal="true"
         data-mobile-browser={isMobileBrowser ? 'true' : 'false'}
         data-modal-height={modalStyles.height}

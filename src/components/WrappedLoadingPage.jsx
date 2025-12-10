@@ -4,9 +4,24 @@ import Lottie from 'lottie-react';
 export default function WrappedLoadingPage({ appName }) {
   const [animationData, setAnimationData] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [messageIndex, setMessageIndex] = useState(0);
   
   // Only show "Updating your digital brain for 2025..." if app name contains "wrapped"
   const isWrappedApp = appName && appName.toLowerCase().includes('wrapped');
+
+  // Whimsical rotating messages
+  const messages = [
+    "Reading your mind...",
+    "Connecting the dots...",
+    "Brewing insights...",
+    "Decoding your vibe...",
+    "Piecing together your story...",
+    "Finding patterns in the chaos...",
+    "Translating data to wisdom...",
+    "Your digital fingerprint is unique...",
+    "Almost done thinking...",
+    "Polishing the final details..."
+  ];
 
   useEffect(() => {
     // Fetch the animation JSON from public folder
@@ -40,10 +55,20 @@ export default function WrappedLoadingPage({ appName }) {
     return () => clearInterval(timer);
   }, []);
 
+  // Rotate messages every 4 seconds
+  useEffect(() => {
+    const messageTimer = setInterval(() => {
+      setMessageIndex(prev => (prev + 1) % messages.length);
+    }, 4000);
+
+    return () => clearInterval(messageTimer);
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 py-4">
       {/* Content is centered vertically inside the modal card */}
-      <div className="flex flex-col items-center justify-center w-full max-w-2xl space-y-4 md:space-y-6">
+      <div className="flex flex-col items-center justify-center w-full max-w-2xl space-y-6">
+        {/* Title */}
         <div className="text-center">
           <h2 className="text-xl md:text-2xl font-semibold text-gray-900 mb-1">
             {isWrappedApp ? 'Updating your digital brain for 2025...' : 'Processing your data...'}
@@ -53,29 +78,11 @@ export default function WrappedLoadingPage({ appName }) {
           </p>
         </div>
 
-        {/* Loading Progress Bar */}
-        <div className="w-full max-w-md">
-          <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div 
-              className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-300 ease-out"
-              style={{ 
-                width: `${progress}%`,
-                boxShadow: '0 0 10px rgba(139, 92, 246, 0.5)'
-              }}
-            />
-          </div>
-          <p className="text-center text-xs text-gray-500 mt-2">
-            {progress < 30 ? 'Analyzing your data...' : 
-             progress < 60 ? 'Generating insights...' : 
-             progress < 90 ? 'Almost there...' : 
-             'Finalizing your wrapped...'}
-          </p>
-        </div>
-
+        {/* Lottie Animation */}
         {animationData ? (
-          <div className="w-full max-w-md mx-auto">
+          <div className="w-full max-w-sm mx-auto">
             {/* Fixed aspect ratio so the figure sits nicely in the center and never clips */}
-            <div className="relative w-full" style={{ paddingBottom: '120%' }}>
+            <div className="relative w-full" style={{ paddingBottom: '100%' }}>
               <Lottie 
                 animationData={animationData}
                 loop={true}
@@ -85,10 +92,40 @@ export default function WrappedLoadingPage({ appName }) {
             </div>
           </div>
         ) : (
-          <div className="w-full max-w-md h-48 flex items-center justify-center">
+          <div className="w-full max-w-sm h-64 flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
           </div>
         )}
+
+        {/* Black and White Loading Bar - Below Lottie */}
+        <div className="w-full max-w-md">
+          <div className="relative w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              className="absolute top-0 left-0 h-full bg-gray-900 rounded-full transition-all duration-300 ease-out"
+              style={{ 
+                width: `${progress}%`
+              }}
+            />
+          </div>
+          
+          {/* Rotating message with fade transition */}
+          <p 
+            key={messageIndex}
+            className="text-center text-xs text-gray-600 mt-3 animate-fadeIn"
+            style={{ 
+              animation: 'fadeIn 0.5s ease-in-out'
+            }}
+          >
+            {messages[messageIndex]}
+          </p>
+        </div>
+
+        <style jsx>{`
+          @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(-4px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
       </div>
     </div>
   );

@@ -770,12 +770,14 @@ export function OnairosButton({
 
         const urlData = await urlResponse.json();
         console.log('🔗 API URL received:', urlData.apiUrl);
+        console.log('🎯 webpageName sent as appId:', webpageName);
 
         if (urlData.apiUrl && urlData.token) {
           // Only show wrapped loading page if app name contains "wrapped"
           const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
+          console.log('🎁 Is wrapped app?', isWrappedApp, '(checking:', webpageName, ')');
           if (isWrappedApp) {
-          setCurrentFlow('wrappedLoading');
+            setCurrentFlow('wrappedLoading');
             console.log('📊 Showing wrapped loading screen for wrapped app');
           } else {
             console.log('📊 Skipping loading screen - not a wrapped app');
@@ -823,6 +825,9 @@ export function OnairosButton({
              };
              
              console.log('🚀 Switching to Training API for non-wrapped app:', fetchUrl);
+          } else {
+             console.log('🎁 WRAPPED APP DETECTED - Using traits-only endpoint from backend:', fetchUrl);
+             console.log('🎁 This should call the wrapped dashboard generation');
           }
           
           console.log(`📡 Fetching/Training data from ${fetchUrl} (${method})...`);
@@ -839,10 +844,11 @@ export function OnairosButton({
             // The backend Python script needs time to generate the wrapped dashboard
             console.log(`🔄 Starting fetch request - will wait for complete response...`);
             
-            // Create abort controller with 5-minute timeout for LLM-heavy endpoints
+            // Create abort controller with 10-minute timeout for LLM-heavy endpoints
             // This prevents the BROWSER from timing out, even if the server might
+            // Note: Gateway/load balancer may timeout earlier (typically 60s), which is expected
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
+            const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes
 
             try {
               dataResponse = await fetch(fetchUrl, {
@@ -879,10 +885,11 @@ export function OnairosButton({
             // Mark fetch as completed successfully
             fetchCompleted = true;
             
-            console.log('✅✅✅ API RESPONSE FULLY RECEIVED AND PARSED');
-            console.log('📦📦📦 FULL API RESPONSE RECEIVED:', JSON.stringify(apiResponse, null, 2));
-            console.log('📦 Data received - has slides?', !!apiResponse.slides);
-            console.log('📦 Data received - slides keys:', apiResponse.slides ? Object.keys(apiResponse.slides) : 'NO SLIDES');
+            console.log('✅ API Response received and parsed successfully');
+            console.log('📦 Has slides?', !!apiResponse.slides);
+            if (apiResponse.slides) {
+              console.log('📊 Slides keys:', Object.keys(apiResponse.slides));
+            }
             
           } catch (fetchErr) {
             // Mark that we encountered an error during fetch
@@ -926,14 +933,11 @@ export function OnairosButton({
           
           // CRITICAL: Log fetch completion status
           if (fetchCompleted) {
-            console.log('✅✅✅ FETCH COMPLETED SUCCESSFULLY - Response data is ready');
+            console.log('✅ Fetch completed - data ready');
           } else if (requestResult.isTimeout) {
-             console.log('⏱️⏱️⏱️ REQUEST TIMED OUT - Passing timeout flag to app');
+             console.log('⏱️ Request timed out - passing timeout flag to app');
           } else if (fetchError) {
-            console.error('❌❌❌ FETCH FAILED - Response data is NOT ready');
-            console.error('❌ Error details:', fetchError);
-          } else {
-            console.warn('⚠️⚠️⚠️ FETCH STATUS UNKNOWN - This should not happen');
+            console.error('❌ Fetch failed:', fetchError.message);
           }
 
           // Merge into result - include token and apiUrl even if fetch failed
@@ -944,9 +948,11 @@ export function OnairosButton({
             apiUrl: urlData.apiUrl    // URL used - ALWAYS include this
           };
           
-          console.log('🔗🔗🔗 FINAL RESULT WITH API RESPONSE:', JSON.stringify(finalResult, null, 2));
-          console.log('🔗 Final result - apiResponse present?', !!finalResult.apiResponse);
-          console.log('🔗 Final result - apiResponse.slides?', !!finalResult.apiResponse?.slides);
+          console.log('🔗 Final result ready:', {
+            hasApiResponse: !!finalResult.apiResponse,
+            hasSlides: !!finalResult.apiResponse?.slides,
+            hasToken: !!finalResult.token
+          });
           
           // Add to updated user data - include token even if apiResponse is null
           updatedUserData.apiResponse = apiResponse;
@@ -960,9 +966,6 @@ export function OnairosButton({
             }
           }
           setUserData(updatedUserData);
-          
-          console.log('💾 Updated userData with apiResponse:', !!updatedUserData.apiResponse);
-          console.log('💾 Updated userData with token:', !!updatedUserData.token);
         } else {
           console.warn('⚠️ Failed to get API URL:', urlData);
         }
@@ -984,23 +987,6 @@ export function OnairosButton({
         // Continue with what we have - don't block the flow
         // The app can still proceed without apiResponse
       }
-    }
-
-    console.log('🔥 OnairosButton: Data request completed:', requestResult);
-    console.log('🔥 OnairosButton: Final result before callback:', finalResult);
-
-    // Only keep overlay open for wrapped apps, otherwise always close
-    const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
-    const shouldKeepOverlayOpen = isWrappedApp && autoFetch && requestResult.approved?.length > 0 && (
-      requestResult.isTimeout === true || !finalResult?.apiResponse?.slides
-    );
-
-    if (shouldKeepOverlayOpen) {
-      console.log('⏱️ Keeping overlay open on wrappedLoading page while backend finishes');
-    } else {
-    console.log('🔥 Closing overlay after data request completion');
-    // Use centralized close to also reset flow and session
-    handleCloseOverlay();
     }
 
     // Format response if requested and API response is present
@@ -1063,27 +1049,51 @@ export function OnairosButton({
     }
 
     // Call onComplete callback if provided
-    console.log('🔥 Calling onComplete callback');
-    console.log('🔥 onComplete data structure:', {
-      token: enhancedResult.token ? '✅ Present (JWT string)' : '❌ Missing',
-      apiUrl: enhancedResult.apiUrl ? '✅ Present (URL string)' : '❌ Missing',
-      apiResponse: enhancedResult.apiResponse ? '✅ Present (object)' : '❌ Missing',
-      userData: enhancedResult.userData ? '✅ Present (object)' : '❌ Missing',
-      userDataToken: enhancedResult.userData?.token ? '✅ Present in userData' : '❌ Missing',
-      success: enhancedResult.success,
-      testMode: enhancedResult.testMode,
-      allKeys: Object.keys(enhancedResult)
-    });
-    
     if (onComplete) {
       try {
+        console.log('✅ Calling onComplete with data');
         onComplete(enhancedResult);
-        console.log('🔥 onComplete callback executed successfully with enhanced formatting');
       } catch (error) {
-        console.error('🔥 Error in onComplete callback:', error);
+        console.error('❌ Error in onComplete callback:', error);
       }
     } else {
       console.log('🔥 No onComplete callback provided');
+    }
+
+    // WRAPPED APPS: Set up listener for app to signal when dashboard is ready
+    // This is event-driven - overlay stays until dashboard signals it's ready
+    const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
+    
+    if (isWrappedApp) {
+      console.log('🎁 Wrapped app - waiting for dashboard ready signal');
+      console.log('🔊 Setting up onairos-dashboard-ready event listener');
+      
+      // Listen for custom event from the wrapped app indicating dashboard is ready
+      const handleDashboardReady = (event) => {
+        console.log('✅✅✅ Dashboard ready signal received - closing SDK overlay');
+        console.log('📊 Event details:', event);
+        handleCloseOverlay();
+        window.removeEventListener('onairos-dashboard-ready', handleDashboardReady);
+      };
+      
+      window.addEventListener('onairos-dashboard-ready', handleDashboardReady);
+      console.log('👂 Event listener attached, waiting for signal...');
+      
+      // Keep overlay open indefinitely until we get the ready signal
+      // No fallback timeout - if the app doesn't signal, the overlay stays
+      // This ensures we never show a flash of the portal page
+    } else {
+      // For non-wrapped apps, keep overlay open if still waiting for data
+      const shouldKeepOverlayOpen = autoFetch && requestResult.approved?.length > 0 && (
+        requestResult.isTimeout === true || !finalResult?.apiResponse?.slides
+      );
+
+      if (shouldKeepOverlayOpen) {
+        console.log('⏱️ Keeping overlay open - backend still processing');
+      } else {
+        console.log('✅ Data request complete - closing overlay');
+        handleCloseOverlay();
+      }
     }
   };
 
@@ -1305,11 +1315,11 @@ export function OnairosButton({
               onClose={handleCloseOverlay}
               showBackButton={currentFlow !== 'welcome' && currentFlow !== 'email' && currentFlow !== 'loading' && currentFlow !== 'wrappedLoading'}
               onBack={() => {
-                if (currentFlow === 'onboarding') setCurrentFlow('email');
-                else if (currentFlow === 'pin') setCurrentFlow('onboarding');
-                else if (currentFlow === 'dataRequest') setCurrentFlow('onboarding');
-                else if (currentFlow === 'training') setCurrentFlow('pin');
-              }}
+                        if (currentFlow === 'onboarding') setCurrentFlow('email');
+                        else if (currentFlow === 'pin') setCurrentFlow('onboarding');
+                        else if (currentFlow === 'dataRequest') setCurrentFlow('onboarding');
+                        else if (currentFlow === 'training') setCurrentFlow('pin');
+                      }}
               showCloseButton={currentFlow === 'welcome' || currentFlow === 'email'}
               title=""
               subtitle=""
@@ -1319,8 +1329,8 @@ export function OnairosButton({
               modalClassName="onairos-modal onairos-modal-mobile"
             >
               <div className="onairos-modal-shell flex-1 min-h-0 flex flex-col">
-                {renderContent()}
-              </div>
+                  {renderContent()}
+                </div>
             </ModalPageLayout>
           ) : (
             // Desktop Layout

@@ -543,12 +543,11 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         return true;
       }
 
-      // Desktop: open popup, use localStorage polling + postMessage
-      // We pass 'onairos_oauth_popup' as window name to help detection
+      // Desktop: open popup
       const popup = window.open(
         oauthUrl,
-        `onairos_oauth_popup`, 
-        'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
+        'onairos_oauth_popup', 
+        'width=500,height=600,scrollbars=yes,resizable=yes'
       );
 
       if (!popup || popup.closed || typeof popup.closed === 'undefined') {
@@ -575,6 +574,15 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           setIsConnecting(false);
           setConnectingPlatform(null);
           // Toggle is already ON from optimistic update
+          
+          // Close popup immediately
+          try {
+            if (popup && !popup.closed) {
+              popup.close();
+            }
+          } catch (e) {
+            // Ignore errors closing popup
+          }
         }
       };
 
@@ -617,7 +625,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
               setConnectingPlatform(null);
               // Toggle is already ON from optimistic update
               
-              // Try to close popup if still open
+              // Close popup immediately
               try {
                 if (!popup.closed) {
                   popup.close();
@@ -813,11 +821,16 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                           return;
                         }
 
-                        // For ChatGPT, show modal on all WEB platforms (Desktop + Mobile Web).
-                        // We check connector ID to be safe, and ensure we're NOT in a native app.
-                        if (p.connector === 'chatgpt' && !isNativePlatform) {
-                          console.log('🤖 Opening ChatGPT Connect Modal (Web Mode)');
+                        // For ChatGPT, show modal ONLY on DESKTOP (not mobile browser or native app)
+                        if (p.connector === 'chatgpt' && !isNativePlatform && !isMobileBrowser) {
+                          console.log('🤖 Opening ChatGPT Connect Modal (Desktop Only)');
                           setShowChatGPTModal(true);
+                          return;
+                        }
+                        
+                        // On mobile browser, ChatGPT card is visible but clicking does nothing (like Instagram)
+                        if (p.connector === 'chatgpt' && isMobileBrowser) {
+                          console.log('📱 ChatGPT disabled on mobile browser - visual selection only');
                           return;
                         }
 
@@ -886,7 +899,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
               <div className="rounded-2xl bg-gray-50 text-gray-700 text-sm leading-6 px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
                 {descriptions[selected] || null}
               </div>
-              {!isMobile && selected === 'ChatGPT' && (
+              {!isMobileBrowser && !isNativePlatform && selected === 'ChatGPT' && (
                 <div className="mt-3 flex justify-end">
                   <button
                     type="button"

@@ -166,19 +166,25 @@ export default function ConnectChatGPTModal({ open, onClose, onConnected }) {
                       style={{ animation: 'gentlePulse 2s ease-in-out infinite' }}
                     />
                     <a
-                      href={bookmarkletHref}
+                      href="#onairos-chatgpt-bookmarklet"
+                      title="✨ Onairos ChatGPT"
                       draggable="true"
                       onDragStart={(e) => {
                         try {
+                          // Pass the bookmarklet code via drag data
                           e.dataTransfer.setData('text/plain', bookmarkletHref);
+                          e.dataTransfer.setData('text/uri-list', bookmarkletHref);
+                          // Also set the bookmark title explicitly
+                          e.dataTransfer.setData('text/x-moz-url', `${bookmarkletHref}\n✨ Onairos ChatGPT`);
                           e.dataTransfer.effectAllowed = 'copy';
-                        } catch {
-                          // ignore
+                          console.log('✅ Bookmarklet drag started with title: ✨ Onairos ChatGPT');
+                        } catch (err) {
+                          console.warn('Drag start error:', err);
                         }
                       }}
                       onClick={(e) => {
                         e.preventDefault();
-                        alert('Please drag this button to your bookmarks bar.');
+                        alert('✨ Please drag this button to your bookmarks bar!\n\nTip: Press Ctrl+Shift+B (or Cmd+Shift+B on Mac) to show your bookmarks bar.');
                       }}
                       className="bookmarklet-button relative inline-flex items-center gap-1.5 px-4 py-2 font-medium cursor-move select-none transition-all hover:scale-[1.03]"
                       suppressHydrationWarning
