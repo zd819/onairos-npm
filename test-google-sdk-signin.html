@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Google SDK Sign-In</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #4285F4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #357ae8;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .config {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border: 1px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Test Google SDK Sign-In</h1>
+        <p>Test the new frontend Google OAuth implementation</p>
+
+        <div class="config">
+            <strong>⚙️ Configuration</strong><br>
+            <label>
+                Google Client ID:
+                <input type="text" id="clientId" style="width: 100%; padding: 8px; margin-top: 5px; font-family: monospace; font-size: 12px;" 
+                       value="1030678346906-4npem7vckp0e56p17c81sv2pee2hhule.apps.googleusercontent.com">
+            </label>
+        </div>
+
+        <div id="status" class="status info">
+            ℹ️ Ready to test. Click "Test Google Sign-In" below.
+        </div>
+
+        <div>
+            <button id="testButton" onclick="testGoogleSignIn()">🚀 Test Google Sign-In</button>
+            <button onclick="clearLogs()">🗑️ Clear Logs</button>
+        </div>
+
+        <div id="userInfo" style="display: none; margin-top: 20px;">
+            <h3>✅ User Information</h3>
+            <pre id="userInfoData"></pre>
+        </div>
+
+        <div class="log">
+            <strong>📋 Activity Log</strong>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        let logs = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push({ timestamp, message, type });
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const logsDiv = document.getElementById('logs');
+            logsDiv.innerHTML = logs.map(l => 
+                `<div class="log-entry" style="color: ${l.type === 'error' ? 'red' : l.type === 'success' ? 'green' : 'black'}">
+                    [${l.timestamp}] ${l.message}
+                </div>`
+            ).join('');
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            logs = [];
+            updateLogDisplay();
+            document.getElementById('userInfo').style.display = 'none';
+        }
+
+        function updateStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        async function testGoogleSignIn() {
+            const clientId = document.getElementById('clientId').value;
+            
+            if (!clientId) {
+                updateStatus('❌ Error: Please enter a Google Client ID', 'error');
+                return;
+            }
+
+            log('Starting Google Sign-In test...', 'info');
+            log(`Using Client ID: ${clientId}`, 'info');
+            updateStatus('⏳ Initializing Google Sign-In...', 'info');
+
+            try {
+                // Initialize Google Identity Services
+                google.accounts.id.initialize({
+                    client_id: clientId,
+                    callback: handleCredentialResponse,
+                    auto_select: false,
+                });
+
+                log('✅ Google SDK initialized successfully', 'success');
+                
+                // Prompt for sign-in
+                log('Opening Google Sign-In prompt...', 'info');
+                updateStatus('🔓 Please sign in with Google...', 'info');
+                
+                google.accounts.id.prompt((notification) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        log('⚠️ Sign-in prompt not displayed. Trying alternative method...', 'info');
+                        // Fallback to manual button
+                        renderGoogleButton(clientId);
+                    }
+                });
+
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                updateStatus(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function renderGoogleButton(clientId) {
+            const buttonDiv = document.createElement('div');
+            buttonDiv.id = 'googleButtonDiv';
+            buttonDiv.style.display = 'flex';
+            buttonDiv.style.justifyContent = 'center';
+            buttonDiv.style.marginTop = '20px';
+            
+            document.querySelector('.container').insertBefore(
+                buttonDiv, 
+                document.getElementById('status').nextSibling
+            );
+
+            google.accounts.id.renderButton(
+                buttonDiv,
+                { theme: "outline", size: "large", text: "signin_with" }
+            );
+        }
+
+        async function handleCredentialResponse(response) {
+            log('✅ Received credential from Google', 'success');
+            
+            try {
+                // Decode JWT token (simplified - in production use proper JWT library)
+                const base64Url = response.credential.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+
+                const userData = JSON.parse(jsonPayload);
+                
+                log(`✅ User email: ${userData.email}`, 'success');
+                log(`✅ User name: ${userData.name}`, 'success');
+                log(`✅ Email verified: ${userData.email_verified}`, 'success');
+
+                // Display user info
+                document.getElementById('userInfo').style.display = 'block';
+                document.getElementById('userInfoData').textContent = JSON.stringify(userData, null, 2);
+
+                updateStatus(`✅ Successfully signed in as ${userData.email}`, 'success');
+
+                // Test backend verification (optional)
+                log('Testing backend verification...', 'info');
+                const backendResponse = await fetch('https://api2.onairos.uk/auth/google', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': window.onairosApiKey || 'test-key'
+                    },
+                    body: JSON.stringify({
+                        credential: response.credential,
+                        email: userData.email,
+                        userInfo: userData
+                    })
+                });
+
+                if (backendResponse.ok) {
+                    log('✅ Backend verification successful', 'success');
+                } else {
+                    log(`⚠️ Backend verification returned ${backendResponse.status} (this is okay for testing)`, 'info');
+                }
+
+            } catch (error) {
+                log(`❌ Error processing response: ${error.message}`, 'error');
+                updateStatus(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initial log
+        log('Test page loaded. Ready to test Google Sign-In.', 'info');
+    </script>
+</body>
+</html>
+

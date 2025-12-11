@@ -2,7 +2,7 @@
   "name": "onairos",
   "version": "4.1.0",
   "dependencies": {
-    "@react-oauth/google": "^0.12.1",
+    "@react-oauth/google": "^0.12.2",
     "@telegram-apps/sdk-react": "^2.0.25",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",

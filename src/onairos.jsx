@@ -1,12 +1,23 @@
 import React from 'react';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import OnairosButton from './onairosButton.jsx';
+
+// Get Google Client ID from environment or props
+const getGoogleClientId = (props) => {
+  return props.googleClientId || 
+         (typeof window !== 'undefined' && window.REACT_APP_GOOGLE_CLIENT_ID) ||
+         process.env.REACT_APP_GOOGLE_CLIENT_ID ||
+         '1030678346906-4npem7vckp0e56p17c81sv2pee2hhule.apps.googleusercontent.com'; // Default fallback
+};
 
 // Main Onairos component
 export function Onairos(props) {
+  const googleClientId = getGoogleClientId(props);
+  
   return (
-    <>
+    <GoogleOAuthProvider clientId={googleClientId}>
       <OnairosButton {...props} />
-    </>
+    </GoogleOAuthProvider>
   );
 }
 
