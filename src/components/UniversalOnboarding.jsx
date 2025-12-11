@@ -838,11 +838,19 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                       style={{ width: SLOT, height: SLOT }}
                       title={p.name}
                     >
-                      <div className={`rounded-full transition-all duration-150 ease-out flex items-center justify-center shadow-lg ${on ? 'border-4 border-blue-600 bg-white text-black' : 'border-3 border-gray-300 hover:border-gray-400 bg-white text-black'}`}
-                           style={{ width: CIRCLE, height: CIRCLE, transform: `scale(${isSel ? ACTIVE_SCALE : 1})`, transformOrigin: 'center' }}>
+                      <div 
+                        className={`rounded-full transition-all duration-200 ease-out flex items-center justify-center shadow-lg ${on ? 'ring-4 ring-blue-600 border-2 border-white bg-white text-black' : 'border-2 border-gray-300 hover:border-gray-400 bg-white text-black'}`}
+                        style={{ 
+                          width: CIRCLE, 
+                          height: CIRCLE, 
+                          transform: `scale(${isSel ? ACTIVE_SCALE : 1})`, 
+                          transformOrigin: 'center',
+                          boxShadow: on ? '0 0 0 4px rgb(37 99 235), 0 4px 6px -1px rgba(0, 0, 0, 0.1)' : undefined
+                        }}
+                      >
                         <div className="flex items-center justify-center" style={{ width: 20, height: 20 }}>
                           {p.icon}
-                    </div>
+                        </div>
                       </div>
                     </button>
                   </div>
@@ -871,13 +879,22 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                 role="switch"
                 aria-checked={!!connectedAccounts[selected]}
                 aria-label={`toggle ${selected}`}
-                onClick={() => handleSwitch(selected)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSwitch(selected);
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSwitch(selected);
+                }}
                 disabled={isConnecting && connectingPlatform !== selected}
-                className={`relative inline-flex items-center transition-colors disabled:opacity-50 ${connectedAccounts[selected] ? 'bg-black' : 'bg-gray-200'} rounded-full`}
-                style={{ width: 56, height: 32 }}
+                className={`relative inline-flex items-center transition-colors disabled:opacity-50 ${connectedAccounts[selected] ? 'bg-black' : 'bg-gray-200'} rounded-full touch-manipulation`}
+                style={{ width: 56, height: 32, WebkitTapHighlightColor: 'transparent', userSelect: 'none', touchAction: 'manipulation' }}
               >
                 <span
-                  className="absolute bg-white rounded-full shadow"
+                  className="absolute bg-white rounded-full shadow pointer-events-none"
                   style={{
                     width: 24,
                     height: 24,

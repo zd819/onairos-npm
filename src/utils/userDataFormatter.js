@@ -21,7 +21,7 @@ export function formatUserDataForDisplay(result) {
       appName: result.appName || 'Unknown App',
       userHash: result.userHash || 'Unknown User',
       testMode: result.testMode || false,
-      dataTypesRequested: result.approvedData || []
+      dataTypesRequested: Array.isArray(result.approvedData) ? result.approvedData : (result.approved || [])
     },
     
     // User authentication and profile data
@@ -195,7 +195,7 @@ function createPrettyPrintVersion(userDataSummary) {
   lines.push(`   App: ${userDataSummary.requestInfo.appName}`);
   lines.push(`   User: ${userDataSummary.requestInfo.userHash}`);
   lines.push(`   Mode: ${userDataSummary.requestInfo.testMode ? 'Test' : 'Production'}`);
-  lines.push(`   Data Types: ${userDataSummary.requestInfo.dataTypesRequested.join(', ') || 'None'}`);
+  lines.push(`   Data Types: ${Array.isArray(userDataSummary.requestInfo.dataTypesRequested) && userDataSummary.requestInfo.dataTypesRequested.length > 0 ? userDataSummary.requestInfo.dataTypesRequested.join(', ') : 'None'}`);
   lines.push(`   Timestamp: ${new Date(userDataSummary.requestInfo.timestamp).toLocaleString()}`);
   
   // User Profile

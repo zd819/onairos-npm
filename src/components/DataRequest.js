@@ -239,7 +239,7 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
         </div>
 
         {/* TOGGLES */}
-        <div className={`${isCapacitorNative ? 'flex flex-col gap-3' : 'grid grid-cols-2 gap-4'} mb-10`}>
+        <div className={`${isCapacitorNative ? 'flex flex-col gap-3' : 'flex flex-col sm:grid sm:grid-cols-2 gap-3 sm:gap-4'} mb-10`}>
           {availableOptions.map((opt) => (
             <DataTypeToggle
               key={opt.id}

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Training Flow - Non-Wrapped App</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      text-align: center;
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 500px;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    p {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .onairos-button {
+      background: #000;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 30px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .onairos-button:hover {
+      background: #333;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    .info {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f5f5f5;
+      border-radius: 10px;
+      text-align: left;
+    }
+    .info h3 {
+      margin-top: 0;
+      color: #667eea;
+    }
+    .info ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .info li {
+      margin: 8px 0;
+      color: #333;
+    }
+    .console-note {
+      margin-top: 20px;
+      padding: 15px;
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      border-radius: 5px;
+      text-align: left;
+    }
+    .console-note strong {
+      color: #856404;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎓 Training Flow Test</h1>
+    <p>Testing non-wrapped app training screen with rain animation</p>
+    
+    <div id="onairos-button-container"></div>
+    
+    <div class="info">
+      <h3>Expected Flow:</h3>
+      <ul>
+        <li>✅ Welcome Screen</li>
+        <li>✅ Email Authentication</li>
+        <li>✅ Universal Onboarding (Connect Apps)</li>
+        <li>✅ PIN Setup</li>
+        <li>🆕 <strong>Training Screen (with rain animation)</strong></li>
+        <li>✅ Data Request</li>
+        <li>✅ Training & Inference logs in console</li>
+        <li>✅ Modal closes after approval</li>
+      </ul>
+    </div>
+
+    <div class="console-note">
+      <strong>📝 Note:</strong> Open your browser console (F12) to see training and inference results after clicking "Accept & Continue" on the data request page.
+    </div>
+  </div>
+
+  <script src="./dist/onairos.bundle.js"></script>
+  <script>
+    console.log('🚀 Initializing Onairos SDK for internship-demo test');
+    
+    // This simulates an internship-demo app (non-wrapped)
+    // Should show training screen after PIN setup
+    const buttonContainer = document.getElementById('onairos-button-container');
+    
+    const onCompleteCallback = (data) => {
+      console.log('🎯 SDK onComplete callback received:');
+      console.log('📊 Data:', data);
+      console.log('🔍 Check console above for training and inference results!');
+      
+      // Log formatted results
+      if (data.approved) {
+        console.log('✅ User approved data types:', data.approved);
+      }
+      if (data.userData) {
+        console.log('👤 User data:', {
+          email: data.userData.email,
+          connectedAccounts: data.userData.connectedAccounts,
+          trainingCompleted: data.userData.trainingCompleted
+        });
+      }
+    };
+
+    // Create Onairos button for internship-demo
+    const root = ReactDOM.createRoot(buttonContainer);
+    root.render(
+      React.createElement(window.OnairosButton, {
+        webpageName: 'internship-demo', // NOT wrapped - should show training screen
+        requestData: ['basic', 'personality', 'preferences'],
+        autoFetch: true,
+        testMode: true,
+        onComplete: onCompleteCallback,
+        appIcon: 'https://onairos.sirv.com/Images/OnairosBlack.png'
+      })
+    );
+
+    console.log('✅ Onairos button initialized');
+    console.log('📱 App name: internship-demo (non-wrapped)');
+    console.log('🎓 Training screen: ENABLED (after PIN setup)');
+  </script>
+</body>
+</html>

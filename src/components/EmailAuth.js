@@ -601,6 +601,8 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
             <input
               key={index}
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               maxLength="1"
               value={code[index] || ''}
               onChange={(e) => {

@@ -125,6 +125,7 @@ const esmExternals = {
   'react-dom': 'react-dom',
   '@capacitor/core': '@capacitor/core',
   '@capacitor/browser': '@capacitor/browser',
+  'socket.io-client': 'socket.io-client',
   'ajv': 'ajv',
   'ajv/dist/runtime/validation_error': 'ajv/dist/runtime/validation_error',
   'ajv/dist/runtime/equal': 'ajv/dist/runtime/equal',

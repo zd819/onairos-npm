@@ -7,6 +7,7 @@ import UniversalOnboarding from './components/UniversalOnboarding.jsx';
 import PinSetup from './components/PinSetup.js';
 import DataRequest from './components/DataRequest.js';
 import TrainingComponent from './components/TrainingComponent.jsx';
+import TrainingScreen from './components/TrainingScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import WrappedLoadingPage from './components/WrappedLoadingPage.jsx';
 import { formatOnairosResponse } from './utils/responseFormatter.js';
@@ -40,7 +41,7 @@ export function OnairosButton({
 }) {
 
   const [showOverlay, setShowOverlay] = useState(false);
-  const [currentFlow, setCurrentFlow] = useState('welcome'); // 'welcome' | 'email' | 'onboarding' | 'pin' | 'dataRequest' | 'wrappedLoading' (training is within onboarding)
+  const [currentFlow, setCurrentFlow] = useState('welcome'); // 'welcome' | 'email' | 'onboarding' | 'pin' | 'trainingScreen' | 'dataRequest' | 'wrappedLoading'
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
   const [oauthReturnDetected, setOauthReturnDetected] = useState(false);
@@ -707,11 +708,18 @@ export function OnairosButton({
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
     
-    // 🔥 FIX: Don't trigger training here - wait for user to approve data request
-    console.log('✅ PIN created - moving to data request (training will start after approval)');
+    // Check if this is a wrapped app
+    const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
     
-    // Go directly to data request - user must approve before training starts
-    setCurrentFlow('dataRequest');
+    if (isWrappedApp) {
+      // Wrapped apps skip training screen - go directly to data request
+      console.log('🎁 Wrapped app - skipping training screen, going to data request');
+      setCurrentFlow('dataRequest');
+    } else {
+      // Non-wrapped apps show training screen BEFORE data request
+      console.log('🎓 Non-wrapped app - showing training screen');
+      setCurrentFlow('trainingScreen');
+    }
   };
 
   const handleLoadingComplete = () => {
@@ -732,8 +740,32 @@ export function OnairosButton({
     setCurrentFlow('dataRequest');
   };
 
+  const handleTrainingScreenComplete = (trainingResult) => {
+    console.log('🎓 Training screen completed:', trainingResult);
+    const updatedUserData = {
+      ...userData,
+      trainingCompleted: true,
+      ...trainingResult
+    };
+    setUserData(updatedUserData);
+    localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
+    
+    // Move to data request after training screen
+    setCurrentFlow('dataRequest');
+  };
+
   const handleDataRequestComplete = async (requestResult) => {
     console.log('🔥 OnairosButton: Data request completed:', requestResult);
+    
+    // Check if this is a wrapped app
+    const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
+    
+    // For non-wrapped apps, training and inference already happened in TrainingScreen
+    // No need to run it again here
+    if (!isWrappedApp && requestResult.approved?.length > 0) {
+      console.log('✅ Non-wrapped app: Training and inference already completed in TrainingScreen');
+      console.log('📋 Data approval recorded:', requestResult.approved);
+    }
     
     // Update user data with request result
     const updatedUserData = {
@@ -744,10 +776,11 @@ export function OnairosButton({
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
 
     // Handle data fetching if autoFetch is enabled
+    // For non-wrapped apps, training already happened in TrainingScreen, so skip this
     let finalResult = requestResult;
     
-    if (autoFetch && requestResult.approved?.length > 0) {
-      console.log('🚀 Auto-fetching data from Onairos API...');
+    if (autoFetch && requestResult.approved?.length > 0 && isWrappedApp) {
+      console.log('🚀 Auto-fetching data from Onairos API for wrapped app...');
       
       try {
         // 1. Get the API URL from the backend
@@ -1110,20 +1143,27 @@ export function OnairosButton({
     }
 
     // Call onComplete callback if provided
-    if (onComplete) {
+    // For non-wrapped apps, onComplete was already called from TrainingScreen
+    // So we only call it here for wrapped apps OR if training screen was skipped
+    // webpageName is already in scope from the component props
+    const isWrappedAppForCallback = webpageName && webpageName.toLowerCase().includes('wrapped');
+    
+    if (onComplete && isWrappedAppForCallback) {
       try {
-        console.log('✅ Calling onComplete with data');
+        console.log('✅ Calling onComplete for wrapped app with data');
         onComplete(enhancedResult);
       } catch (error) {
         console.error('❌ Error in onComplete callback:', error);
       }
+    } else if (onComplete && !isWrappedAppForCallback) {
+      console.log('⏭️ Skipping onComplete for non-wrapped app (already called from TrainingScreen)');
     } else {
       console.log('🔥 No onComplete callback provided');
     }
 
     // WRAPPED APPS: Set up listener for app to signal when dashboard is ready
     // This is event-driven - overlay stays until dashboard signals it's ready
-    const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
+    // isWrappedApp already declared above
     
     if (isWrappedApp) {
       console.log('🎁 Wrapped app - waiting for dashboard ready signal');
@@ -1144,17 +1184,9 @@ export function OnairosButton({
       // No fallback timeout - if the app doesn't signal, the overlay stays
       // This ensures we never show a flash of the portal page
     } else {
-      // For non-wrapped apps, keep overlay open if still waiting for data
-      const shouldKeepOverlayOpen = autoFetch && requestResult.approved?.length > 0 && (
-        requestResult.isTimeout === true || !finalResult?.apiResponse?.slides
-      );
-
-      if (shouldKeepOverlayOpen) {
-        console.log('⏱️ Keeping overlay open - backend still processing');
-      } else {
-        console.log('✅ Data request complete - closing overlay');
-        handleCloseOverlay();
-      }
+      // For non-wrapped apps, just close the modal - training already happened in TrainingScreen
+      console.log('✅ Non-wrapped app: Training complete, closing overlay');
+      handleCloseOverlay();
     }
   };
 
@@ -1169,6 +1201,8 @@ export function OnairosButton({
       case 'pin':
         return 'Secure Your Account';
       case 'training':
+        return 'Training Your Model';
+      case 'trainingScreen':
         return 'Training Your Model';
       case 'dataRequest':
         return 'Data Request';
@@ -1189,6 +1223,8 @@ export function OnairosButton({
         return 'Create a secure PIN to protect your data';
       case 'training':
         return 'Building your personalized insights';
+      case 'trainingScreen':
+        return 'Building your personalized insights';
       case 'dataRequest':
         return `Select the data you want to share with ${webpageName}`;
       default:
@@ -1207,6 +1243,8 @@ export function OnairosButton({
       case 'pin':
         return '🔒';
       case 'training':
+        return '⚡';
+      case 'trainingScreen':
         return '⚡';
       case 'dataRequest':
         return '📊';
@@ -1273,6 +1311,22 @@ export function OnairosButton({
             appName={webpageName}
             connectedAccounts={userData?.connectedAccounts || []}
             testMode={testMode}
+          />
+        );
+      case 'trainingScreen':
+        console.log('🎓 Rendering TrainingScreen with userData:', {
+          hasUserData: !!userData,
+          hasToken: !!userData?.token,
+          tokenPreview: userData?.token ? userData.token.substring(0, 20) + '...' : 'NO TOKEN',
+          email: userData?.email,
+          connectedAccounts: userData?.connectedAccounts
+        });
+        return (
+          <TrainingScreen 
+            onComplete={handleTrainingScreenComplete}
+            userEmail={userData?.email}
+            connectedAccounts={userData?.connectedAccounts || []}
+            userToken={userData?.token}
           />
         );
       case 'dataRequest':
