@@ -118,7 +118,8 @@ export function OnairosButton({
       userState: authData.userState,
       flowType: authData.flowType,
       existingUser: authData.existingUser,
-      hasAccountInfo: !!authData.accountInfo
+      hasAccountInfo: !!authData.accountInfo,
+      accountStatus: authData.accountStatus // NEW: Log accountStatus
     });
 
     // Save identity-bearing JWT immediately (email/id/userId/sub)
@@ -140,16 +141,37 @@ export function OnairosButton({
       console.warn('⚠️ [OnairosButton] Failed to parse/save email auth token');
     }
     
-    // Determine flow based on API response - more explicit checking
-    const isNewUser = authData.isNewUser === true || 
-                     authData.existingUser === false || 
-                     authData.flowType === 'onboarding' || 
-                     authData.userState === 'new' ||
-                     !authData.accountInfo; // No account info means new user
+    // NEW: Use accountStatus if available (more reliable than legacy fields)
+    const accountStatus = authData.accountStatus;
+    let isNewUser;
+    
+    if (accountStatus) {
+      // Use the new accountStatus.exists field as the source of truth
+      isNewUser = !accountStatus.exists;
+      console.log('✅ Using accountStatus.exists for flow determination:', {
+        accountExists: accountStatus.exists,
+        hasTrainedModel: accountStatus.hasTrainedModel,
+        hasPersonalityTraits: accountStatus.hasPersonalityTraits,
+        connectedPlatforms: accountStatus.connectedPlatforms,
+        needsDataConnection: accountStatus.needsDataConnection,
+        needsTraining: accountStatus.needsTraining,
+        canUseInference: accountStatus.canUseInference
+      });
+    } else {
+      // Fallback to legacy field checking if accountStatus not available
+      isNewUser = authData.isNewUser === true || 
+                  authData.existingUser === false || 
+                  authData.flowType === 'onboarding' || 
+                  authData.userState === 'new' ||
+                  !authData.accountInfo;
+      console.log('⚠️ Using legacy fields for flow determination (accountStatus not available)');
+    }
     
     console.log('🔍 Flow determination:', {
       finalDecision: isNewUser ? 'NEW USER → onboarding (data connectors)' : 'EXISTING USER → dataRequest (data permissions)',
       reasoning: {
+        usingAccountStatus: !!accountStatus,
+        accountExists: accountStatus?.exists,
         isNewUser: authData.isNewUser,
         existingUserFalse: authData.existingUser === false,
         flowTypeOnboarding: authData.flowType === 'onboarding',
