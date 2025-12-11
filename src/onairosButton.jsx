@@ -882,6 +882,67 @@ export function OnairosButton({
             // CRITICAL: Wait for JSON parsing to complete
             apiResponse = await dataResponse.json();
             
+            console.log('🔍 Parsed API response:', {
+              isWrappedApp,
+              hasStatus: !!apiResponse.status,
+              status: apiResponse.status,
+              hasSlides: !!apiResponse.slides,
+              responseKeys: Object.keys(apiResponse)
+            });
+            
+            // Check if dashboard is still being generated (wrapped app only)
+            if (isWrappedApp && apiResponse.status === 'processing') {
+              console.log('⏳ Dashboard is being generated - starting polling...');
+              const pollInterval = (apiResponse.poll_interval_seconds || 3) * 1000;
+              const maxPolls = 60; // Max 3 minutes of polling
+              let pollCount = 0;
+              
+              while (pollCount < maxPolls) {
+                pollCount++;
+                console.log(`🔄 Polling attempt ${pollCount}/${maxPolls}...`);
+                
+                // Wait before next poll
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                
+                try {
+                  const pollResponse = await fetch(fetchUrl, {
+                    method: method,
+                    headers: {
+                      'Authorization': `Bearer ${urlData.token}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: method === 'POST' ? JSON.stringify(fetchBody) : undefined
+                  });
+                  
+                  if (pollResponse.ok) {
+                    const pollData = await pollResponse.json();
+                    
+                    // Check if we have the actual dashboard now
+                    if (pollData.slides) {
+                      console.log('✅ Dashboard ready! Received slides.');
+                      apiResponse = pollData;
+                      break;
+                    } else if (pollData.status !== 'processing') {
+                      console.warn('⚠️ Unexpected response during polling:', pollData);
+                      apiResponse = pollData;
+                      break;
+                    }
+                    
+                    console.log('⏳ Still processing...');
+                  } else {
+                    console.warn(`⚠️ Poll failed with status ${pollResponse.status}`);
+                  }
+                } catch (pollErr) {
+                  console.warn('⚠️ Poll request failed:', pollErr.message);
+                }
+              }
+              
+              if (!apiResponse.slides && pollCount >= maxPolls) {
+                console.error('❌ Polling timed out after max attempts');
+                throw new Error('Dashboard generation timed out');
+              }
+            }
+            
             // Mark fetch as completed successfully
             fetchCompleted = true;
             

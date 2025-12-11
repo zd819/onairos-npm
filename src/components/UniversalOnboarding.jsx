@@ -125,20 +125,10 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         </svg>
       ),
     Reddit: (
-      <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
-        <circle cx="12" cy="12" r="12" fill="#FF4500"/>
-        <circle cx="8.75" cy="12.5" r="1.25" fill="#FFF"/>
-        <circle cx="15.25" cy="12.5" r="1.25" fill="#FFF"/>
-        <path fill="#FFF" d="M7.9 15c.8.8 2.3 1.05 4.1 1.05S15.3 15.8 16.1 15c.2-.2.2-.5 0-.7-.2-.2-.5-.2-.7 0-.6.6-1.9.85-3.4.85S9.3 14.9 8.7 14.3c-.2-.2-.5-.2-.7 0-.2.2-.2.5 0 .7z"/>
-        </svg>
+      <img src="https://upload.wikimedia.org/wikipedia/en/b/bd/Reddit_Logo_Icon.svg" alt="Reddit" width="100%" height="100%" />
       ),
     LinkedIn: (
-      <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
-        <rect x="2" y="2" width="20" height="20" rx="3" fill="#0A66C2"/>
-        <rect x="5" y="9" width="3" height="10" fill="#FFF"/>
-        <circle cx="6.5" cy="6.5" r="1.5" fill="#FFF"/>
-        <path fill="#FFF" d="M16.8 19H13.9v-5c0-1.2-.5-1.8-1.4-1.8-.9 0-1.6.6-1.6 1.8V19H8V9h2.8v1.3c.5-.8 1.4-1.5 2.7-1.5 2 0 3.3 1.3 3.3 3.7V19z"/>
-        </svg>
+      <img src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png" alt="LinkedIn" width="100%" height="100%" />
       ),
     Twitter: (
       <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
@@ -835,18 +825,20 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                         }
 
                         if (p.directLink) {
-                          // For other direct-link AI tools, open in a new tab.
-                          console.log(`Opening ${p.name} in new tab:`, p.directLink);
-                          window.open(p.directLink, '_blank', 'noopener,noreferrer');
+                          // For direct-link AI tools, just select (don't open)
+                          console.log(`Selecting ${p.name} (direct link platform)`);
+                          setSelected(p.name);
                         } else {
-                          handleSwitch(p.name);
+                          // For all platforms, icon click should ONLY select, not toggle
+                          console.log(`Selecting ${p.name}`);
+                          setSelected(p.name);
                         }
                       }}
                       className="relative grid place-items-center outline-none"
                       style={{ width: SLOT, height: SLOT }}
                       title={p.name}
                     >
-                      <div className={`rounded-full border-3 transition-all duration-150 ease-out flex items-center justify-center shadow-lg ${on ? 'border-blue-600 bg-white text-black shadow-blue-500/70' : 'border-gray-300 hover:border-gray-400 bg-white text-black'}`}
+                      <div className={`rounded-full transition-all duration-150 ease-out flex items-center justify-center shadow-lg ${on ? 'border-4 border-blue-600 bg-white text-black' : 'border-3 border-gray-300 hover:border-gray-400 bg-white text-black'}`}
                            style={{ width: CIRCLE, height: CIRCLE, transform: `scale(${isSel ? ACTIVE_SCALE : 1})`, transformOrigin: 'center' }}>
                         <div className="flex items-center justify-center" style={{ width: 20, height: 20 }}>
                           {p.icon}
