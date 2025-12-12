@@ -746,8 +746,11 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         {/* header - MOBILE ONLY: smaller top padding to give persona space */}
         {/* Desktop: Reduced padding to fit everything */}
         <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? '2.5rem' : '1.5rem', paddingBottom: isMobile ? '0.75rem' : '0.25rem' }}>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
-          <p className="text-gray-600 text-base">More Connections, Better Personalization.</p>
+          {/* Web-only: lift header text slightly so it doesn't overlap the persona head */}
+          <div style={{ transform: isMobile ? 'none' : 'translateY(-10px)' }}>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
+            <p className="text-gray-600 text-base">More Connections, Better Personalization.</p>
+          </div>
         </div>
 
         {/* Spacer - MOBILE ONLY: push icons/card WAY down so PERSONA SHINES */}
@@ -757,7 +760,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
         {/* icons band */}
         <div className="px-6 flex-shrink-0" style={{ height: ICONS_H }}>
-          <div className="h-full flex items-center justify-center">
+          {/* Web-only: nudge icon band down slightly without affecting layout below */}
+          <div className="h-full flex items-center justify-center" style={{ transform: isMobile ? 'none' : 'translateY(8px)' }}>
             <div
               className="grid w-full box-border relative"
               onTouchStart={onTouchStart}
