@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import Lottie from 'lottie-react';
 
-export default function WrappedLoadingPage() {
+export default function WrappedLoadingPage({ appName }) {
   const [animationData, setAnimationData] = useState(null);
+  
+  // Only show "Updating your digital brain for 2025..." if app name contains "wrapped"
+  const isWrappedApp = appName && appName.toLowerCase().includes('wrapped');
 
   useEffect(() => {
     // Fetch the animation JSON from public folder
@@ -25,10 +28,10 @@ export default function WrappedLoadingPage() {
       <div className="flex flex-col items-center justify-center w-full max-w-2xl space-y-4 md:space-y-6">
         <div className="text-center">
           <h2 className="text-xl md:text-2xl font-semibold text-gray-900 mb-1">
-            Updating your digital brain for 2025...
+            {isWrappedApp ? 'Updating your digital brain for 2025...' : 'Processing your data...'}
           </h2>
           <p className="text-xs md:text-sm text-gray-600">
-            Crafting your personalized insights from your digital footprint
+            {isWrappedApp ? 'Crafting your personalized insights from your digital footprint' : 'This will just take a moment'}
           </p>
         </div>
 

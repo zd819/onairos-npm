@@ -1,4 +1,6 @@
 import React, { Component } from 'react';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
 class YoutubeConnector extends Component {
   constructor(props) {
@@ -14,63 +16,7 @@ class YoutubeConnector extends Component {
     this.setConnected = this.setConnected.bind(this);
     this.setDisconnected = this.setDisconnected.bind(this);
   }
-
-  setConnected() {
-    this.setState({ connected: true });
-    if (this.props.onConnectionChange) {
-      this.props.onConnectionChange('YouTube', true);
-    }
-    this.handleClose();
-  }
-
-  setDisconnected() {
-    // Call UpdateConnections API to remove connection
-    this.updateConnections('Remove', 'Youtube').then(() => {
-      this.setState({ connected: false });
-      if (this.props.onConnectionChange) {
-        this.props.onConnectionChange('YouTube', false);
-      }
-      this.handleClose();
-    }).catch((error) => {
-      console.error('Error removing YouTube connection:', error);
-    });
-  }
-
-  async updateConnections(updateType, newConnection) {
-    const jsonData = {
-      session: {
-        username: localStorage.getItem("username") || this.props.username
-      },
-      updateType,
-      newConnection
-    };
-
-    try {
-      const response = await fetch('https://api2.onairos.uk/connections/update', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(jsonData),
-      });
-      return await response.json();
-    } catch (error) {
-      console.error('UpdateConnections error:', error);
-      throw error;
-    }
-  }
-
-  handleOpen() {
-    this.setState({ open: true });
-  }
-
-  handleClose() {
-    this.setState({ open: false });
-    if (this.props.onClose) {
-      this.props.onClose();
-    }
-  }
-
+// ... (rest of the file until youtubeConnect)
   async youtubeConnect() {
     this.setState({ isConnecting: true });
     
@@ -92,8 +38,16 @@ class YoutubeConnector extends Component {
       const result = await response.json();
       
       if (result.youtubeURL) {
-        // Open OAuth URL in current window
-        window.location.href = result.youtubeURL;
+        if (Capacitor.isNativePlatform()) {
+             console.log('Detected Native Platform, using Capacitor Browser for YouTube');
+            await Browser.open({ 
+                url: result.youtubeURL,
+                windowName: '_blank',
+                presentationStyle: 'fullscreen'
+            });
+        } else {
+            window.location.href = result.youtubeURL;
+        }
       } else {
         console.error('No YouTube URL received');
         this.setState({ isConnecting: false });
@@ -105,6 +59,7 @@ class YoutubeConnector extends Component {
   }
 
   render() {
+// ... (rest of the file)
     const { open = this.props.open || this.state.open } = this.props;
     
     if (!open) return null;

@@ -62,4 +62,29 @@
   to {
     transform: rotate(360deg);
   }
-} 
+}
+
+/* DESKTOP ONLY – do NOT affect capacitor/mobile */
+@media (min-width: 1024px) {
+  .onairos-modal-shell {
+    max-width: 560px;          /* match welcome modal */
+    width: 90%;
+    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ensure INNER pages don’t blow it up */
+  .onairos-modal-shell > * {
+    max-width: 100% !important;
+    margin: 0 auto;
+  }
+  
+  /* Additional override to ensure the modal container itself behaves */
+  .onairos-modal {
+    max-width: 560px !important;
+    width: 90% !important;
+    margin: 0 auto !important;
+  }
+}

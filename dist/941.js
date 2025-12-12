@@ -1,0 +1,2 @@
+"use strict";(this.webpackChunkOnairos=this.webpackChunkOnairos||[]).push([[941],{941:(s,n,o)=>{o.d(n,{BrowserWeb:()=>t});var i=o(546);class t extends i.E_{constructor(){super(),this._lastWindow=null}async open(s){this._lastWindow=window.open(s.url,s.windowName||"_blank")}async close(){return new Promise((s,n)=>{null!=this._lastWindow?(this._lastWindow.close(),this._lastWindow=null,s()):n("No active window to close!")})}}new t}}]);
+//# sourceMappingURL=941.js.map

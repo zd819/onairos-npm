@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import WelcomeScreen from './components/WelcomeScreen.jsx';
 import EmailAuth from './components/EmailAuth.js';
 import UniversalOnboarding from './components/UniversalOnboarding.jsx';
@@ -10,6 +12,7 @@ import WrappedLoadingPage from './components/WrappedLoadingPage.jsx';
 import { formatOnairosResponse } from './utils/responseFormatter.js';
 import { logFormattedUserData } from './utils/userDataFormatter.js';
 import { ModalPageLayout } from './components/ui/PageLayout.jsx';
+import { isMobileApp, isMobileBrowser } from './utils/capacitorDetection.js';
 
 export function OnairosButton({
   requestData, 
@@ -40,6 +43,239 @@ export function OnairosButton({
   const [currentFlow, setCurrentFlow] = useState('welcome'); // 'welcome' | 'email' | 'onboarding' | 'pin' | 'dataRequest' | 'wrappedLoading' (training is within onboarding)
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
+  const [oauthReturnDetected, setOauthReturnDetected] = useState(false);
+  
+  // Detect mobile for conditional styling (MOBILE ONLY changes)
+  // Use a safer check that doesn't rely on window/navigator being immediately available
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  
+  useEffect(() => {
+    // Determine mobile state after mount to avoid hydration mismatches
+    const checkMobile = () => {
+      try {
+        const isCap = isMobileApp();
+        const isMobBrowser = isMobileBrowser();
+        const userAgentMobile = typeof window !== 'undefined' && 
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        setIsMobileDevice(isCap || isMobBrowser || userAgentMobile);
+      } catch (e) {
+        // Fallback if detection fails
+        setIsMobileDevice(false);
+      }
+    };
+    checkMobile();
+  }, []);
+  
+  // Logic to process return URLs (Login & Connectors)
+  const handleDeepLink = (url) => {
+      try {
+        console.log('🔍 Checking URL for OAuth return:', url);
+        
+        // Normalize URL to check for params
+        // For native apps, url might be 'mobiletest://oauth-callback?success=true...'
+        // Also check specifically for Reddit's return format or other providers
+        const hasSuccess = url.includes('success=true') || 
+                          url.includes('onairos_oauth_success=true') ||
+                          (url.includes('state=') && url.includes('code='));
+        
+        const hasError = url.includes('error=') || url.includes('onairos_oauth_error=');
+        const isPopup = url.includes('is_popup=true'); // Check for our custom flag
+        
+        // Safety Check: If we are running inside a popup or iframe (desktop), we should close ourselves
+        // and notify the parent. This happens if the callback redirected instead of closing.
+        // We check for window.opener, parent!=window, OR our explicit is_popup flag
+        if ((hasSuccess || hasError) && typeof window !== 'undefined' && 
+            (window.opener || window.parent !== window || isPopup)) {
+             console.log('🚨 App loaded inside OAuth popup/iframe (detected via opener/parent/flag) - closing');
+             
+             // Extract params for storage/message
+             let params;
+             try {
+                const qIdx = url.indexOf('?');
+                if (qIdx !== -1) params = new URLSearchParams(url.substring(qIdx + 1));
+                else params = new URL(url).searchParams;
+             } catch(e) { params = new URLSearchParams(''); }
+             
+             const platform = params.get('platform') || params.get('onairos_oauth_platform');
+             const email = params.get('email') || params.get('onairos_oauth_email');
+             
+             // 1. Write to LocalStorage (Same Origin as Parent) - Primary mechanism for cross-origin flow fallback
+             if (hasSuccess && platform) {
+                 localStorage.setItem(`onairos_${platform}_success`, 'true');
+                 localStorage.setItem(`onairos_${platform}_timestamp`, Date.now().toString());
+                 if (email) localStorage.setItem(`onairos_${platform}_email`, email);
+             }
+             
+             // 2. Try postMessage (only works if opener exists)
+             try {
+                const target = window.opener || window.parent;
+                if (target) {
+                    target.postMessage({
+                        type: hasSuccess ? 'oauth-success' : 'oauth-error',
+                        platform: platform,
+                        email: email,
+                        error: params.get('error'),
+                        success: !!hasSuccess
+                    }, '*');
+                }
+             } catch (e) {}
+
+             // 3. Close window
+             window.close();
+             // If window.close() is blocked (scripts can't close windows they didn't open),
+             // show a message asking user to close.
+             setTimeout(() => {
+                 document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;font-family:sans-serif;"><h1>Success!</h1><p>You can close this window now.</p><button onclick="window.close()" style="padding:10px 20px;margin-top:20px;cursor:pointer;">Close Window</button></div>';
+             }, 500);
+             
+             return; // Stop execution here
+        }
+        
+        if (hasSuccess) {
+           console.log('✅ Deep link/OAuth return detected:', url);
+           
+           // Close browser if open (Capacitor) - Important for Native
+           Browser.close().catch(() => {});
+
+           // Extract params from URL
+           let params;
+           try {
+             // Handle custom schemes that URL() constructor might reject if not fully standard
+             const questionMarkIndex = url.indexOf('?');
+             if (questionMarkIndex !== -1) {
+                params = new URLSearchParams(url.substring(questionMarkIndex + 1));
+             } else {
+                params = new URL(url).searchParams;
+             }
+           } catch (e) {
+             console.warn('URL parsing failed, trying fallback split:', e);
+             params = new URLSearchParams(url.split('?')[1] || '');
+           }
+
+           let platform = params.get('platform') || params.get('onairos_oauth_platform') || 'google';
+           let email = params.get('email') || params.get('onairos_oauth_email');
+           
+           // Fallback for Reddit/others that might rely on state
+           if (!platform || platform === 'null') {
+              const state = params.get('state');
+              if (state) {
+                 try {
+                    // Try to decode state if it's base64
+                    const decoded = JSON.parse(atob(state));
+                    if (decoded.connectionType) platform = decoded.connectionType;
+                    if (decoded.username) email = decoded.username; // Sometimes username is email
+                 } catch (e) {
+                    console.log('State decoding failed (not base64 JSON or invalid)');
+                 }
+              }
+           }
+
+           if (email) email = decodeURIComponent(email);
+           
+           console.log(`✅ Detected return from ${platform} for ${email || 'unknown user'}`);
+           
+           // Set state to restore flow
+           setOauthReturnDetected(true);
+           
+           // 1. SUPPORT UNIVERSAL ONBOARDING (YouTube, LinkedIn, Reddit, etc.)
+           sessionStorage.setItem('onairos_oauth_return_success', 'true');
+           sessionStorage.setItem('onairos_oauth_return_platform', platform);
+
+           // Dispatch event to update UI immediately if component is mounted
+           if (typeof window !== 'undefined') {
+             window.dispatchEvent(new CustomEvent('onairos-oauth-success', { 
+               detail: { platform: platform, email: email } 
+             }));
+           }
+           
+           if (platform) {
+             localStorage.setItem(`onairos_${platform}_success`, 'true');
+             localStorage.setItem(`onairos_${platform}_timestamp`, Date.now().toString());
+           }
+
+           // 2. SUPPORT EMAIL AUTH (Gmail)
+           if (platform === 'google' || platform === 'gmail') {
+             localStorage.setItem('onairos_gmail_success', 'true');
+             localStorage.setItem('onairos_gmail_timestamp', Date.now().toString());
+             if (email) localStorage.setItem('onairos_gmail_email', email);
+           }
+           
+           // Restore session if possible (only for Login flow really, but safe to update)
+           if (email) {
+             const userData = {
+                email: email,
+                verified: true,
+                onboardingComplete: false,
+                provider: platform
+             };
+             localStorage.setItem('onairosUser', JSON.stringify(userData));
+             setUserData(userData);
+           }
+           
+           // Open modal and go to onboarding immediately
+           setShowOverlay(true);
+           setCurrentFlow('onboarding');
+           
+           // Clean up URL if possible (on web)
+           if (window.history && window.history.replaceState && url.startsWith('http')) {
+             const cleanUrl = window.location.pathname;
+             window.history.replaceState({}, '', cleanUrl);
+           }
+        }
+      } catch (e) {
+        console.error('Error handling deep link:', e);
+      }
+  };
+
+  // Native Deep Link Listener (Runs once, stays active)
+  useEffect(() => {
+    let appListener = null;
+    const setupListener = async () => {
+      // Only run on native platforms (iOS/Android)
+      const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
+      if (!isNative) return;
+
+      let AppPlugin = App;
+      if (!AppPlugin || !AppPlugin.addListener) {
+        if (typeof window !== 'undefined' && window.Capacitor?.Plugins?.App) {
+          AppPlugin = window.Capacitor.Plugins.App;
+        }
+      }
+
+      if (!AppPlugin || !AppPlugin.addListener) {
+         console.warn('⚠️ App plugin not found for deep linking listener');
+         return;
+      }
+
+      try {
+        appListener = await AppPlugin.addListener('appUrlOpen', (data) => {
+          console.log('📱 Native deep link received:', data.url);
+          handleDeepLink(data.url);
+        });
+        console.log('✅ App deep link listener registered successfully');
+      } catch (e) {
+        console.warn('⚠️ Failed to setup App listener:', e);
+      }
+    };
+    setupListener();
+    
+    return () => {
+      if (appListener) appListener.remove();
+    };
+  }, []);
+
+  // Web/Initial Check (Respects oauthReturnDetected)
+  useEffect(() => {
+    if (oauthReturnDetected) return;
+    
+    handleDeepLink(window.location.href);
+    
+    const checkWindowUrl = () => handleDeepLink(window.location.href);
+    window.addEventListener('popstate', checkWindowUrl);
+    
+    return () => window.removeEventListener('popstate', checkWindowUrl);
+  }, [oauthReturnDetected]);
 
   // Check for existing user session
   useEffect(() => {
@@ -74,6 +310,123 @@ export function OnairosButton({
 
     checkExistingSession();
   }, [testMode]);
+
+  // Check for OAuth return (Google login redirect back)
+  useEffect(() => {
+    if (oauthReturnDetected) return; // Prevent double-processing
+    
+    const checkOAuthReturn = () => {
+      // Check URL params for OAuth completion
+      const urlParams = new URLSearchParams(window.location.search);
+      const oauthSuccess = urlParams.get('onairos_oauth_success');
+      const oauthPlatform = urlParams.get('onairos_oauth_platform');
+      const oauthEmail = urlParams.get('onairos_oauth_email');
+
+      // Check for generic OAuth return (any platform)
+      if (oauthSuccess === 'true' && oauthPlatform) {
+        setOauthReturnDetected(true);
+        
+        // Clean up URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+        
+        if (oauthPlatform === 'gmail' && oauthEmail) {
+          console.log('✅ Gmail OAuth return detected in URL params');
+          
+          // Create user data from OAuth
+          const authData = {
+            email: oauthEmail,
+            verified: true,
+            isNewUser: true, // Assume new user for now, backend will correct this
+            provider: 'google'
+          };
+          
+          // Save to localStorage
+          const userData = {
+            email: oauthEmail,
+            verified: true,
+            onboardingComplete: false,
+            provider: 'google'
+          };
+          localStorage.setItem('onairosUser', JSON.stringify(userData));
+          setUserData(userData);
+          
+          // Open modal and go to onboarding
+          setShowOverlay(true);
+          setCurrentFlow('onboarding');
+          
+          // Clean up OAuth localStorage
+          localStorage.removeItem('onairos_gmail_success');
+          localStorage.removeItem('onairos_gmail_timestamp');
+          localStorage.removeItem('onairos_oauth_email');
+          localStorage.removeItem('onairos_return_url');
+          localStorage.removeItem('onairos_oauth_context');
+          
+        } else {
+          // Other platforms (Universal Onboarding connectors)
+          console.log(`✅ ${oauthPlatform} OAuth return detected - restoring onboarding flow`);
+          
+          // Ensure we have user session to show the modal correctly
+          // (User should already be logged in if they were connecting apps)
+          const savedUser = localStorage.getItem('onairosUser');
+          if (savedUser) {
+            setUserData(JSON.parse(savedUser));
+          }
+          
+          // Open modal and restore flow
+          setShowOverlay(true);
+          setCurrentFlow('onboarding');
+          
+          // Pass the success signal to UniversalOnboarding via a temporary storage flag
+          // that works even if cross-domain cleared the original context
+          sessionStorage.setItem('onairos_oauth_return_success', 'true');
+          sessionStorage.setItem('onairos_oauth_return_platform', oauthPlatform);
+        }
+        
+        return;
+      }
+
+      // Also check localStorage for OAuth completion (fallback)
+      const gmailSuccess = localStorage.getItem('onairos_gmail_success');
+      const gmailTimestamp = localStorage.getItem('onairos_gmail_timestamp');
+      const gmailEmail = localStorage.getItem('onairos_gmail_email') || localStorage.getItem('onairos_oauth_email');
+
+      if (gmailSuccess === 'true' && gmailTimestamp && gmailEmail) {
+        const now = Date.now();
+        const timestamp = parseInt(gmailTimestamp, 10);
+        
+        // Only process if timestamp is recent (within last 60 seconds)
+        if (now - timestamp < 60000) {
+          console.log('✅ Gmail OAuth return detected in localStorage');
+          setOauthReturnDetected(true);
+          
+          // Create user data from OAuth
+          const userData = {
+            email: gmailEmail,
+            verified: true,
+            onboardingComplete: false,
+            provider: 'google'
+          };
+          localStorage.setItem('onairosUser', JSON.stringify(userData));
+          setUserData(userData);
+          
+          // Open modal and go to onboarding
+          setShowOverlay(true);
+          setCurrentFlow('onboarding');
+          
+          // Clean up OAuth localStorage
+          localStorage.removeItem('onairos_gmail_success');
+          localStorage.removeItem('onairos_gmail_timestamp');
+          localStorage.removeItem('onairos_gmail_email');
+          localStorage.removeItem('onairos_oauth_email');
+          localStorage.removeItem('onairos_return_url');
+          localStorage.removeItem('onairos_oauth_context');
+        }
+      }
+    };
+
+    checkOAuthReturn();
+  }, [oauthReturnDetected]);
 
   const openTerminal = async () => {
     try {
@@ -201,14 +554,9 @@ export function OnairosButton({
     setUserData(newUserData);
     localStorage.setItem('onairosUser', JSON.stringify(newUserData));
     
-    // Flow decision logic - prioritize new user detection
-    if (isNewUser) {
-      console.log('🚀 NEW USER detected → Starting onboarding flow (data connectors page)');
-      setCurrentFlow('onboarding');
-    } else {
-      console.log('👋 EXISTING USER detected → Going directly to data request (data permissions page)');
-      setCurrentFlow('dataRequest');
-    }
+    // Flow decision logic - always go to onboarding (UniversalOnboarding) after auth
+    console.log('🚀 Auth successful → Starting onboarding flow (data connectors page)');
+    setCurrentFlow('onboarding');
   };
 
   const handleOnboardingComplete = (onboardingData) => {
@@ -298,8 +646,14 @@ export function OnairosButton({
         console.log('🔗 API URL received:', urlData.apiUrl);
 
         if (urlData.apiUrl && urlData.token) {
-          // Show wrapped loading page when API call starts
+          // Only show wrapped loading page if app name contains "wrapped"
+          const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
+          if (isWrappedApp) {
           setCurrentFlow('wrappedLoading');
+            console.log('📊 Showing wrapped loading screen for wrapped app');
+          } else {
+            console.log('📊 Skipping loading screen - not a wrapped app');
+          }
           
           // Emit custom event for host app
           if (typeof window !== 'undefined') {
@@ -315,7 +669,37 @@ export function OnairosButton({
           // traits-only endpoint requires POST
           const method = 'POST';
           
-          console.log(`📡 Fetching data from ${urlData.apiUrl} (${method})...`);
+          let fetchUrl = urlData.apiUrl;
+          let fetchBody = {
+             email: userData?.email,
+             includeLlmData: requestResult.approved.includes('rawMemories')
+          };
+
+          // Override for non-wrapped apps (Regular SDK training) to use Training API
+          if (!isWrappedApp) {
+             fetchUrl = 'https://api2.onairos.uk/mobile-training/clean';
+             
+             // Construct training body
+             const connected = [];
+             if (userData?.connectedAccounts) {
+               if (Array.isArray(userData.connectedAccounts)) {
+                 connected.push(...userData.connectedAccounts);
+               } else if (typeof userData.connectedAccounts === 'object') {
+                 connected.push(...Object.keys(userData.connectedAccounts).filter(k => userData.connectedAccounts[k]));
+               }
+             }
+             
+             fetchBody = {
+               Info: {
+                 username: userData?.email || userData?.username,
+                 connectedPlatforms: connected
+               }
+             };
+             
+             console.log('🚀 Switching to Training API for non-wrapped app:', fetchUrl);
+          }
+          
+          console.log(`📡 Fetching/Training data from ${fetchUrl} (${method})...`);
           console.log(`🔑 Using token: ${urlData.token ? urlData.token.substring(0, 20) + '...' : 'NO TOKEN'}`);
           console.log(`⏳ Waiting for backend response - this may take 1-3 minutes for LLM processing...`);
           
@@ -335,17 +719,14 @@ export function OnairosButton({
             const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
 
             try {
-              dataResponse = await fetch(urlData.apiUrl, {
+              dataResponse = await fetch(fetchUrl, {
                 method: method,
                 headers: {
                   'Authorization': `Bearer ${urlData.token}`,
                   'Content-Type': 'application/json'
                 },
                 // Only send body for POST
-                body: method === 'POST' ? JSON.stringify({
-                  email: userData?.email,
-                  includeLlmData: requestResult.approved.includes('rawMemories')
-                }) : undefined,
+                body: method === 'POST' ? JSON.stringify(fetchBody) : undefined,
                 signal: controller.signal
               });
             } finally {
@@ -482,8 +863,9 @@ export function OnairosButton({
     console.log('🔥 OnairosButton: Data request completed:', requestResult);
     console.log('🔥 OnairosButton: Final result before callback:', finalResult);
 
-    // Decide whether to keep the overlay open (wrappedLoading) or close it
-    const shouldKeepOverlayOpen = autoFetch && requestResult.approved?.length > 0 && (
+    // Only keep overlay open for wrapped apps, otherwise always close
+    const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
+    const shouldKeepOverlayOpen = isWrappedApp && autoFetch && requestResult.approved?.length > 0 && (
       requestResult.isTimeout === true || !finalResult?.apiResponse?.slides
     );
 
@@ -650,7 +1032,7 @@ export function OnairosButton({
         );
       case 'email':
         return (
-          <div className="h-[min(85vh,700px)]">
+          <div className="flex-1 min-h-0 flex flex-col">
           <EmailAuth 
             onSuccess={handleEmailAuthSuccess}
             testMode={testMode} // Use the testMode prop from initialization
@@ -780,10 +1162,10 @@ export function OnairosButton({
       {/* Modal with New Design */}
       {showOverlay && (
         <>
-          {currentFlow === 'email' ? (
+          {currentFlow === 'email' && isMobileDevice ? (
             // Special case for email - render directly without PageLayout wrapper
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center p-6" style={{ zIndex: 2147483647 }}>
-              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
+            <div className={`fixed inset-0 bg-gray-500 bg-opacity-50 block`} style={{ zIndex: 2147483647 }}>
+              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[90vh]`} style={{ maxWidth: '100%' }}>
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
@@ -805,10 +1187,10 @@ export function OnairosButton({
                 </div>
               </div>
             </div>
-          ) : currentFlow === 'onboarding' ? (
+          ) : currentFlow === 'onboarding' && isMobileDevice ? (
             // Special case for onboarding - render directly without PageLayout wrapper
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center p-6" style={{ zIndex: 2147483647 }}>
-              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
+            <div className={`fixed inset-0 bg-gray-500 bg-opacity-50 block`} style={{ zIndex: 2147483647 }}>
+              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[90vh]`} style={{ maxWidth: '100%' }}>
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
@@ -835,10 +1217,10 @@ export function OnairosButton({
                 />
               </div>
             </div>
-          ) : currentFlow === 'dataRequest' ? (
+          ) : currentFlow === 'dataRequest' && isMobileDevice ? (
             // Special case for dataRequest - render directly without PageLayout wrapper
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center p-6" style={{ zIndex: 2147483647 }}>
-              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
+            <div className={`fixed inset-0 bg-gray-500 bg-opacity-50 block`} style={{ zIndex: 2147483647 }}>
+              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[90vh]`} style={{ maxWidth: '100%' }}>
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
@@ -867,20 +1249,20 @@ export function OnairosButton({
                 />
               </div>
             </div>
-          ) : currentFlow === 'wrappedLoading' ? (
+          ) : currentFlow === 'wrappedLoading' && isMobileDevice ? (
             // Special case for wrapped loading - render directly without PageLayout wrapper
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center p-6" style={{ zIndex: 2147483647 }}>
-              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
+            <div className={`fixed inset-0 bg-gray-500 bg-opacity-50 block`} style={{ zIndex: 2147483647 }}>
+              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[90vh]`} style={{ maxWidth: '100%' }}>
                 {/* WrappedLoading Content */}
                 <div className="flex-1 min-h-0">
-                  <WrappedLoadingPage />
+                  <WrappedLoadingPage appName={webpageName} />
                 </div>
               </div>
             </div>
-          ) : currentFlow === 'pin' ? (
+          ) : currentFlow === 'pin' && isMobileDevice ? (
             // Special case for pin - render directly without PageLayout wrapper
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center p-6" style={{ zIndex: 2147483647 }}>
-              <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
+            <div className={`fixed inset-0 bg-gray-500 bg-opacity-50 block`} style={{ zIndex: 2147483647 }}>
+              <div className={`bg-white shadow-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 w-full rounded-t-3xl rounded-b-none h-[90vh]`} style={{ maxWidth: '100%' }}>
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 flex-shrink-0">
                   <button
@@ -901,8 +1283,8 @@ export function OnairosButton({
                     userEmail={userData?.email}
                   />
                 </div>
+              </div>
             </div>
-          </div>
           ) : currentFlow === 'loading' ? (
             // Loading screen
             <LoadingScreen onComplete={handleLoadingComplete} />
@@ -911,19 +1293,24 @@ export function OnairosButton({
           <ModalPageLayout
             visible={showOverlay}
             onClose={handleCloseOverlay}
-              showBackButton={currentFlow === 'training'}
+            showBackButton={currentFlow === 'training' || currentFlow === 'onboarding' || currentFlow === 'pin' || currentFlow === 'dataRequest'}
             onBack={() => {
                 if (currentFlow === 'email') setCurrentFlow('welcome');
               if (currentFlow === 'onboarding') setCurrentFlow('email');
               if (currentFlow === 'pin') setCurrentFlow('onboarding'); 
               if (currentFlow === 'training') setCurrentFlow('pin');
+              if (currentFlow === 'dataRequest') setCurrentFlow('onboarding');
             }}
-            title={getFlowTitle()}
-            subtitle={getFlowSubtitle()}
-            icon={getFlowIcon()}
+            title=""
+            subtitle=""
+            icon={null}
             centerContent={true}
+            contentClassName={currentFlow !== 'welcome' ? "!p-0" : ""}
+            modalClassName="onairos-modal"
           >
-            {renderCurrentFlow()}
+            <div className="onairos-modal-shell">
+              {renderCurrentFlow()}
+            </div>
           </ModalPageLayout>
           )}
         </>

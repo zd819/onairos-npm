@@ -2,6 +2,9 @@
   "name": "onairos",
   "version": "4.1.8",
   "dependencies": {
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/browser": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
     "@react-oauth/google": "^0.12.2",
     "@telegram-apps/sdk-react": "^2.0.25",
     "@testing-library/jest-dom": "^5.17.0",

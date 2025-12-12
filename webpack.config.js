@@ -18,6 +18,8 @@ const baseConfig = {
       amd: 'ReactDOM',
       root: 'ReactDOM'
     },
+    '@capacitor/core': '@capacitor/core',
+    '@capacitor/browser': '@capacitor/browser',
     'ajv': 'ajv',
     'ajv/dist/runtime/validation_error': 'ajv/dist/runtime/validation_error',
     'ajv/dist/runtime/equal': 'ajv/dist/runtime/equal',
@@ -121,6 +123,8 @@ const baseConfig = {
 const esmExternals = {
   react: 'react',
   'react-dom': 'react-dom',
+  '@capacitor/core': '@capacitor/core',
+  '@capacitor/browser': '@capacitor/browser',
   'ajv': 'ajv',
   'ajv/dist/runtime/validation_error': 'ajv/dist/runtime/validation_error',
   'ajv/dist/runtime/equal': 'ajv/dist/runtime/equal',
@@ -251,6 +255,8 @@ module.exports = [
     },
     externals: {
       // Laravel build shouldn't externalize React since blade-helpers.js doesn't use React
+      '@capacitor/core': '@capacitor/core',
+      '@capacitor/browser': '@capacitor/browser',
       'ajv': 'ajv',
       'ajv/dist/runtime/validation_error': 'ajv/dist/runtime/validation_error',
       'ajv/dist/runtime/equal': 'ajv/dist/runtime/equal',

@@ -48,7 +48,8 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
             maxLength={20}
             style={{
               WebkitTextFillColor: '#000000',
-              backgroundColor: '#FFFFFF'
+              backgroundColor: '#FFFFFF',
+              color: '#000000'
             }}
           />
         </div>
@@ -104,9 +105,10 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
         <div
           className={`w-full rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 transition-colors ${
             allRequirementsMet 
-              ? "bg-gray-900 hover:bg-gray-800 !text-white cursor-pointer" 
+              ? "bg-gray-900 hover:bg-gray-800 cursor-pointer" 
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
+          style={allRequirementsMet ? { color: '#ffffff' } : {}}
           onClick={allRequirementsMet ? handleSubmit : undefined}
         >
           Continue

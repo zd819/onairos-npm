@@ -1,7 +1,14 @@
 import React, { useEffect, useId, useState, useRef } from 'react';
+import { Browser } from '@capacitor/browser';
 import Lottie from 'lottie-react';
 import personaAnim from '../../public/persona-anim.json';
-import ChatGPTConnector from './connectors/ChatGPTConnector';
+import { isMobileApp, isMobileBrowser } from '../utils/capacitorDetection';
+
+// Mobile detection
+const isMobile = () => {
+  if (typeof window === 'undefined') return false;
+  return isMobileApp() || isMobileBrowser() || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
 const chatgptIcon = 'https://anushkasirv.sirv.com/openai.png';
 const claudeIcon = 'https://anushkasirv.sirv.com/claude-color.png';
 const geminiIcon = 'https://anushkasirv.sirv.com/gemini-color.png';
@@ -33,11 +40,14 @@ export default function UniversalOnboarding({ onComplete }) {
   const [connectingPlatform, setConnectingPlatform] = useState(null);
   const [selected, setSelected] = useState('Instagram');
   const [currentPage, setCurrentPage] = useState(1);
-  const [showChatGPTModal, setShowChatGPTModal] = useState(false);
 
   // swipe state
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
+
+  // Mobile detection
+  const isMobile = isMobileApp() || isMobileBrowser() || 
+    (typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
 
   const [vh, setVh] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 800));
   useEffect(() => {
@@ -48,20 +58,34 @@ export default function UniversalOnboarding({ onComplete }) {
 
   const FOOTER_H = 88;
 
-  // persona placement / sizing (tune for small mobile)
-  const isSmallMobile = vh < 700;
-  const personaSide = isSmallMobile ? Math.min(vh * 0.45, 420) : Math.min(vh * 0.52, 500);
-  const PERSONA_TOP = isSmallMobile ? 72 : 96;
+  // MOBILE ONLY: persona placement / sizing - GIVE MORE SPACE TO PERSONA
+  const isSmallMobile = isMobile && vh < 700;
+  const personaSide = isMobile 
+    ? (isSmallMobile ? Math.min(vh * 0.5, 450) : Math.min(vh * 0.58, 520))
+    : Math.min(vh * 0.52, 500); // Desktop: original size
+  const PERSONA_TOP = isMobile 
+    ? (isSmallMobile ? 40 : 60) // Mobile: Higher up for more prominence
+    : 96; // Desktop: original position
 
-  // icon layout (restore tighter spacing on page 1; place the band lower)
-  const SLOT = Math.max(52, Math.min(64, Math.floor(vh * 0.07)));
-  const CIRCLE = isSmallMobile ? 38 : 42;
-  const GAP_PAGE1 = 12;
-  const GAP_PAGE2 = 20;
-  const ACTIVE_SCALE = vh < 760 ? 1.12 : 1.22;
+  // MOBILE ONLY: icon layout - PUSH ICONS DOWN significantly
+  const SLOT = isMobile 
+    ? Math.max(50, Math.min(60, Math.floor(vh * 0.07)))
+    : Math.max(52, Math.min(64, Math.floor(vh * 0.07))); // Desktop: original
+  const CIRCLE = isMobile 
+    ? (isSmallMobile ? 36 : 40)
+    : 42; // Desktop: original
+  const GAP_PAGE1 = isMobile ? 10 : 12; // Desktop: original
+  const GAP_PAGE2 = isMobile ? 18 : 20; // Desktop: original
+  const ACTIVE_SCALE = isMobile 
+    ? (vh < 760 ? 1.15 : 1.25)
+    : (vh < 760 ? 1.12 : 1.22); // Desktop: original
 
-  const ICONS_H = isSmallMobile ? 74 : 84;
-  const ICONS_TOP_OFFSET = Math.max(160, Math.min(240, Math.round(vh * 0.26))); // slightly tighter on small screens
+  const ICONS_H = isMobile 
+    ? (isSmallMobile ? 70 : 80)
+    : 84; // Desktop: original
+  const ICONS_TOP_OFFSET = isMobile 
+    ? Math.max(200, Math.min(280, Math.round(vh * 0.32))) // Mobile: Push icons lower
+    : Math.max(160, Math.min(240, Math.round(vh * 0.26))); // Desktop: original
 
   const igGradId = useId();
 
@@ -72,7 +96,7 @@ export default function UniversalOnboarding({ onComplete }) {
     Gemini: <img src={geminiIcon} alt="Gemini" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
     Grok: <img src={grokIcon} alt="Grok" style={{ width: 20, height: 20, objectFit: 'contain' }} />,
     Instagram: (
-      <svg viewBox="0 0 24 24" aria-hidden>
+      <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
         <defs>
           <radialGradient id={igGradId} cx="0.5" cy="1" r="1">
             <stop offset="0%" stopColor="#FDBB4B"/>
@@ -85,13 +109,13 @@ export default function UniversalOnboarding({ onComplete }) {
       </svg>
     ),
     YouTube: (
-      <svg viewBox="0 0 24 24" aria-hidden>
+      <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
         <path fill="#FF0000" d="M22.54 6.42a3 3 0 0 0-2.11-2.12C18.49 3.75 12 3.75 12 3.75s-6.49 0-8.43.55A3 3 0 0 0 1.46 6.42 31.63 31.63 0 0 0 1 12a31.63 31.63 0 0 0 .46 5.58 3 3 0 0 0 2.11 2.12C5.51 20.25 12 20.25 12 20.25s6.49 0 8.43-.55a3 3 0 0 0 2.11-2.12A31.63 31.63 0 0 0 23 12a31.63 31.63 0 0 0-.46-5.58z"/>
         <path fill="#FFF" d="M10 8.75v6.5l6-3.25-6-3.25z"/>
         </svg>
       ),
     Reddit: (
-      <svg viewBox="0 0 24 24" aria-hidden>
+      <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
         <circle cx="12" cy="12" r="12" fill="#FF4500"/>
         <circle cx="8.75" cy="12.5" r="1.25" fill="#FFF"/>
         <circle cx="15.25" cy="12.5" r="1.25" fill="#FFF"/>
@@ -99,7 +123,7 @@ export default function UniversalOnboarding({ onComplete }) {
         </svg>
       ),
     LinkedIn: (
-      <svg viewBox="0 0 24 24" aria-hidden>
+      <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
         <rect x="2" y="2" width="20" height="20" rx="3" fill="#0A66C2"/>
         <rect x="5" y="9" width="3" height="10" fill="#FFF"/>
         <circle cx="6.5" cy="6.5" r="1.5" fill="#FFF"/>
@@ -107,7 +131,7 @@ export default function UniversalOnboarding({ onComplete }) {
         </svg>
       ),
     Twitter: (
-      <svg viewBox="0 0 24 24" aria-hidden>
+      <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
         <path fill="#1DA1F2" d="M23.643 4.937c-.835.37-1.732.62-2.675.733.962-.576 1.7-1.49 2.048-2.578-.9.534-1.897.922-2.958 1.13-.85-.904-2.06-1.47-3.4-1.47-2.572 0-4.658 2.086-4.658 4.66 0 .364.042.718.12 1.06-3.873-.195-7.304-2.05-9.602-4.868-.4.69-.63 1.49-.63 2.342 0 1.616.823 3.043 2.072 3.878-.764-.025-1.482-.234-2.11-.583v.06c0 2.257 1.605 4.14 3.737 4.568-.392.106-.803.162-1.227.162-.3 0-.593-.028-.877-.082.593 1.85 2.313 3.198 4.352 3.234-1.595 1.25-3.604 1.995-5.786 1.995-.376 0-.747-.022-1.112-.065 2.062 1.323 4.51 2.093 7.14 2.093 8.57 0 13.255-7.098 13.255-13.254 0-.2-.005-.402-.014-.602.91-.658 1.7-1.477 2.323-2.41z"/>
         </svg>
       ),
@@ -156,8 +180,39 @@ export default function UniversalOnboarding({ onComplete }) {
   const platforms = getPlatformsForPage(currentPage);
 
   useEffect(() => {
+    // Listener for immediate UI update from deep link (when component is already mounted)
+    const handleAuthSuccess = (e) => {
+       const { platform } = e.detail;
+       console.log(`⚡️ Event received: OAuth success for ${platform}`);
+       const plat = allPlatforms.find((p) => p.connector === platform);
+       if (plat) {
+          setConnectedAccounts((s) => ({ ...s, [plat.name]: true }));
+       }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('onairos-oauth-success', handleAuthSuccess);
+    }
+
     // Check for OAuth success on mount (after redirect back from mobile)
     const checkOAuthSuccess = () => {
+      // 1. Check URL-based return signal (from OnairosButton or direct URL params)
+      // Note: OnairosButton cleans up URL params, so we might check sessionStorage set by it
+      const sessionSuccess = sessionStorage.getItem('onairos_oauth_return_success');
+      const sessionPlatform = sessionStorage.getItem('onairos_oauth_return_platform');
+      
+      if (sessionSuccess === 'true' && sessionPlatform) {
+        console.log(`✅ ${sessionPlatform} OAuth detected via session signal`);
+        const plat = allPlatforms.find((p) => p.connector === sessionPlatform);
+        if (plat) {
+          setConnectedAccounts((s) => ({ ...s, [plat.name]: true }));
+        }
+        // Clean up
+        sessionStorage.removeItem('onairos_oauth_return_success');
+        sessionStorage.removeItem('onairos_oauth_return_platform');
+        return;
+      }
+
+      // 2. Fallback to existing localStorage logic (same-domain or preserved state)
       const oauthContext = localStorage.getItem('onairos_oauth_context');
       const platformConnector = localStorage.getItem('onairos_oauth_platform');
       
@@ -218,6 +273,12 @@ export default function UniversalOnboarding({ onComplete }) {
     } catch (error) {
       console.warn('Failed to load persisted connected accounts:', error);
     }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('onairos-oauth-success', handleAuthSuccess);
+      }
+    };
   }, []);
 
   async function connectToPlatform(name) {
@@ -247,9 +308,34 @@ export default function UniversalOnboarding({ onComplete }) {
       
       const username = localStorage.getItem('username') || (JSON.parse(localStorage.getItem('onairosUser') || '{}')?.email) || 'user@example.com';
 
+      // Determine return URL based on platform
+      // For Desktop/Web: Send empty string/null to prevent backend from generating a redirect URL
+      // This forces oauth-callback.html to NOT redirect, allowing the popup/iframe to close naturally via postMessage or window.close()
+      const isCapacitorNative = typeof window !== 'undefined' && 
+        window.Capacitor && 
+        typeof window.Capacitor.isNativePlatform === 'function' && 
+        window.Capacitor.isNativePlatform();
+      
+      const isMobileBrowser = typeof navigator !== 'undefined' &&
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+      let returnUrl = ''; // Default to empty for Desktop Web
+      
+      if (isCapacitorNative) {
+         returnUrl = `mobiletest://oauth-callback?success=true&platform=${plat.connector}`;
+      } else if (isMobileBrowser) {
+         // Mobile Web needs redirect back to self
+         returnUrl = window.location.href;
+      }
+
+      console.log(`🔗 Authorizing ${plat.connector} with returnUrl:`, returnUrl || '(none/desktop)');
+
       const res = await fetch(`${sdkConfig.baseUrl}/${plat.connector}/authorize`, {
         method: 'POST', headers: { 'x-api-key': sdkConfig.apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session: { username } }),
+        body: JSON.stringify({ 
+          session: { username },
+          returnUrl: returnUrl
+        }),
       });
       if (!res.ok) throw new Error('auth failed');
       const data = await res.json();
@@ -268,20 +354,76 @@ export default function UniversalOnboarding({ onComplete }) {
       ) || [`${plat.connector}URL`, `${plat.connector}Url`, `${plat.connector}_url`, 'platformURL', 'authUrl', 'url'];
 
       let oauthUrl = null;
+      console.log(`🔗 [DEBUG] ${plat.connector} candidates:`, candidates, 'Response keys:', Object.keys(data));
+      
+      // Fallback: Check for URL in data object (case-insensitive)
+      if (!oauthUrl) {
+         const keys = Object.keys(data);
+         const candidateLower = candidates.map(c => c.toLowerCase());
+         for (const key of keys) {
+            if (candidateLower.includes(key.toLowerCase()) && data[key]) {
+               console.log(`🔗 [DEBUG] Found fuzzy match for ${plat.connector}: ${key}`);
+               oauthUrl = data[key];
+               break;
+            }
+         }
+      }
+
       for (const k of candidates) {
         if (data[k]) {
           oauthUrl = data[k];
           break;
         }
       }
-      if (!oauthUrl) throw new Error('no url');
+      
+      if (!oauthUrl) {
+        console.error(`❌ No URL found for ${plat.connector} in response:`, data);
+        throw new Error('no url');
+      }
 
-      const isMobile = typeof navigator !== 'undefined' &&
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      // PRIORITY 1: Use Capacitor Browser for native apps
 
-      // On mobile, use same-page redirect
-      if (isMobile) {
-        console.log(`📱 Mobile: redirecting to ${plat.connector} OAuth in same page`);
+      if (isCapacitorNative) {
+        console.log(`📱 Capacitor Native: opening ${plat.connector} OAuth with Browser plugin`);
+        try {
+          // Store context for when user returns
+          const localStorageKey = `onairos_${plat.connector}_success`;
+          localStorage.setItem('onairos_oauth_context', 'platform-connector');
+          localStorage.setItem('onairos_oauth_platform', plat.connector);
+          
+          // Try to set up listener, but don't let it block
+          // Note: 'browserFinished' is fired when the browser is closed by the user or programmatically
+          try {
+            await Browser.addListener('browserFinished', () => {
+              console.log(`🔄 Browser closed for ${plat.connector}`);
+              // Only reset if we haven't already detected success
+              if (!localStorage.getItem(localStorageKey)) {
+                 setIsConnecting(false);
+                 setConnectingPlatform(null);
+              }
+            });
+          } catch (listenerError) {
+             console.warn('Browser listener setup failed:', listenerError);
+          }
+          
+          // Ensure Browser.open is awaited and errors caught
+          await Browser.open({ 
+            url: oauthUrl,
+            windowName: '_blank',
+            presentationStyle: 'fullscreen'
+          });
+          console.log(`✅ Opened ${plat.connector} OAuth URL in Capacitor Browser`);
+          
+          return true;
+        } catch (err) {
+          console.error(`❌ Capacitor Browser failed for ${plat.connector}:`, err);
+          // Fall through to mobile browser redirect if plugin fails
+        }
+      }
+
+      // PRIORITY 2: Mobile browser - use same-page redirect
+      if (isMobileBrowser) {
+        console.log(`📱 Mobile browser: redirecting to ${plat.connector} OAuth in same page`);
         
         // Store return URL and context for redirect back
         const returnUrl = window.location.href;
@@ -298,9 +440,10 @@ export default function UniversalOnboarding({ onComplete }) {
       }
 
       // Desktop: open popup, use localStorage polling + postMessage
+      // We pass 'onairos_oauth_popup' as window name to help detection
       const popup = window.open(
         oauthUrl,
-        `${plat.connector}_oauth`,
+        `onairos_oauth_popup`, 
         'width=500,height=600,scrollbars=yes,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
       );
 
@@ -405,7 +548,8 @@ export default function UniversalOnboarding({ onComplete }) {
       }, 1000);
 
       return true;
-    } catch {
+    } catch (e) {
+      console.error(`❌ Error connecting to ${name}:`, e);
       // On failure, revert the optimistic toggle
       setConnectedAccounts((s) => ({ ...s, [name]: false }));
       setIsConnecting(false); setConnectingPlatform(null); return false;
@@ -451,7 +595,7 @@ export default function UniversalOnboarding({ onComplete }) {
   };
 
   return (
-    <div className="w-full h-full relative" style={{ height: Math.min('90vh', Math.max(600, Math.min(720, vh * 0.9))), minHeight: 580, maxHeight: 720 }}>
+    <div className="w-full h-full relative" style={{ height: '100%' }}>
       <style>{fadeSlideInKeyframes}</style>
 
       {/* persona as background (unchanged) */}
@@ -463,14 +607,14 @@ export default function UniversalOnboarding({ onComplete }) {
 
       {/* content above persona */}
       <div className="relative z-10 h-full flex flex-col">
-        {/* header (unchanged visuals) */}
-        <div className="px-6 pt-16 pb-4 text-center flex-shrink-0">
+        {/* header - MOBILE ONLY: smaller top padding to give persona space */}
+        <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? '2.5rem' : '4rem', paddingBottom: isMobile ? '0.75rem' : '1rem' }}>
           <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
           <p className="text-gray-600 text-base">More Connections, Better Personalization.</p>
         </div>
 
-        {/* Spacer to push content down */}
-        <div className="flex-1" style={{ minHeight: 40 }} />
+        {/* Spacer - MOBILE ONLY: push icons/card WAY down so PERSONA SHINES */}
+        <div className="flex-1" style={{ minHeight: isMobile ? (isSmallMobile ? 140 : 180) : 40 }} />
 
         {/* icons band */}
         <div className="px-6 flex-shrink-0" style={{ height: ICONS_H }}>
@@ -501,11 +645,8 @@ export default function UniversalOnboarding({ onComplete }) {
                       type="button"
                       onClick={() => { 
                         setSelected(p.name);
-                        if (p.name === 'ChatGPT') {
-                          // Show ChatGPT connector modal
-                          setShowChatGPTModal(true);
-                        } else if (p.directLink) {
-                          // For direct link platforms (AI tools), connect immediately and open link
+                        if (p.directLink) {
+                          // For direct link platforms (AI tools including ChatGPT), connect immediately and open link
                           if (!connectedAccounts[p.name]) {
                             setConnectedAccounts((s) => ({ ...s, [p.name]: true }));
                           }
@@ -533,17 +674,17 @@ export default function UniversalOnboarding({ onComplete }) {
         </div>
 
         {/* dots navigation (no numbers) - directly under icons, above card */}
-        <div className="relative flex items-center justify-center gap-4 select-none flex-shrink-0" style={{ marginTop: 20, marginBottom: 16, zIndex: 25 }}>
+        <div className="relative flex items-center justify-center gap-3 select-none flex-shrink-0" style={{ marginTop: isMobile ? 8 : 20, marginBottom: isMobile ? 18 : 16, zIndex: 25 }}>
           {[1,2,3].map(n => (
-            <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: 12, height: 12 }}>
-              <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-110' : 'bg-gray-300'} transition-transform`} style={{ width: 12, height: 12 }} />
+            <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }}>
+              <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-125' : 'bg-gray-300'} transition-transform`} style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }} />
             </button>
           ))}
         </div>
 
-        {/* info sheet — positioned using flex */}
-        <div className="px-6 flex-shrink-0" style={{ marginBottom: 24, zIndex: 20 }}>
-          <div className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5" style={{ width: 'min(680px,92%)', maxHeight: vh * 0.2 }}>
+        {/* info sheet — positioned using flex, MOBILE ONLY: LOWER */}
+        <div className="px-6 flex-shrink-0" style={{ marginBottom: isMobile ? 20 : 24, zIndex: 20 }}>
+          <div className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5" style={{ width: 'min(680px,92%)', maxHeight: isMobile ? (vh * 0.18) : (vh * 0.2) }}>
             <div className="flex items-center justify-between">
               <div className="text-gray-900 font-medium">{selected}</div>
               <button
@@ -568,30 +709,19 @@ export default function UniversalOnboarding({ onComplete }) {
         </div>
 
         {/* footer — anchored at bottom using flex */}
-        <div className="px-6 flex-shrink-0" style={{ paddingBottom: 16, background: 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
-          <div className="w-full bg-gray-900 hover:bg-gray-800 !text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" 
+        <div className="px-6 flex-shrink-0" style={{ paddingBottom: 16, background: isMobile ? 'transparent' : 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
+          <div className="w-full bg-gray-900 hover:bg-gray-800 rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" 
+            style={{ color: '#ffffff' }}
             onClick={() => {
             const connected = Object.entries(connectedAccounts).filter(([, v]) => v).map(([k]) => k);
             onComplete?.({ connectedAccounts: connected, totalConnections: connected.length });
           }}>
             Update
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="#ffffff" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </div>
           <div onClick={() => onComplete?.({ connectedAccounts: [], totalConnections: 0 })} className="w-full text-gray-600 text-base font-medium py-2 text-center cursor-pointer hover:text-gray-800 transition-colors">Skip</div>
         </div>
       </div>
-
-      {/* ChatGPT Connector Modal */}
-      <ChatGPTConnector
-        open={showChatGPTModal}
-        onClose={() => setShowChatGPTModal(false)}
-        onConnectionChange={(platform, connected) => {
-          if (connected) {
-            setConnectedAccounts((s) => ({ ...s, [platform]: true }));
-          }
-          setShowChatGPTModal(false);
-        }}
-      />
     </div>
   );
 }

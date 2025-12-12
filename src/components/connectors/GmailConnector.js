@@ -1,4 +1,6 @@
 import React, { Component } from 'react';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
 class GmailConnector extends Component {
   constructor(props) {
@@ -14,62 +16,7 @@ class GmailConnector extends Component {
     this.setConnected = this.setConnected.bind(this);
     this.setDisconnected = this.setDisconnected.bind(this);
   }
-
-  setConnected() {
-    this.setState({ connected: true });
-    if (this.props.onConnectionChange) {
-      this.props.onConnectionChange('Gmail', true);
-    }
-    this.handleClose();
-  }
-
-  setDisconnected() {
-    this.updateConnections('Remove', 'Gmail').then(() => {
-      this.setState({ connected: false });
-      if (this.props.onConnectionChange) {
-        this.props.onConnectionChange('Gmail', false);
-      }
-      this.handleClose();
-    }).catch((error) => {
-      console.error('Error removing Gmail connection:', error);
-    });
-  }
-
-  async updateConnections(updateType, newConnection) {
-    const jsonData = {
-      session: {
-        username: localStorage.getItem("username") || this.props.username
-      },
-      updateType,
-      newConnection
-    };
-
-    try {
-      const response = await fetch('https://api2.onairos.uk/connections/update', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(jsonData),
-      });
-      return await response.json();
-    } catch (error) {
-      console.error('UpdateConnections error:', error);
-      throw error;
-    }
-  }
-
-  handleOpen() {
-    this.setState({ open: true });
-  }
-
-  handleClose() {
-    this.setState({ open: false });
-    if (this.props.onClose) {
-      this.props.onClose();
-    }
-  }
-
+// ... (rest of the file until gmailConnect method)
   async gmailConnect() {
     this.setState({ isConnecting: true });
     
@@ -80,6 +27,7 @@ class GmailConnector extends Component {
     };
 
     try {
+      console.log('Requesting Gmail authorization...');
       const response = await fetch('https://api2.onairos.uk/gmail/authorize', {
         method: 'POST',
         headers: {
@@ -89,9 +37,24 @@ class GmailConnector extends Component {
       });
 
       const result = await response.json();
+      console.log('Gmail auth response:', result);
       
       if (result.gmailURL) {
-        window.location.href = result.gmailURL;
+        const isNative = Capacitor.isNativePlatform();
+        console.log('Is Native Platform:', isNative);
+        
+        if (isNative) {
+             console.log('Detected Native Platform, using Capacitor Browser for Gmail');
+            // Force Capacitor Browser for Native Apps
+            await Browser.open({ 
+                url: result.gmailURL,
+                windowName: '_blank',
+                presentationStyle: 'fullscreen'
+            });
+        } else {
+             console.log('Web platform detected, using window.location');
+             window.location.href = result.gmailURL;
+        }
       } else {
         console.error('No Gmail URL received');
         this.setState({ isConnecting: false });
@@ -103,6 +66,7 @@ class GmailConnector extends Component {
   }
 
   render() {
+// ... (rest of the file)
     const { open = this.props.open || this.state.open } = this.props;
     
     if (!open) return null;

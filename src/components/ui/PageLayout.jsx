@@ -155,9 +155,20 @@ const ModalPageLayout = ({
   onBackdropClick,
   backdropStyle = {},
   modalStyle = {},
+  modalClassName = '',
   ...pageLayoutProps
 }) => {
   if (!visible) return null;
+
+  // Detect Capacitor native platform
+  // Must be defined BEFORE usage to avoid Temporal Dead Zone (TDZ) error
+  const isCapacitorNative = typeof window !== 'undefined' && 
+    window.Capacitor && 
+    typeof window.Capacitor.isNativePlatform === 'function' && 
+    window.Capacitor.isNativePlatform();
+    
+  // Debug log to ensure this runs
+  // console.log('ModalPageLayout rendered, isCapacitorNative:', isCapacitorNative);
 
   const backdropStyles = {
     position: 'fixed',
@@ -168,20 +179,22 @@ const ModalPageLayout = ({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     zIndex: 2147483647,
     display: 'flex',
-    alignItems: 'center',
+    alignItems: isCapacitorNative ? 'flex-end' : 'center',
     justifyContent: 'center',
     transition: 'opacity 200ms ease',
     willChange: 'opacity',
     ...backdropStyle
   };
-
+  
   const modalStyles = {
     backgroundColor: COLORS.background,
     borderTopLeftRadius: '24px',
     borderTopRightRadius: '24px',
-    borderBottomLeftRadius: '24px',
-    borderBottomRightRadius: '24px',
-    height: '90vh',
+    borderBottomLeftRadius: isCapacitorNative ? '0px' : '24px',
+    borderBottomRightRadius: isCapacitorNative ? '0px' : '24px',
+    height: isCapacitorNative ? '100vh' : 'auto', // Auto height for desktop
+    maxHeight: isCapacitorNative ? '100vh' : '90vh', // Max height for desktop
+    minHeight: isCapacitorNative ? '100vh' : '600px', // Min height for desktop
     width: '100%',
     maxWidth: '500px',
     boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.3)',
@@ -191,6 +204,15 @@ const ModalPageLayout = ({
     transform: 'translateY(0)',
     transition: 'transform 220ms ease, opacity 220ms ease',
     willChange: 'transform, opacity',
+    // Ensure full height on mobile
+    ...(isCapacitorNative && {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      top: 0,
+      borderRadius: 0
+    }),
     ...modalStyle
   };
 
@@ -206,7 +228,7 @@ const ModalPageLayout = ({
 
   return (
     <div style={backdropStyles} onClick={handleBackdropClick}>
-      <div style={modalStyles}>
+      <div style={modalStyles} className={modalClassName}>
         <PageLayout
           showHeader={true}
           showCloseButton={true}

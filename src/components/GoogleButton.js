@@ -1,5 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { miniApp, openLink } from '@telegram-apps/sdk';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core'; // Import Capacitor core
 
 export default function GoogleButton({ onLoginSuccess = () => {} }) {
   const [error, setError] = useState(null);
@@ -7,68 +9,96 @@ export default function GoogleButton({ onLoginSuccess = () => {} }) {
   const handleTelegramAuth = useCallback(async () => {
     setError(null);
 
-    // Check if we're in a Telegram Web App environment
-    if (typeof window !== 'undefined' && !window.Telegram?.WebApp) {
-      setError('Not running in Telegram Web App');
-      return;
-    }
-
-    // Check SDK initialization
-    if (!miniApp.isInitialized) {
-      setError('Telegram Mini App not initialized');
-      return;
-    }
-
-    try {
-      // Safely get Telegram Mini App data
-      const telegramAppUrl = miniApp.initData || '';
-      const botUsername = 'OnairosMiniApp';
-
-      // Log debug information
-      console.log('Telegram App URL:', telegramAppUrl);
-      console.log('Bot Username:', botUsername);
-
-      // Construct URL with error handling
-      let connectUrl;
+    // 1. Check if running in Capacitor Native App (iOS/Android)
+    if (Capacitor.isNativePlatform()) {
       try {
-        connectUrl = new URL('https://onairos.uk/othent-connect');
-        connectUrl.searchParams.append('tgAppUrl', encodeURIComponent(telegramAppUrl));
-        connectUrl.searchParams.append('botUsername', botUsername);
-      } catch (urlError) {
-        setError('Error constructing URL: ' + urlError.message);
+          console.log('Detected Native Platform, using Capacitor Browser');
+          let connectUrl = new URL('https://onairos.uk/othent-connect');
+          // Important: windowPresentationStyle: 'popover' is for iPad, 'fullscreen' is standard on iPhone
+          await Browser.open({ 
+            url: connectUrl.toString(),
+            windowName: '_blank', // Force new window context
+            presentationStyle: 'fullscreen'
+          });
+      } catch (e) {
+         console.error('Capacitor Browser open failed', e);
+         setError('Failed to open browser: ' + e.message);
+      }
+      return;
+    }
+
+    // 2. Check if we're in a Telegram Web App environment
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+       // ... existing Telegram logic ...
+       // Check SDK initialization
+      if (!miniApp.isInitialized) {
+        setError('Telegram Mini App not initialized');
         return;
       }
-
-      // Register event listener before opening link
-      const handleAppActive = () => {
+  
+      try {
+        // Safely get Telegram Mini App data
+        const telegramAppUrl = miniApp.initData || '';
+        const botUsername = 'OnairosMiniApp';
+  
+        // Log debug information
+        console.log('Telegram App URL:', telegramAppUrl);
+        console.log('Bot Username:', botUsername);
+  
+        // Construct URL with error handling
+        let connectUrl;
         try {
-          const startParam = miniApp.initDataUnsafe?.start_param;
-          console.log('Start param received:', startParam);
-
-          if (startParam) {
-            const authData = JSON.parse(decodeURIComponent(startParam));
-            if (authData) {
-              onLoginSuccess(authData);
-            }
-          }
-        } catch (error) {
-          setError('Error processing auth data: ' + error.message);
-        } finally {
-          miniApp.removeEvent('active', handleAppActive);
+          connectUrl = new URL('https://onairos.uk/othent-connect');
+          connectUrl.searchParams.append('tgAppUrl', encodeURIComponent(telegramAppUrl));
+          connectUrl.searchParams.append('botUsername', botUsername);
+        } catch (urlError) {
+          setError('Error constructing URL: ' + urlError.message);
+          return;
         }
-      };
-
-      miniApp.onEvent('active', handleAppActive);
-
-      // Open link with error handling
-      await openLink(connectUrl.toString(), {
-        tryInstantView: false,
-      });
-
-    } catch (error) {
-      setError('Auth flow failed: ' + error.message);
-      console.error('Full error:', error);
+  
+        // Register event listener before opening link
+        const handleAppActive = () => {
+          try {
+            const startParam = miniApp.initDataUnsafe?.start_param;
+            console.log('Start param received:', startParam);
+  
+            if (startParam) {
+              const authData = JSON.parse(decodeURIComponent(startParam));
+              if (authData) {
+                onLoginSuccess(authData);
+              }
+            }
+          } catch (error) {
+            setError('Error processing auth data: ' + error.message);
+          } finally {
+            miniApp.removeEvent('active', handleAppActive);
+          }
+        };
+  
+        miniApp.onEvent('active', handleAppActive);
+  
+        // Open link with error handling
+        await openLink(connectUrl.toString(), {
+          tryInstantView: false,
+        });
+  
+      } catch (error) {
+        setError('Auth flow failed: ' + error.message);
+        console.error('Full error:', error);
+      }
+      return;
     }
+
+    // 3. Fallback for generic web / other environments
+    console.warn('Unknown environment, attempting default behavior');
+    // For now, let's try Capacitor Browser even if not explicitly "native" if the plugin is available,
+    // otherwise fallback to window.location
+    try {
+       await Browser.open({ url: 'https://onairos.uk/othent-connect' });
+    } catch {
+       window.location.href = 'https://onairos.uk/othent-connect';
+    }
+
   }, [onLoginSuccess]);
 
   return (

@@ -57,7 +57,7 @@ const Icon = ({ type }) => {
 /* -------------------------
    TOGGLE (soft apple style)
 -------------------------- */
-const DataTypeToggle = ({ dataType, enabled, onToggle }) => {
+const DataTypeToggle = ({ dataType, enabled, onToggle, isNative }) => {
   const handle = () => {
     if (dataType.required) return;
     onToggle(dataType.id, !enabled);
@@ -78,7 +78,7 @@ const DataTypeToggle = ({ dataType, enabled, onToggle }) => {
         <div className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100">
           <Icon type={dataType.icon} />
         </div>
-        <span className="text-[14px] text-gray-900 font-medium">
+        <span className={`${isNative ? 'text-[15px]' : 'text-[14px]'} text-gray-900 font-medium`}>
           {dataType.name}
         </span>
       </div>
@@ -150,6 +150,11 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
   };
   const platforms = getConnected();
 
+  const isCapacitorNative = typeof window !== 'undefined' && 
+    window.Capacitor && 
+    typeof window.Capacitor.isNativePlatform === 'function' && 
+    window.Capacitor.isNativePlatform();
+
   // Check if user has any LLM connections
   const hasLLMConnections = () => {
     const llmPlatforms = ['chatgpt', 'claude', 'gemini', 'grok', 'ChatGPT', 'Claude', 'Gemini', 'Grok'];
@@ -182,33 +187,38 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
 
         {/* ICONS */}
         <div className="flex justify-center items-center gap-4 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-white shadow flex items-center justify-center">
-            <Icon type="User" />
+          <div className={`${isCapacitorNative ? 'w-14 h-14' : 'w-12 h-12'} rounded-2xl bg-white shadow flex items-center justify-center`}>
+            <img 
+              src="https://onairos.sirv.com/Images/OnairosBlack.png" 
+              alt="Onairos"
+              className={`${isCapacitorNative ? 'w-10 h-10' : 'w-8 h-8'} object-contain`}
+            />
           </div>
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor">
-            <path strokeWidth={2} strokeLinecap="round" d="M9 5l7 7-7 7"/>
+          <svg className={`${isCapacitorNative ? 'w-8 h-8' : 'w-6 h-6'} text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
-          <div className="w-12 h-12 rounded-2xl bg-white shadow flex items-center justify-center">
-            <span className="text-xl font-serif font-bold">B</span>
+          <div className={`${isCapacitorNative ? 'w-14 h-14' : 'w-12 h-12'} rounded-2xl bg-white shadow flex items-center justify-center`}>
+            <span className={`${isCapacitorNative ? 'text-2xl' : 'text-xl'} font-serif font-bold`}>J</span>
           </div>
         </div>
 
         {/* TITLE */}
         <div className="text-center mb-8">
-          <h1 className="text-[24px] md:text-[26px] font-semibold text-gray-900 leading-tight tracking-tight">
+          <h1 className={`${isCapacitorNative ? 'text-[26px] md:text-[28px]' : 'text-[24px] md:text-[26px]'} font-semibold text-gray-900 leading-tight tracking-tight`}>
             {appName} wants to personalize your experience
           </h1>
-          <p className="text-[13px] text-gray-500 mt-1">choose what to share</p>
+          <p className={`${isCapacitorNative ? 'text-[14px]' : 'text-[13px]'} text-gray-500 mt-1`}>choose what to share</p>
         </div>
 
         {/* TOGGLES */}
-        <div className="grid grid-cols-2 gap-4 mb-10">
+        <div className={`${isCapacitorNative ? 'flex flex-col gap-3' : 'grid grid-cols-2 gap-4'} mb-10`}>
           {availableOptions.map((opt) => (
             <DataTypeToggle
               key={opt.id}
               dataType={opt}
               enabled={selected[opt.id]}
               onToggle={toggle}
+              isNative={isCapacitorNative}
             />
           ))}
         </div>
@@ -268,7 +278,7 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
 
         {/* CONNECTED PLATFORMS (appears at the bottom of content; no overlap with footer) */}
         {platforms && platforms.length > 0 ? (
-          <div className="mt-6 mb-2 rounded-2xl bg-white/60 backdrop-blur border border-black/5 p-3">
+          <div className={`${isCapacitorNative ? 'mt-8' : 'mt-6'} mb-2 rounded-2xl bg-white/60 backdrop-blur border border-black/5 p-3`}>
             <div className="text-center text-xs text-gray-500 mb-2">Connected Platforms</div>
             <div className="flex justify-center items-center gap-2 flex-wrap">
               {platforms.map((platform, index) => {
@@ -307,7 +317,8 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
       {/* FOOTER */}
       <div className="px-6 py-5 bg-white/80 backdrop-blur border-t border-black/5">
         <button
-          className="w-full rounded-full py-3 bg-gray-900 !text-white text-sm font-medium shadow-sm flex items-center justify-center mb-3"
+          className="w-full rounded-full py-3 bg-gray-900 text-sm font-medium shadow-sm flex items-center justify-center mb-3"
+          style={{ color: '#ffffff' }}
           disabled={selectedCount === 0}
           onClick={() => {
             if (selectedCount === 0) return;

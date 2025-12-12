@@ -120,6 +120,17 @@
                 console.log(`📧 Stored ${platform} email in localStorage:`, email);
             }
             
+            // Try to close the Capacitor Browser automatically
+            try {
+                if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+                    console.log('🚪 Attempting to close Capacitor Browser automatically...');
+                    window.Capacitor.Plugins.Browser.close();
+                    console.log('✅ Called Browser.close()');
+                }
+            } catch (e) {
+                console.log('⚠️ Could not close Capacitor Browser:', e.message);
+            }
+            
             // Try to notify parent via postMessage (works for popups)
             try {
                 if (window.opener && !window.opener.closed) {
@@ -158,13 +169,20 @@
                     console.log('🔄 Redirecting back to:', returnUrl);
                     successDetails.textContent = 'Redirecting back...';
                     
+                    // Build redirect URL with success params
+                    const redirectUrl = new URL(returnUrl);
+                    redirectUrl.searchParams.set('onairos_oauth_success', 'true');
+                    redirectUrl.searchParams.set('onairos_oauth_platform', platform);
+                    if (email) {
+                        redirectUrl.searchParams.set('onairos_oauth_email', email);
+                    }
+                    
                     // Clean up return URL from localStorage (component will handle other cleanup)
                     localStorage.removeItem('onairos_return_url');
                     
-                    // Redirect back after brief delay to show success message
-                    setTimeout(() => {
-                        window.location.href = returnUrl;
-                    }, 800);
+                    // Redirect immediately
+                    console.log('📍 Redirecting to:', redirectUrl.toString());
+                    window.location.replace(redirectUrl.toString());
                 } else {
                     // Fallback: show message and try to close
                     successDetails.textContent = isMobile 

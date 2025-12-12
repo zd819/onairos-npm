@@ -20,7 +20,7 @@ export default function WelcomeScreen({ onContinue, onClose }) {
   return (
     <div className="w-full flex flex-col" style={{ height: '100%' }}>
       {/* Content - Flexible center area */}
-      <div className="px-6 text-center flex-1 flex flex-col justify-center">
+      <div className="px-6 pt-16 text-center flex-1 flex flex-col">
         {/* Logo */}
         <div className="mb-8 flex justify-center">
           <div className="w-20 h-20 flex items-center justify-center">
