@@ -1,3 +1,57 @@
-
-node_modules/*
+# Dependencies
+node_modules/
 package-lock.json
+
+# Mobile preview (development only)
+mobile-preview/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Environment
+.env
+.env.local
+
+# Testing
+coverage/
+
+# Temporary documentation files (AI-generated)
+*_FIX*.md
+*_SUMMARY*.md
+*_COMPLETE*.md
+*_DONE*.md
+*_EXPLANATION*.md
+*_GUIDE*.md
+*_IMPLEMENTATION*.md
+*_FLOW*.md
+ALL_*.md
+API_*.md
+BACKEND_*.md
+CHATGPT_*.md
+EMPTY_*.md
+FINAL_*.md
+QUICK_*.md
+SOCKETIO_*.md
+TRAINING_*.md
+
+# Keep these important docs
+!README.md
+!CHANGELOG.md
+!MOBILE_TRAINING_SDK_README.md
+!COMPLETE_IMPLEMENTATION_SUMMARY.md
+!Chatgpt_LLM_structure.md
+
+# Test files
+test-*.html
+my_rsa_key*
