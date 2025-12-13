@@ -545,6 +545,15 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
 
   const renderCodeStep = () => (
     <div className="w-full flex flex-col" style={{ height: '100%' }}>
+      {/* Ensure verification code inputs always render black text (host apps may inject global input styles) */}
+      <style>{`
+        /* High-specificity + !important so consuming apps can't easily override text color */
+        input.onairos-verification-digit {
+          color: #000000 !important;
+          caret-color: #000000 !important;
+          -webkit-text-fill-color: #000000 !important; /* Safari/iOS */
+        }
+      `}</style>
       {/* Heading - matching VerificationStep.tsx */}
       <div className="w-full pt-16 px-12 mb-10 text-center">
         <h1 
@@ -623,11 +632,14 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
                   if (prevInput) prevInput.focus();
                 }
               }}
-              className="w-12 h-12 border rounded-lg text-center text-lg font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="onairos-verification-digit w-12 h-12 border rounded-lg text-center text-lg font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none !text-black"
               style={{ 
                 borderColor: COLORS.border,
                 backgroundColor: COLORS.background,
-                fontFamily: 'Inter, system-ui, sans-serif'
+                fontFamily: 'Inter, system-ui, sans-serif',
+                color: '#000000',
+                caretColor: '#000000',
+                WebkitTextFillColor: '#000000',
               }}
             />
           ))}
