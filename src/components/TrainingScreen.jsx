@@ -13,7 +13,7 @@ const trainingPhrases = [
   "Almost done..."
 ];
 
-export default function TrainingScreen({ onComplete, userEmail, connectedAccounts = [], userToken }) {
+export default function TrainingScreen({ onComplete, onTrainingStart, userEmail, connectedAccounts = [], userToken }) {
   const [progress, setProgress] = useState(0);
   const [currentPhrase, setCurrentPhrase] = useState(trainingPhrases[0]);
   const [currentStage, setCurrentStage] = useState('training'); // 'training' | 'inference' | 'complete'
@@ -22,6 +22,17 @@ export default function TrainingScreen({ onComplete, userEmail, connectedAccount
   useEffect(() => {
     let socket = null;
     let progressTimer = null;
+    let didSignalStart = false;
+
+    const signalTrainingStarted = () => {
+      if (didSignalStart) return;
+      didSignalStart = true;
+      try {
+        onTrainingStart?.();
+      } catch (e) {
+        // never block training due to callback issues
+      }
+    };
     
     // ACTUALLY run training + inference using Socket.IO
     const runTrainingAndInference = async () => {
@@ -75,6 +86,8 @@ export default function TrainingScreen({ onComplete, userEmail, connectedAccount
         // Handle connection
         socket.on('connect', () => {
           console.log('✅ Socket connected:', socket.id);
+          // At this point, training can actually start (server reachable).
+          signalTrainingStarted();
           setCurrentPhrase('Starting training...');
           
           // Start progress animation
@@ -104,6 +117,8 @@ export default function TrainingScreen({ onComplete, userEmail, connectedAccount
         // Handle training progress updates
         socket.on('training-progress', (data) => {
           console.log('📊 Training progress:', data);
+          // Progress events mean training has definitely started.
+          signalTrainingStarted();
           if (data.percentage) {
             setProgress(Math.min(data.percentage, 95)); // Cap at 95% until complete
           }

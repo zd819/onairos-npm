@@ -42,6 +42,7 @@ export function OnairosButton({
 
   const [showOverlay, setShowOverlay] = useState(false);
   const [currentFlow, setCurrentFlow] = useState('welcome'); // 'welcome' | 'email' | 'onboarding' | 'pin' | 'trainingScreen' | 'dataRequest' | 'wrappedLoading'
+  const [trainingHasStarted, setTrainingHasStarted] = useState(false);
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
   const [oauthReturnDetected, setOauthReturnDetected] = useState(false);
@@ -718,9 +719,33 @@ export function OnairosButton({
     } else {
       // Non-wrapped apps show training screen BEFORE data request
       console.log('🎓 Non-wrapped app - showing training screen');
+      // Reset training start watchdog state
+      setTrainingHasStarted(false);
       setCurrentFlow('trainingScreen');
     }
   };
+
+  // Non-wrapped ONLY: if training does not START within 30s, move forward to DataRequest anyway.
+  // Wrapped apps must NOT do this.
+  useEffect(() => {
+    const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
+    if (isWrappedApp) return;
+
+    if (currentFlow !== 'trainingScreen') return;
+    if (trainingHasStarted) return;
+
+    const timeoutId = setTimeout(() => {
+      // Re-check conditions at fire time (effect cleanup should handle most cases).
+      const stillWrapped = webpageName && webpageName.toLowerCase().includes('wrapped');
+      if (stillWrapped) return;
+      if (currentFlow === 'trainingScreen' && !trainingHasStarted) {
+        console.warn('⏱️ Training did not start within 30s (non-wrapped). Continuing to DataRequest.');
+        setCurrentFlow('dataRequest');
+      }
+    }, 30000);
+
+    return () => clearTimeout(timeoutId);
+  }, [currentFlow, trainingHasStarted, webpageName]);
 
   const handleLoadingComplete = () => {
     setCurrentFlow('dataRequest');
@@ -1324,6 +1349,7 @@ export function OnairosButton({
         return (
           <TrainingScreen 
             onComplete={handleTrainingScreenComplete}
+            onTrainingStart={() => setTrainingHasStarted(true)}
             userEmail={userData?.email}
             connectedAccounts={userData?.connectedAccounts || []}
             userToken={userData?.token}
