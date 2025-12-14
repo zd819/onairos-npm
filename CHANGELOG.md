@@ -2,7 +2,52 @@
 
 All notable changes to the Onairos SDK will be documented in this file.
 
-## [4.2.2] - 2025-12-14
+## [4.2.3] - 2025-12-14
+
+### 🐛 Critical Fix - Email Authentication Routing (Corrects 4.2.2)
+
+#### Problem Fixed
+- **Version 4.2.2 introduced a bug**: NEW users via email authentication were incorrectly routed to dataRequest instead of onboarding
+- **Root cause**: Added `/getAccountInfo/email` check AFTER email verification, but backend creates account during verification
+- **Result**: Account check always found account exists (even for new users), causing wrong routing
+
+#### Solution Implemented
+- **Trust backend's `isNewUser` field** - Backend knows if account was just created during verification
+- **Removed unnecessary API call** - No longer call `/getAccountInfo/email` after email verification
+- **Consistent with backend design** - Both `/email/verify/confirm` and `/auth/google` are authoritative about user status
+
+#### Technical Details
+
+**Before (4.2.2 - BROKEN):**
+```javascript
+// Email verification creates account and returns isNewUser: true
+// Then we called /getAccountInfo/email
+// Found account exists (just created!) → treated as existing user ❌
+```
+
+**After (4.2.3 - FIXED):**
+```javascript
+// Email verification returns isNewUser: true
+// Trust this field directly → route to onboarding ✅
+```
+
+#### Files Changed
+- `src/components/EmailAuth.js`:
+  - Email verification: Trust `data.isNewUser` from verification response
+  - Google sign-in: Trust `authData.body.isNewUser` from `/auth/google` response
+  - Removed post-verification `/getAccountInfo/email` call that caused the bug
+
+#### Impact
+- ✅ NEW email users now correctly route to onboarding (FIXED)
+- ✅ EXISTING email users still correctly route to dataRequest (unchanged)
+- ✅ NEW Google users still correctly route to onboarding (unchanged)
+- ✅ EXISTING Google users still correctly route to dataRequest (unchanged)
+
+For detailed technical analysis, see `FIX_4.2.3_CORRECT_IMPLEMENTATION.md` and `AUTHENTICATION_FLOW_ANALYSIS.md`
+
+---
+
+## [4.2.2] - 2025-12-14 (SUPERSEDED BY 4.2.3)
 
 ### 🐛 Fixed - Email Authentication Routing for Existing Users
 

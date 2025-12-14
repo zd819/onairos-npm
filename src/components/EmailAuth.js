@@ -385,14 +385,14 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         email_verified: userInfo.email_verified
       });
 
-      // Optional: Send to backend for verification/storage
+      // Send to backend for authentication - backend creates account if new
       try {
         const sdkConfig = {
           baseUrl: 'https://api2.onairos.uk',
           apiKey: window.onairosApiKey || 'test-key',
         };
 
-        await fetch(`${sdkConfig.baseUrl}/auth/google`, {
+        const response = await fetch(`${sdkConfig.baseUrl}/auth/google`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -404,11 +404,61 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
             userInfo: userInfo,
           }),
         });
+
+        if (response.ok) {
+          const authData = await response.json();
+          console.log('✅ Google auth response:', authData);
+
+          // TRUST the backend's isNewUser field - it knows if account was just created!
+          const isNewUser = authData.body?.isNewUser !== undefined ? authData.body.isNewUser : authData.isNewUser;
+          const existingUser = !isNewUser;
+
+          console.log('✅ Using backend isNewUser determination:', {
+            isNewUser: isNewUser,
+            existingUser: existingUser,
+            httpStatus: authData.status,
+            message: authData.body?.message || authData.message
+          });
+
+          setStep('success');
+          setIsLoading(false);
+
+          setTimeout(() => {
+            onSuccess({
+              email: gmailEmail,
+              verified: true,
+              token: authData.body?.token || authData.token || null,
+              userName: authData.body?.username || authData.username || gmailEmail.split('@')[0],
+              existingUser: existingUser,
+              isNewUser: isNewUser,
+              flowType: isNewUser ? 'onboarding' : 'dataRequest',
+              accountInfo: {
+                email: gmailEmail,
+                name: userInfo.name,
+                picture: userInfo.picture,
+                verified: true,
+                ssoProvider: 'google'
+              },
+              adminMode: false,
+              userCreated: isNewUser,
+              accountDetails: {
+                email: gmailEmail,
+                name: userInfo.name,
+                picture: userInfo.picture,
+                createdAt: new Date().toISOString(),
+                ssoProvider: 'google'
+              }
+            });
+          }, 400);
+          return;
+        } else {
+          console.warn('⚠️ Backend /auth/google failed, falling back to account check');
+        }
       } catch (backendError) {
-        console.warn('⚠️ Backend verification failed, continuing anyway:', backendError);
+        console.warn('⚠️ Backend /auth/google error, falling back to account check:', backendError);
       }
 
-      // Continue with the OAuth success flow
+      // Fallback: Continue with the OAuth success flow (account check)
       handleOAuthSuccess(gmailEmail);
 
     } catch (error) {
@@ -482,72 +532,48 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
 
         console.log('📧 Email verification response:', data);
 
-        // NEW: Check account status explicitly, same as Google sign-in flow
-        // This ensures consistent behavior between Google and email auth
-        let accountInfo = data.accountInfo || null;
-        let accountStatus = data.accountStatus || null;
-        let existingUser = data.existingUser || false;
+        // TRUST the backend's isNewUser field - it knows if account was just created!
+        // Backend creates account during verification, so it's authoritative
+        const isNewUser = data.isNewUser !== undefined ? data.isNewUser : true;
+        const existingUser = !isNewUser;
 
-        try {
-          console.log('🔍 Checking account status for:', email);
-          const accountCheckResponse = await fetch(`${baseUrl}/getAccountInfo/email`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-            },
-            body: JSON.stringify({
-              Info: {
-                identifier: email.trim().toLowerCase()
-              }
-            })
-          });
+        console.log('✅ Using backend isNewUser determination:', {
+          isNewUser: isNewUser,
+          existingUser: existingUser,
+          userState: data.userState,
+          flowType: data.flowType,
+          hasExistingData: data.existingUserData?.hasExistingData
+        });
 
-          if (accountCheckResponse.ok) {
-            const accountData = await accountCheckResponse.json();
-            
-            if (accountData.AccountInfo) {
-              accountInfo = accountData.AccountInfo;
-              accountStatus = accountData.accountStatus;
-              existingUser = accountStatus?.exists || false;
-              
-              console.log('✅ Account status from explicit check:', {
-                exists: existingUser,
-                hasTrainedModel: accountStatus?.hasTrainedModel,
-                hasPersonalityTraits: accountStatus?.hasPersonalityTraits,
-                connectedPlatforms: accountStatus?.connectedPlatforms,
-                needsDataConnection: accountStatus?.needsDataConnection,
-                needsTraining: accountStatus?.needsTraining,
-                canUseInference: accountStatus?.canUseInference
-              });
-            } else {
-              console.log('ℹ️ No existing account found - new user');
-            }
-          } else {
-            console.log('ℹ️ Account check returned non-OK status - using verification response data');
-          }
-        } catch (accountCheckError) {
-          console.warn('⚠️ Could not check account status, using verification response data:', accountCheckError);
-        }
+        // Use data from verification response
+        const accountInfo = data.user || data.accountInfo || null;
+        const accountStatus = data.accountStatus || null;
+        
+        // Optional: For existing users, we could fetch detailed account info if needed
+        // But the verification response already includes existingUserData for returning users
 
         setStep('success');
         setTimeout(() => {
-          // Pass complete API response with explicit account check data
+          // Pass complete API response - trust backend's flow determination
           onSuccess({ 
             email, 
             verified: true, 
             token: data.token || data.jwtToken,
-            userName: data.userName,
+            userName: data.userName || accountInfo?.userName,
             existingUser: existingUser,
+            isNewUser: isNewUser,
+            userState: data.userState,
+            flowType: isNewUser ? 'onboarding' : 'dataRequest',
             accountInfo: accountInfo,
-            accountStatus: accountStatus, // Now includes explicit account check
-            isNewUser: !existingUser, // Based on explicit account check
-            flowType: existingUser ? 'dataRequest' : 'onboarding',
+            accountStatus: accountStatus,
+            existingUserData: data.existingUserData || null,
+            enochInstructions: data.enochInstructions || null,
+            displayMessages: data.displayMessages || null,
             adminMode: data.adminMode,
             userCreated: data.userCreated,
-            accountDetails: accountInfo || data.accountDetails || {
+            accountDetails: accountInfo || {
               email: email,
-              createdAt: data.createdAt || new Date().toISOString(),
+              createdAt: data.createdAt || accountInfo?.creationDate || new Date().toISOString(),
               provider: 'email'
             }
           });
