@@ -353,13 +353,25 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       return false;
     };
 
-    // FIRST: Load persisted connected accounts from localStorage ONLY on the very first mount
-    // (to prevent overwriting OAuth updates on subsequent remounts)
-    if (!initialLoadDone.current) {
-      initialLoadDone.current = true;
+    // Check if we're about to process OAuth
+    const sessionSuccess = sessionStorage.getItem('onairos_oauth_return_success');
+    const oauthContext = localStorage.getItem('onairos_oauth_context');
+    const willProcessOAuth = (sessionSuccess === 'true') || (oauthContext === 'platform-connector');
+    
+    // Load persisted connected accounts from localStorage:
+    // 1. On first mount
+    // 2. When about to process OAuth (so new connection adds to existing ones)
+    if (!initialLoadDone.current || willProcessOAuth) {
+      if (!initialLoadDone.current) {
+        initialLoadDone.current = true;
+        console.log('🔄 UniversalOnboarding INITIAL mount: Loading persisted accounts from localStorage');
+      } else {
+        console.log('🔄 UniversalOnboarding: Loading persisted accounts before OAuth processing');
+      }
+      
       try {
         const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
-        console.log('🔄 UniversalOnboarding INITIAL mount: Loading persisted accounts from localStorage:', userData.connectedAccounts);
+        console.log('   Existing accounts in localStorage:', userData.connectedAccounts);
         if (userData.connectedAccounts && Array.isArray(userData.connectedAccounts)) {
           // Convert array to object format
           const accountsObj = userData.connectedAccounts.reduce((acc, platform) => {
@@ -375,7 +387,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         console.error('❌ Failed to load persisted connected accounts:', error);
       }
     } else {
-      console.log('⏭️ Skipping localStorage load (not first mount)');
+      console.log('⏭️ Skipping localStorage load (not first mount, no OAuth)');
     }
     
     // THEN: Check for OAuth success (which will ADD to existing connections)
