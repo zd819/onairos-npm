@@ -116,7 +116,7 @@ const options = [
   { id: "personality", name: "Personality Traits", icon: "Brain" },
 ];
 
-const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], showTime = false }) => {
+const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connectedPlatforms = [], showTime = false }) => {
   const [selected, setSelected] = useState({
     basic: true,
     rawMemories: false,
@@ -125,6 +125,8 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
   });
 
   const [freq, setFreq] = useState("weekly");
+
+  const isWrappedApp = typeof appName === 'string' && appName.toLowerCase().includes('wrapped');
 
   const toggle = (id, val) =>
     setSelected((p) => ({ ...p, [id]: val }));
@@ -208,30 +210,43 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
   };
 
   return (
-    <div className="flex flex-col h-full max-h-[90vh] bg-white/70 backdrop-blur-2xl rounded-3xl overflow-hidden">
+    <div className="flex flex-col h-full max-h-full md:max-h-[90vh] bg-white/70 backdrop-blur-2xl rounded-3xl overflow-hidden">
 
       {/* CONTENT */}
-      <div className="flex-1 overflow-y-auto px-6 pt-10 pb-4">
+      <div className="flex-1 overflow-y-auto px-6 pt-6 md:pt-10 pb-4">
 
         {/* ICONS */}
-        <div className="flex justify-center items-center gap-4 mb-6">
+        <div className="flex justify-center items-center gap-4 mb-5 md:mb-6">
+          {/* Wrapped: brain -> Onairos. Non-wrapped: Onairos -> app placeholder */}
           <div className={`${isCapacitorNative ? 'w-14 h-14' : 'w-12 h-12'} rounded-2xl bg-white shadow flex items-center justify-center`}>
-            <img 
-              src="https://onairos.sirv.com/Images/OnairosBlack.png" 
-              alt="Onairos"
-              className={`${isCapacitorNative ? 'w-10 h-10' : 'w-8 h-8'} object-contain`}
-            />
+            {isWrappedApp ? (
+              <span className={`${isCapacitorNative ? 'text-3xl' : 'text-2xl'}`} aria-label="Brain">🧠</span>
+            ) : (
+              <img 
+                src="https://onairos.sirv.com/Images/OnairosBlack.png" 
+                alt="Onairos"
+                className={`${isCapacitorNative ? 'w-10 h-10' : 'w-8 h-8'} object-contain`}
+              />
+            )}
           </div>
           <svg className={`${isCapacitorNative ? 'w-8 h-8' : 'w-6 h-6'} text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
           <div className={`${isCapacitorNative ? 'w-14 h-14' : 'w-12 h-12'} rounded-2xl bg-white shadow flex items-center justify-center`}>
-            <span className={`${isCapacitorNative ? 'text-2xl' : 'text-xl'} font-serif font-bold`}>J</span>
+            {isWrappedApp ? (
+              <img 
+                src="https://onairos.sirv.com/Images/OnairosBlack.png" 
+                alt="Onairos"
+                className={`${isCapacitorNative ? 'w-10 h-10' : 'w-8 h-8'} object-contain`}
+              />
+            ) : (
+              <span className={`${isCapacitorNative ? 'text-2xl' : 'text-xl'} font-serif font-bold`}>J</span>
+            )}
           </div>
         </div>
 
         {/* TITLE */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 md:mb-8">
           <h1 className={`${isCapacitorNative ? 'text-[26px] md:text-[28px]' : 'text-[24px] md:text-[26px]'} font-semibold text-gray-900 leading-tight tracking-tight`}>
             {appName} wants to personalize your experience
           </h1>
@@ -239,7 +254,7 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
         </div>
 
         {/* TOGGLES */}
-        <div className={`${isCapacitorNative ? 'flex flex-col gap-3' : 'flex flex-col sm:grid sm:grid-cols-2 gap-3 sm:gap-4'} mb-10`}>
+        <div className={`${isCapacitorNative ? 'flex flex-col gap-3' : 'flex flex-col sm:grid sm:grid-cols-2 gap-3 sm:gap-4'} mb-6 md:mb-10`}>
           {availableOptions.map((opt) => (
             <DataTypeToggle
               key={opt.id}
@@ -304,11 +319,15 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
           </div>
         )}
 
-        {/* CONNECTED PLATFORMS (appears at the bottom of content; no overlap with footer) */}
-        {platforms && platforms.length > 0 ? (
-          <div className={`${isCapacitorNative ? 'mt-8' : 'mt-6'} mb-2 rounded-2xl bg-white/60 backdrop-blur border border-black/5 p-3`}>
-            <div className="text-center text-xs text-gray-500 mb-2">Connected Platforms</div>
-            <div className="flex justify-center items-center gap-2 flex-wrap">
+      </div>
+
+      {/* FOOTER */}
+      <div className="px-6 py-4 md:py-5 bg-white/80 backdrop-blur border-t border-black/5">
+        {/* Connected platforms pinned above CTAs so it never gets cropped on mobile */}
+        {platforms && platforms.length > 0 && (
+          <div className="mb-3 rounded-2xl bg-white/60 backdrop-blur border border-black/5 px-3 py-2">
+            <div className="text-center text-[11px] text-gray-500 mb-1">Connected Platforms</div>
+            <div className="flex items-center justify-center gap-2 overflow-x-auto whitespace-nowrap pb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
               {platforms.map((platform, index) => {
                 const logoMap = {
                   Instagram: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png',
@@ -332,18 +351,26 @@ const DataRequest = ({ appName = "My App", onComplete, connectedPlatforms = [], 
                     src={src}
                     alt={platform}
                     title={platform}
-                    className="w-6 h-6 rounded-md shadow-sm hover:scale-110 transition"
+                    className="w-6 h-6 rounded-md shadow-sm flex-shrink-0"
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />
                 );
               })}
             </div>
+            {typeof onConnectMoreApps === 'function' && (
+              <div className="mt-1 flex justify-center">
+                <button
+                  type="button"
+                  onClick={onConnectMoreApps}
+                  className="text-[11px] font-medium underline underline-offset-2 text-gray-700 hover:text-gray-900"
+                  style={{ WebkitTextFillColor: '#111827' }}
+                >
+                  Connect more apps?
+                </button>
+              </div>
+            )}
           </div>
-        ) : null}
-      </div>
-
-      {/* FOOTER */}
-      <div className="px-6 py-5 bg-white/80 backdrop-blur border-t border-black/5">
+        )}
         <button
           className="w-full rounded-full py-3 bg-gray-900 text-sm font-medium shadow-sm flex items-center justify-center mb-3"
           style={{ color: '#ffffff' }}

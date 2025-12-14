@@ -6,12 +6,121 @@ import { COLORS } from '../theme/colors.js';
 
 export default function EmailAuth({ onSuccess, testMode = true }) {
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  // Store verification code as per-digit state to avoid losing position when users click/paste/autofill.
+  const [codeDigits, setCodeDigits] = useState(() => Array(6).fill(''));
   const [step, setStep] = useState('email'); // 'email' | 'code' | 'success'
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [emailSent, setEmailSent] = useState(true); // Track if email was actually sent
   const [emailServiceMessage, setEmailServiceMessage] = useState(''); // Store service message
+  const code = codeDigits.join('');
+  const isCodeComplete = codeDigits.every((d) => typeof d === 'string' && d.length === 1);
+  const resetCodeDigits = () => setCodeDigits(Array(6).fill(''));
+
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const postJson = async (url, apiKey, body) => {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+    return response;
+  };
+
+  // Prefer the newer single-endpoint API: POST /email/verification { action: 'request'|'verify' }
+  // Fall back to legacy /email/verify and /email/verify/confirm if needed.
+  const requestEmailVerification = async ({ baseUrl, apiKey, email: rawEmail }) => {
+    const normalizedEmail = (rawEmail || '').trim().toLowerCase();
+
+    // New endpoint
+    try {
+      const res = await postJson(`${baseUrl}/email/verification`, apiKey, {
+        email: normalizedEmail,
+        action: 'request',
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // ignore and fall back
+    }
+
+    // Legacy endpoint
+    const legacyRes = await postJson(`${baseUrl}/email/verify`, apiKey, { email: normalizedEmail });
+    if (!legacyRes.ok) {
+      let msg = 'Failed to send verification code';
+      try {
+        const err = await legacyRes.json();
+        if (err?.error) msg = err.error;
+      } catch {}
+      throw new Error(msg);
+    }
+    return await legacyRes.json();
+  };
+
+  const verifyEmailCode = async ({ baseUrl, apiKey, email: rawEmail, code: rawCode }) => {
+    const normalizedEmail = (rawEmail || '').trim().toLowerCase();
+    const normalizedCode = String(rawCode || '').trim();
+
+    // New endpoint
+    try {
+      const res = await postJson(`${baseUrl}/email/verification`, apiKey, {
+        email: normalizedEmail,
+        action: 'verify',
+        code: normalizedCode,
+      });
+      if (res.ok) return await res.json();
+      // If it's a hard failure, surface its message
+      try {
+        const err = await res.json();
+        throw new Error(err?.error || err?.message || 'Verification failed');
+      } catch (e) {
+        // If parsing fails, fall through to legacy retry below
+        if (e instanceof Error) throw e;
+      }
+    } catch (e) {
+      // If server doesn't support /email/verification or network hiccup, try legacy below.
+      // If it's a real "invalid code" error, we rethrow and don't spam retries.
+      const msg = e?.message || '';
+      if (msg && !msg.toLowerCase().includes('not found') && !msg.toLowerCase().includes('cannot')) {
+        // Keep going to legacy; it might be the only supported path.
+      }
+    }
+
+    // Legacy endpoint with light retry for multi-instance deployments:
+    // "No verification code found" often means request+confirm hit different servers.
+    const maxAttempts = 5;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const res = await postJson(`${baseUrl}/email/verify/confirm`, apiKey, {
+        email: normalizedEmail,
+        code: normalizedCode,
+      });
+
+      if (res.ok) return await res.json();
+
+      let errMsg = 'Invalid verification code';
+      try {
+        const err = await res.json();
+        if (err?.error) errMsg = err.error;
+        if (typeof err?.attemptsRemaining === 'number') {
+          errMsg = `${errMsg} (attempts remaining: ${err.attemptsRemaining})`;
+        }
+      } catch {}
+
+      // Retry only for the "code missing" case
+      if (errMsg.toLowerCase().includes('no verification code found') && attempt < maxAttempts) {
+        await sleep(150 * attempt);
+        continue;
+      }
+
+      throw new Error(errMsg);
+    }
+
+    throw new Error('Verification failed');
+  };
 
   // Helper function to handle OAuth success (Gmail) - defined early for useEffect
   const handleOAuthSuccess = async (gmailEmail) => {
@@ -188,7 +297,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     if (step === 'code') {
       // Small delay to ensure DOM is ready
       setTimeout(() => {
-        const firstInput = document.querySelector('input[maxLength="1"]');
+        const firstInput = document.querySelector('input.onairos-verification-digit');
         if (firstInput) {
           firstInput.focus();
         }
@@ -206,6 +315,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     setError('');
     setEmailSent(true); // Reset email status
     setEmailServiceMessage(''); // Reset service message
+    resetCodeDigits();
 
     if (!validateEmail(email)) {
       setError('Please enter a valid email address');
@@ -227,32 +337,13 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         // Production mode: Use proper email verification API from schema
         const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
         const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
-        
-        const response = await fetch(`${baseUrl}/email/verify`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            email: (email || '').trim().toLowerCase()
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to send verification code');
-        }
-
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to send verification code');
-        }
+        const data = await requestEmailVerification({ baseUrl, apiKey, email });
 
         console.log('📧 Email request response:', data);
 
         // Store email service status
-        setEmailSent(data.emailSent !== false); // Default to true if not specified
+        // /email/verify returns emailSent, /email/verification typically does not.
+        setEmailSent(data.emailSent !== false);
         setEmailServiceMessage(data.message || '');
 
         setStep('code');
@@ -345,7 +436,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         // Test mode: Skip API call completely, simulate verification
         console.log('🧪 Test mode: Simulating code verification for:', email, 'with code:', code);
         
-        if (code === '123456' || code.length === 6) {
+        if (code === '123456' || isCodeComplete) {
           setStep('success');
           setTimeout(() => {
             // Simulate new user for design testing
@@ -377,25 +468,13 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         // Production mode: Use real email verification API from schema
         const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
         const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
-        
-        const response = await fetch(`${baseUrl}/email/verify/confirm`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            email: (email || '').trim().toLowerCase(),
-            code: code.trim()
-          }),
-        });
+        const codeToSubmit = codeDigits.join('');
 
-        if (!response.ok) {
-          throw new Error('Invalid verification code');
+        if (!isCodeComplete) {
+          throw new Error('Please enter the full 6-digit code.');
         }
-
-        const data = await response.json();
+        
+        const data = await verifyEmailCode({ baseUrl, apiKey, email, code: codeToSubmit.trim() });
         
         if (!data.success) {
           throw new Error(data.error || 'Verification failed');
@@ -581,23 +660,67 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength="1"
-              value={code[index] || ''}
+              autoComplete={index === 0 ? "one-time-code" : "off"}
+              value={codeDigits[index] || ''}
+              onPaste={(e) => {
+                const pasted = (e.clipboardData?.getData('text') || '').replace(/\D/g, '');
+                if (!pasted) return;
+                e.preventDefault();
+
+                const nextDigits = [...codeDigits];
+                for (let i = 0; i < pasted.length && index + i < 6; i++) {
+                  nextDigits[index + i] = pasted[i];
+                }
+                setCodeDigits(nextDigits);
+
+                const focusIndex = Math.min(index + pasted.length, 5);
+                const nextInput = e.currentTarget.parentElement?.children?.[focusIndex];
+                if (nextInput && typeof nextInput.focus === 'function') nextInput.focus();
+              }}
               onChange={(e) => {
-                const newCode = code.split('');
-                newCode[index] = e.target.value;
-                setCode(newCode.join(''));
-                
-                // Auto-focus next input
-                if (e.target.value && index < 5) {
-                  const nextInput = e.target.parentElement?.children[index + 1];
-                  if (nextInput) nextInput.focus();
+                const raw = e.target.value || '';
+                const digitsOnly = raw.replace(/\D/g, '');
+
+                // Clear
+                if (!digitsOnly) {
+                  const nextDigits = [...codeDigits];
+                  nextDigits[index] = '';
+                  setCodeDigits(nextDigits);
+                  return;
+                }
+
+                // Some browsers/OTP autofill can inject multiple digits at once
+                const nextDigits = [...codeDigits];
+                for (let i = 0; i < digitsOnly.length && index + i < 6; i++) {
+                  nextDigits[index + i] = digitsOnly[i];
+                }
+                setCodeDigits(nextDigits);
+
+                const focusIndex = Math.min(index + digitsOnly.length, 5);
+                if (focusIndex !== index) {
+                  const nextInput = e.target.parentElement?.children?.[focusIndex];
+                  if (nextInput && typeof nextInput.focus === 'function') nextInput.focus();
+                } else if (index < 5) {
+                  const nextInput = e.target.parentElement?.children?.[index + 1];
+                  if (nextInput && typeof nextInput.focus === 'function') nextInput.focus();
                 }
               }}
               onKeyDown={(e) => {
                 // Handle backspace to focus previous input
-                if (e.key === 'Backspace' && !code[index] && index > 0) {
-                  const prevInput = e.target.parentElement?.children[index - 1];
-                  if (prevInput) prevInput.focus();
+                if (e.key === 'Backspace') {
+                  // If current has a digit, clear it first (common OTP UX)
+                  if (codeDigits[index]) {
+                    const nextDigits = [...codeDigits];
+                    nextDigits[index] = '';
+                    setCodeDigits(nextDigits);
+                    e.preventDefault();
+                    return;
+                  }
+                  // Otherwise move focus left
+                  if (index > 0) {
+                    const prevInput = e.currentTarget.parentElement?.children?.[index - 1];
+                    if (prevInput && typeof prevInput.focus === 'function') prevInput.focus();
+                  }
                 }
               }}
               className="onairos-verification-digit w-12 h-12 border rounded-lg text-center text-lg font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none !text-black"
@@ -628,7 +751,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
             label="Continue"
             onClick={handleCodeSubmit}
             loading={isLoading}
-            disabled={isLoading || code.length !== 6}
+            disabled={isLoading || !isCodeComplete}
             testId="verify-code-button"
             className="!text-white"
             textStyle={{ color: '#FFFFFF' }}
@@ -644,7 +767,10 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         <div className="max-w-sm mx-auto">
           <button
             type="button"
-            onClick={() => setStep('email')}
+            onClick={() => {
+              resetCodeDigits();
+              setStep('email');
+            }}
             className="w-full py-2 px-4 font-medium transition-colors text-sm"
             style={{ color: COLORS.textSecondary }}
           >

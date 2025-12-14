@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { COLORS } from '../../theme/colors.js';
 
 // Standardized page layout component with white background
@@ -18,6 +18,8 @@ const PageLayout = ({
   style = {},
   ...props
 }) => {
+  const isSmallScreen = typeof window !== 'undefined' && window.innerWidth <= 768;
+
   const layoutStyle = {
     backgroundColor: COLORS.background,
     minHeight: '100%',
@@ -32,12 +34,14 @@ const PageLayout = ({
     top: 0,
     backgroundColor: COLORS.background,
     zIndex: 10,
-    padding: 'clamp(8px, 2vw, 16px) clamp(16px, 4vw, 32px) clamp(6px, 1.5vw, 12px)'
+    padding: isSmallScreen
+      ? '10px 16px 8px'
+      : 'clamp(8px, 2vw, 16px) clamp(16px, 4vw, 32px) clamp(6px, 1.5vw, 12px)'
   };
 
   const contentStyle = {
     flex: 1,
-    padding: 'clamp(16px, 4vw, 32px)',
+    padding: isSmallScreen ? '16px 16px 18px' : 'clamp(16px, 4vw, 32px)',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'auto',
@@ -63,7 +67,7 @@ const PageLayout = ({
     fontSize: 'clamp(14px, 3.5vw, 18px)',
     fontWeight: '400',
     color: COLORS.textSecondary,
-    margin: '0 0 clamp(20px, 5vw, 40px) 0',
+    margin: isSmallScreen ? '0 0 18px 0' : '0 0 clamp(20px, 5vw, 40px) 0',
     textAlign: centerContent ? 'center' : 'left',
     lineHeight: '1.5'
   };
@@ -171,6 +175,32 @@ const ModalPageLayout = ({
   const isMobileBrowser = typeof window !== 'undefined' && 
     window.innerWidth <= 768 && 
     !isCapacitorNative;
+
+  // Use visualViewport to avoid iOS "vh" causing phantom scroll and clipped content.
+  const [mobileModalHeightPx, setMobileModalHeightPx] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    if (!isMobileBrowser) return null;
+    const h = window.visualViewport?.height || window.innerHeight;
+    return Math.round(h * 0.8);
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isMobileBrowser) return;
+    const compute = () => {
+      const h = window.visualViewport?.height || window.innerHeight;
+      setMobileModalHeightPx(Math.round(h * 0.8));
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    window.visualViewport?.addEventListener?.('resize', compute);
+    window.visualViewport?.addEventListener?.('scroll', compute);
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.visualViewport?.removeEventListener?.('resize', compute);
+      window.visualViewport?.removeEventListener?.('scroll', compute);
+    };
+  }, [isMobileBrowser]);
     
   // ENHANCED DEBUG LOGGING for mobile browser height issues
   if (typeof window !== 'undefined') {
@@ -179,8 +209,8 @@ const ModalPageLayout = ({
       height: window.innerHeight,
       isCapacitorNative,
       isMobileBrowser,
-      modalHeight: isMobileBrowser ? '90vh' : (isCapacitorNative ? '100vh' : 'auto'),
-      modalMaxHeight: isMobileBrowser ? '90vh' : (isCapacitorNative ? '100vh' : '90vh'),
+      modalHeight: isMobileBrowser ? '80vh' : (isCapacitorNative ? '100vh' : 'auto'),
+      modalMaxHeight: isMobileBrowser ? '80vh' : (isCapacitorNative ? '100vh' : '90vh'),
       modalMaxWidth: isMobileBrowser ? '100%' : '500px',
       backdropAlign: (isCapacitorNative || isMobileBrowser) ? 'flex-end' : 'center',
       backdropPadding: isMobileBrowser ? '0' : '16px'
@@ -219,8 +249,8 @@ const ModalPageLayout = ({
     borderBottomLeftRadius: (isCapacitorNative || isMobileBrowser) ? '0px' : '24px',
     borderBottomRightRadius: (isCapacitorNative || isMobileBrowser) ? '0px' : '24px',
     // Force height on mobile browser with !important via inline style
-    height: isMobileBrowser ? '90vh' : (isCapacitorNative ? '100vh' : 'auto'),
-    maxHeight: isMobileBrowser ? '90vh' : (isCapacitorNative ? '100vh' : '90vh'),
+    height: isMobileBrowser ? (mobileModalHeightPx ? `${mobileModalHeightPx}px` : '80vh') : (isCapacitorNative ? '100vh' : 'auto'),
+    maxHeight: isMobileBrowser ? (mobileModalHeightPx ? `${mobileModalHeightPx}px` : '80vh') : (isCapacitorNative ? '100vh' : '90vh'),
     minHeight: (isCapacitorNative || isMobileBrowser) ? 'auto' : '600px',
     width: '100%',
     maxWidth: isMobileBrowser ? '100%' : '500px',
@@ -228,6 +258,8 @@ const ModalPageLayout = ({
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+    // iOS safe-area: extend the white modal background into the home-indicator inset
+    ...(isMobileBrowser ? { paddingBottom: 'env(safe-area-inset-bottom)' } : {}),
     transform: 'translateY(0)',
     transition: 'transform 220ms ease, opacity 220ms ease',
     willChange: 'transform, opacity',

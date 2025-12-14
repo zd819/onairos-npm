@@ -69,11 +69,11 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   // Desktop adjustments: Reduce persona size and top position to fit modal without scroll
   // We allow overlap on desktop if needed
   const personaSide = isMobile 
-    ? (isSmallMobile ? Math.min(vh * 0.5, 450) : Math.min(vh * 0.58, 520))
+    ? (isSmallMobile ? Math.min(vh * 0.46, 420) : Math.min(vh * 0.52, 480))
     : Math.min(vh * 0.45, 420); // Desktop: allow larger size, will position absolutely
   
   const PERSONA_TOP = isMobile 
-    ? (isSmallMobile ? 40 : 60) 
+    ? (isSmallMobile ? 28 : 44) 
     : 40; // Desktop: Higher up
 
   // MOBILE ONLY: icon layout - PUSH ICONS DOWN significantly
@@ -659,6 +659,12 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   }
 
   const handleSwitch = async (name) => {
+    // Mobile: AI direct-link platforms are display-only (no-op on tap)
+    const aiNoopOnMobile = ['ChatGPT', 'Claude', 'Gemini', 'Grok'];
+    if (isMobile && aiNoopOnMobile.includes(name)) {
+      console.log(`📱 ${name} disabled on mobile - no action`);
+      return;
+    }
     if (isConnecting && connectingPlatform !== name) return;
     const on = !!connectedAccounts[name];
     if (on) setConnectedAccounts((s) => ({ ...s, [name]: false }));
@@ -745,7 +751,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       }}>
         {/* header - MOBILE ONLY: smaller top padding to give persona space */}
         {/* Desktop: Reduced padding to fit everything */}
-        <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? '2.5rem' : '1.5rem', paddingBottom: isMobile ? '0.75rem' : '0.25rem' }}>
+        <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? (isSmallMobile ? '2.0rem' : '2.25rem') : '1.5rem', paddingBottom: isMobile ? '0.5rem' : '0.25rem' }}>
           {/* Web-only: lift header text slightly so it doesn't overlap the persona head */}
           <div style={{ transform: isMobile ? 'none' : 'translateY(-10px)' }}>
             <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
@@ -755,7 +761,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
         {/* Spacer - MOBILE ONLY: push icons/card WAY down so PERSONA SHINES */}
         {/* Desktop: Increased spacer to push content lower on page */}
-        {isMobile && <div className="flex-1" style={{ minHeight: isSmallMobile ? 160 : 200 }} />}
+        {isMobile && <div className="flex-1" style={{ minHeight: isSmallMobile ? 120 : 150 }} />}
         {!isMobile && <div className="flex-1" style={{ minHeight: 80 }} />}
 
         {/* icons band */}
@@ -787,6 +793,13 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                     <button
                       type="button"
                       onClick={() => { 
+                        // Mobile: AI direct-link platforms are display-only (no-op on tap)
+                        const aiNoopOnMobile = ['chatgpt', 'claude', 'gemini', 'grok'];
+                        if (isMobile && aiNoopOnMobile.includes(p.connector)) {
+                          console.log(`📱 ${p.name} disabled on mobile - no action`);
+                          return;
+                        }
+
                         setSelected(p.name);
                         
                         // Properly detect native platform (not just Capacitor presence)
@@ -943,9 +956,9 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         </div>
 
         {/* footer — anchored at bottom using flex */}
-        <div className="px-6 flex-shrink-0" style={{ paddingBottom: 16, background: isMobile ? 'transparent' : 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
-          <div className="w-full bg-gray-900 hover:bg-gray-800 rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" 
-            style={{ color: '#ffffff' }}
+        <div className="px-6 flex-shrink-0" style={{ paddingBottom: isMobile ? 12 : 16, background: isMobile ? 'transparent' : 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
+          <div className="w-full bg-gray-900 hover:bg-gray-800 rounded-full text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            style={{ paddingTop: isSmallMobile ? 12 : 16, paddingBottom: isSmallMobile ? 12 : 16, color: '#ffffff' }}
             onClick={() => {
             console.log('🔥 UniversalOnboarding: Update clicked');
             console.log('🔍 Current connectedAccounts state:', connectedAccounts);
@@ -956,7 +969,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
             Update
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="#ffffff" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </div>
-          <div onClick={() => onComplete?.({ connectedAccounts: [], totalConnections: 0 })} className="w-full text-gray-600 text-base font-medium py-2 text-center cursor-pointer hover:text-gray-800 transition-colors">Skip</div>
+          <div onClick={() => onComplete?.({ connectedAccounts: [], totalConnections: 0 })} className="w-full text-gray-600 text-base font-medium py-2 text-center cursor-pointer hover:text-gray-800 transition-colors" style={{ paddingTop: isSmallMobile ? 6 : 8, paddingBottom: isSmallMobile ? 6 : 8 }}>Skip</div>
         </div>
       </div>
       {/* Modal - Always render if state is true, regardless of isMobile prop */}

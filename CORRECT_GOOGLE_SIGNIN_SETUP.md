@@ -102,6 +102,7 @@ const handleGoogleSuccess = async (credentialResponse) => {
 https://internship.onairos.uk
 https://onairos.uk
 http://localhost:3000
+http://localhost:5173
 ```
 
 **Authorized redirect URIs:**

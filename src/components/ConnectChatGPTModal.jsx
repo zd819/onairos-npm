@@ -115,7 +115,8 @@ export default function ConnectChatGPTModal({ open, onClose, onConnected }) {
           }
           .chatgpt-modal-card {
             max-width: 100% !important;
-            height: 90vh !important;
+            height: 100% !important;
+            max-height: 100% !important;
             border-radius: 24px 24px 0 0 !important;
             animation: slideUpFromBottom 300ms cubic-bezier(0.16, 1, 0.3, 1) !important;
           }

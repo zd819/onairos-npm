@@ -46,6 +46,7 @@ export function OnairosButton({
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
   const [oauthReturnDetected, setOauthReturnDetected] = useState(false);
+  const [returnToDataRequestAfterOnboarding, setReturnToDataRequestAfterOnboarding] = useState(false);
   
   // Detect mobile for conditional styling (MOBILE ONLY changes)
   // Use a safer check that doesn't rely on window/navigator being immediately available
@@ -664,6 +665,37 @@ export function OnairosButton({
       onboardingComplete: !isNewUser, // New users need onboarding, returning users have completed it
       pinCreated: !isNewUser // Assume returning users have PIN, new users need to create it
     };
+
+    // If backend provides connected platforms for existing users, carry them into connectedAccounts
+    // so DataRequest/Onboarding can reflect what is already connected.
+    const normalizePlatformName = (p) => {
+      const key = String(p || '').trim().toLowerCase();
+      const map = {
+        instagram: 'Instagram',
+        youtube: 'YouTube',
+        linkedin: 'LinkedIn',
+        reddit: 'Reddit',
+        pinterest: 'Pinterest',
+        github: 'GitHub',
+        gmail: 'Gmail',
+        twitter: 'Twitter',
+        x: 'Twitter',
+        chatgpt: 'ChatGPT',
+        claude: 'Claude',
+        gemini: 'Gemini',
+        grok: 'Grok',
+      };
+      return map[key] || (key ? key.charAt(0).toUpperCase() + key.slice(1) : '');
+    };
+    if (!isNewUser) {
+      const fromAccountStatus = Array.isArray(accountStatus?.connectedPlatforms)
+        ? accountStatus.connectedPlatforms
+        : [];
+      const normalized = fromAccountStatus.map(normalizePlatformName).filter(Boolean);
+      if (normalized.length > 0) {
+        newUserData.connectedAccounts = normalized;
+      }
+    }
     
     // Ensure token is stored in userData and localStorage
     const emailToken = authData.token || authData.jwtToken || authData.accessToken;
@@ -680,9 +712,16 @@ export function OnairosButton({
     setUserData(newUserData);
     localStorage.setItem('onairosUser', JSON.stringify(newUserData));
     
-    // Flow decision logic - always go to onboarding (UniversalOnboarding) after auth
-    console.log('🚀 Auth successful → Starting onboarding flow (data connectors page)');
-    setCurrentFlow('onboarding');
+    // Flow decision logic:
+    // - New users: go to UniversalOnboarding (connectors)
+    // - Existing users: go straight to DataRequest (data permissions)
+    if (isNewUser) {
+      console.log('🚀 Auth successful (new user) → Starting onboarding flow (data connectors page)');
+      setCurrentFlow('onboarding');
+    } else {
+      console.log('🚀 Auth successful (existing user) → Going straight to DataRequest (data permissions)');
+      setCurrentFlow('dataRequest');
+    }
   };
 
   const handleOnboardingComplete = (onboardingData) => {
@@ -696,7 +735,12 @@ export function OnairosButton({
     console.log('💾 Saving userData with connectedAccounts:', updatedUserData.connectedAccounts);
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
-    setCurrentFlow('pin');
+    if (returnToDataRequestAfterOnboarding) {
+      setReturnToDataRequestAfterOnboarding(false);
+      setCurrentFlow('dataRequest');
+    } else {
+      setCurrentFlow('pin');
+    }
   };
 
   const handlePinSetupComplete = async (pinData) => {
@@ -886,10 +930,26 @@ export function OnairosButton({
           } else {
              console.log('🎁 WRAPPED APP DETECTED - Using traits-only endpoint from backend:', fetchUrl);
              console.log('🎁 This should call the wrapped dashboard generation');
+
+             // Wrapped freshness: ALWAYS request a fresh-per-request variant (even if the same YouTube account is reused).
+             // This avoids "cached-looking" dashboards while keeping the core metrics stable.
+             fetchBody = {
+               ...fetchBody,
+               forceFresh: true,
+               cacheBust: Date.now(),
+             };
+             try {
+               const currentEmail = userData?.email;
+               if (currentEmail) localStorage.setItem('onairos_last_wrapped_email', currentEmail);
+             } catch {}
+             console.log('🧼 Wrapped forceFresh enabled (always for wrapped):', { email: userData?.email });
           }
           
           console.log(`📡 Fetching/Training data from ${fetchUrl} (${method})...`);
           console.log(`🔑 Using token: ${urlData.token ? urlData.token.substring(0, 20) + '...' : 'NO TOKEN'}`);
+          try {
+            console.log('📦 Wrapped fetch request body:', fetchBody);
+          } catch {}
           console.log(`⏳ Waiting for backend response - this may take 1-3 minutes for LLM processing...`);
           
           let dataResponse;
@@ -915,6 +975,8 @@ export function OnairosButton({
                   'Authorization': `Bearer ${urlData.token}`,
                   'Content-Type': 'application/json'
                 },
+                // Prevent browser/proxy caching for wrapped dashboards
+                cache: 'no-store',
                 // Only send body for POST
                 body: method === 'POST' ? JSON.stringify(fetchBody) : undefined,
                 signal: controller.signal
@@ -969,6 +1031,7 @@ export function OnairosButton({
                       'Authorization': `Bearer ${urlData.token}`,
                       'Content-Type': 'application/json'
                     },
+                    cache: 'no-store',
                     body: method === 'POST' ? JSON.stringify(fetchBody) : undefined
                   });
                   
@@ -1309,7 +1372,14 @@ export function OnairosButton({
           <UniversalOnboarding 
             {...commonProps}
             onComplete={handleOnboardingComplete}
-            onBack={() => setCurrentFlow('email')}
+            onBack={() => {
+              if (returnToDataRequestAfterOnboarding) {
+                setReturnToDataRequestAfterOnboarding(false);
+                setCurrentFlow('dataRequest');
+              } else {
+                setCurrentFlow('email');
+              }
+            }}
             appIcon={appIcon || "https://onairos.sirv.com/Images/OnairosBlack.png"}
             appName={webpageName}
             username={userData?.email || userData?.username}
@@ -1364,6 +1434,12 @@ export function OnairosButton({
         return (
           <DataRequest 
             onComplete={handleDataRequestComplete}
+            onConnectMoreApps={() => {
+              // Go back to UniversalOnboarding but return here afterwards.
+              // Connected apps are persisted in localStorage by UniversalOnboarding.
+              setReturnToDataRequestAfterOnboarding(true);
+              setCurrentFlow('onboarding');
+            }}
             userEmail={userData?.email || userData?.userName}
             requestData={requestData}
             appName={webpageName}

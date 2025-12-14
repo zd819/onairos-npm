@@ -45,7 +45,7 @@ export default function LoadingScreen({ onComplete }) {
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center p-6" style={{ zIndex: 2147483647, pointerEvents: 'auto' }}>
       {/* Modal - Full height from bottom */}
-      <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '90vh' }}>
+      <div className="bg-white rounded-3xl w-full max-w-lg mx-auto shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: '500px', height: '100%', maxHeight: '90vh' }}>
         {/* Header */}
         <div className="px-6 pt-6 pb-4 flex-shrink-0">
         </div>

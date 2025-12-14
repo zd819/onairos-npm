@@ -5,6 +5,7 @@ import OnairosButton from './onairosButton.jsx';
 // Get Google Client ID from environment or props
 const getGoogleClientId = (props) => {
   return props.googleClientId || 
+         (typeof window !== 'undefined' && window.onairosGoogleClientId) ||
          (typeof window !== 'undefined' && window.REACT_APP_GOOGLE_CLIENT_ID) ||
          process.env.REACT_APP_GOOGLE_CLIENT_ID ||
          '1030678346906-4npem7vckp0e56p17c81sv2pee2hhule.apps.googleusercontent.com'; // Default fallback
@@ -13,6 +14,21 @@ const getGoogleClientId = (props) => {
 // Main Onairos component
 export function Onairos(props) {
   const googleClientId = getGoogleClientId(props);
+
+  // Helpful warning: origin_mismatch is almost always due to missing origins for the chosen clientId.
+  // We warn when the SDK is using the baked-in fallback clientId so integrators know to override it.
+  if (typeof window !== 'undefined') {
+    const isDefault = googleClientId === '1030678346906-4npem7vckp0e56p17c81sv2pee2hhule.apps.googleusercontent.com';
+    if (isDefault) {
+      const origin = window.location?.origin;
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[onairos] Using default Google OAuth clientId. If you see Google error "origin_mismatch", ` +
+        `you must either (a) pass googleClientId to <Onairos />, or (b) set window.onairosGoogleClientId, ` +
+        `and add this origin in Google Cloud Console: ${origin}`
+      );
+    }
+  }
   
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
