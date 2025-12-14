@@ -71,6 +71,22 @@ function formatConnectedAccounts(accounts) {
     };
   }
 
+  // SDK stores connectedAccounts as an array of strings (e.g. ["YouTube","Reddit"])
+  // in several flows. Support that format as well as object arrays.
+  if (typeof accounts[0] === 'string') {
+    const names = accounts.map(a => String(a || '').trim()).filter(Boolean);
+    return {
+      count: names.length,
+      platforms: names.map(name => ({
+        name,
+        status: 'Connected',
+        connectedAt: 'Unknown date',
+        hasData: false
+      })),
+      summary: `${names.length} platform(s) connected: ${names.join(', ')}`
+    };
+  }
+
   return {
     count: accounts.length,
     platforms: accounts.map(account => ({
@@ -92,6 +108,7 @@ function formatAIResponseData(apiResponse) {
   if (!apiResponse) {
     return {
       available: false,
+      dataTypes: [],
       summary: 'No AI data available'
     };
   }

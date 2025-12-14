@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Wrapped-only typography (loaded from Google Fonts) */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
 @theme {
   /* Custom theme variables for Onairos SDK */
   --font-display: "Inter", "system-ui", "sans-serif";
@@ -103,4 +106,25 @@
     width: 90% !important;
     margin: 0 auto !important;
   }
+}
+
+/* ============================================================================
+   Wrapped app typography
+   - Headings: IBM Plex Sans (fontHeading)
+   - Body: Inter (fontBody)
+   Applied ONLY when modal has class .onairos-wrapped-fonts (set by OnairosButton).
+============================================================================ */
+.onairos-wrapped-fonts {
+  --fontHeading: "IBM Plex Sans", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --fontBody: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: var(--fontBody);
+}
+
+.onairos-wrapped-fonts h1,
+.onairos-wrapped-fonts h2,
+.onairos-wrapped-fonts h3,
+.onairos-wrapped-fonts h4,
+.onairos-wrapped-fonts h5,
+.onairos-wrapped-fonts h6 {
+  font-family: var(--fontHeading);
 }

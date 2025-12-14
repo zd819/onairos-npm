@@ -409,6 +409,22 @@ export function OnairosButton({
         return;
       }
       
+      // If we just kicked off an OAuth connector flow, force return into onboarding
+      // so users can connect multiple apps without getting bounced to DataRequest.
+      const postOAuthFlow = (() => {
+        try { return localStorage.getItem('onairos_post_oauth_flow'); } catch { return null; }
+      })();
+      if (postOAuthFlow === 'onboarding') {
+        try { localStorage.removeItem('onairos_post_oauth_flow'); } catch {}
+        const savedUser = localStorage.getItem('onairosUser');
+        if (savedUser) {
+          try { setUserData(JSON.parse(savedUser)); } catch {}
+        }
+        setShowOverlay(true);
+        setCurrentFlow('onboarding');
+        return;
+      }
+
       const savedUser = localStorage.getItem('onairosUser');
       if (savedUser) {
         try {
@@ -695,6 +711,10 @@ export function OnairosButton({
       if (normalized.length > 0) {
         newUserData.connectedAccounts = normalized;
       }
+    } else {
+      // New user: never pre-populate connected apps.
+      // This prevents stale local state from previous sessions from auto-toggling connectors.
+      newUserData.connectedAccounts = [];
     }
     
     // Ensure token is stored in userData and localStorage
@@ -1013,8 +1033,9 @@ export function OnairosButton({
             // Check if dashboard is still being generated (wrapped app only)
             if (isWrappedApp && apiResponse.status === 'processing') {
               console.log('⏳ Dashboard is being generated - starting polling...');
-              const pollInterval = (apiResponse.poll_interval_seconds || 3) * 1000;
-              const maxPolls = 60; // Max 3 minutes of polling
+              const basePollInterval = (apiResponse.poll_interval_seconds || 3) * 1000;
+              // Wrapped generation can take longer (LLM + queue). Be patient.
+              const maxPolls = 300; // ~15 minutes at 3s interval
               let pollCount = 0;
               
               while (pollCount < maxPolls) {
@@ -1022,6 +1043,8 @@ export function OnairosButton({
                 console.log(`🔄 Polling attempt ${pollCount}/${maxPolls}...`);
                 
                 // Wait before next poll
+                // mild backoff to reduce load on long-running generations
+                const pollInterval = Math.min(15000, Math.round(basePollInterval * (pollCount < 30 ? 1 : pollCount < 120 ? 1.5 : 2)));
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
                 
                 try {
@@ -1058,9 +1081,11 @@ export function OnairosButton({
                 }
               }
               
-              if (!apiResponse.slides && pollCount >= maxPolls) {
-                console.error('❌ Polling timed out after max attempts');
-                throw new Error('Dashboard generation timed out');
+              if (!apiResponse?.slides && pollCount >= maxPolls) {
+                console.warn('⏳ Wrapped polling reached max attempts; treating as still-processing (do not fail the flow)');
+                requestResult.isTimeout = true;
+                // Preserve processing state so UI continues loading and we avoid firing onComplete prematurely.
+                apiResponse = apiResponse || { status: 'processing' };
               }
             }
             
@@ -1176,8 +1201,8 @@ export function OnairosButton({
     if (formatResponse && finalResult?.apiResponse) {
       try {
         formattedResult = {
-          ...requestResult,
-          apiResponse: formatOnairosResponse(requestResult.apiResponse, responseFormat)
+          ...finalResult,
+          apiResponse: formatOnairosResponse(finalResult.apiResponse, responseFormat)
         };
         console.log('🔥 Response formatted with dictionary:', formattedResult.apiResponse?.personalityDict || 'No personality data');
       } catch (error) {
@@ -1238,8 +1263,23 @@ export function OnairosButton({
     
     if (onComplete && isWrappedAppForCallback) {
       try {
-        console.log('✅ Calling onComplete for wrapped app with data');
-        onComplete(enhancedResult);
+        const hasWrappedDashboard =
+          !!enhancedResult?.apiResponse?.slides ||
+          !!enhancedResult?.apiResponse?.dashboard ||
+          !!enhancedResult?.apiResponse?.data?.dashboard;
+        const stillProcessing =
+          enhancedResult?.isTimeout === true ||
+          enhancedResult?.apiResponse?.status === 'processing' ||
+          !hasWrappedDashboard;
+
+        if (stillProcessing) {
+          // IMPORTANT: Do not call onComplete yet; many consuming apps will navigate away/unmount
+          // the SDK, which looks like the loading modal "closed prematurely".
+          console.log('🎁 Wrapped dashboard still processing - keeping loading screen open and NOT calling onComplete yet');
+        } else {
+          console.log('✅ Calling onComplete for wrapped app with final dashboard data');
+          onComplete(enhancedResult);
+        }
       } catch (error) {
         console.error('❌ Error in onComplete callback:', error);
       }
@@ -1375,6 +1415,17 @@ export function OnairosButton({
             onBack={() => {
               if (returnToDataRequestAfterOnboarding) {
                 setReturnToDataRequestAfterOnboarding(false);
+                // Sync connected apps from storage so DataRequest reflects newly connected platforms
+                try {
+                  const saved = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+                  if (saved && Array.isArray(saved.connectedAccounts)) {
+                    setUserData((prev) => {
+                      const merged = { ...(prev || {}), ...saved, connectedAccounts: saved.connectedAccounts };
+                      try { localStorage.setItem('onairosUser', JSON.stringify(merged)); } catch {}
+                      return merged;
+                    });
+                  }
+                } catch {}
                 setCurrentFlow('dataRequest');
               } else {
                 setCurrentFlow('email');
@@ -1525,6 +1576,8 @@ export function OnairosButton({
       {/* Modal with New Design */}
       {showOverlay && (
         <>
+          {/** Wrapped-only typography hook */}
+          {/** Adds CSS variables --fontHeading/--fontBody via .onairos-wrapped-fonts */}
           {isMobileDevice ? (
             // Mobile Browser: Use ModalPageLayout with mobile-optimized props
             <ModalPageLayout
@@ -1532,7 +1585,25 @@ export function OnairosButton({
               onClose={handleCloseOverlay}
               showBackButton={currentFlow !== 'welcome' && currentFlow !== 'email' && currentFlow !== 'loading' && currentFlow !== 'wrappedLoading'}
               onBack={() => {
-                        if (currentFlow === 'onboarding') setCurrentFlow('email');
+                        if (currentFlow === 'onboarding') {
+                          if (returnToDataRequestAfterOnboarding) {
+                            setReturnToDataRequestAfterOnboarding(false);
+                            // Sync connected apps from storage so DataRequest reflects newly connected platforms
+                            try {
+                              const saved = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+                              if (saved && Array.isArray(saved.connectedAccounts)) {
+                                setUserData((prev) => {
+                                  const merged = { ...(prev || {}), ...saved, connectedAccounts: saved.connectedAccounts };
+                                  try { localStorage.setItem('onairosUser', JSON.stringify(merged)); } catch {}
+                                  return merged;
+                                });
+                              }
+                            } catch {}
+                            setCurrentFlow('dataRequest');
+                          } else {
+                            setCurrentFlow('email');
+                          }
+                        }
                         else if (currentFlow === 'pin') setCurrentFlow('onboarding');
                         else if (currentFlow === 'dataRequest') setCurrentFlow('onboarding');
                         else if (currentFlow === 'training') setCurrentFlow('pin');
@@ -1543,7 +1614,7 @@ export function OnairosButton({
               icon={null}
               centerContent={true}
               contentClassName="!p-0"
-              modalClassName="onairos-modal onairos-modal-mobile"
+              modalClassName={`onairos-modal onairos-modal-mobile ${(webpageName || '').toLowerCase().includes('wrapped') ? 'onairos-wrapped-fonts' : ''}`}
             >
               <div className="onairos-modal-shell flex-1 min-h-0 flex flex-col">
                   {renderContent()}
@@ -1557,7 +1628,25 @@ export function OnairosButton({
               showBackButton={currentFlow === 'training' || currentFlow === 'onboarding' || currentFlow === 'pin' || currentFlow === 'dataRequest'}
               onBack={() => {
                 if (currentFlow === 'email') setCurrentFlow('welcome');
-                if (currentFlow === 'onboarding') setCurrentFlow('email');
+                if (currentFlow === 'onboarding') {
+                  if (returnToDataRequestAfterOnboarding) {
+                    setReturnToDataRequestAfterOnboarding(false);
+                    // Sync connected apps from storage so DataRequest reflects newly connected platforms
+                    try {
+                      const saved = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+                      if (saved && Array.isArray(saved.connectedAccounts)) {
+                        setUserData((prev) => {
+                          const merged = { ...(prev || {}), ...saved, connectedAccounts: saved.connectedAccounts };
+                          try { localStorage.setItem('onairosUser', JSON.stringify(merged)); } catch {}
+                          return merged;
+                        });
+                      }
+                    } catch {}
+                    setCurrentFlow('dataRequest');
+                  } else {
+                    setCurrentFlow('email');
+                  }
+                }
                 if (currentFlow === 'pin') setCurrentFlow('onboarding'); 
                 if (currentFlow === 'training') setCurrentFlow('pin');
                 if (currentFlow === 'dataRequest') setCurrentFlow('onboarding');
@@ -1567,7 +1656,7 @@ export function OnairosButton({
               icon={null}
               centerContent={true}
               contentClassName={currentFlow !== 'welcome' ? "!p-0" : ""}
-              modalClassName="onairos-modal"
+              modalClassName={`onairos-modal ${(webpageName || '').toLowerCase().includes('wrapped') ? 'onairos-wrapped-fonts' : ''}`}
             >
               <div className="onairos-modal-shell">
                 {renderContent()}

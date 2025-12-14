@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import personaImg from "../assets/persona.png";
 
 /* -------------------------
    ICON COMPONENTS
@@ -125,8 +126,34 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
   });
 
   const [freq, setFreq] = useState("weekly");
+  const [platformIconFailed, setPlatformIconFailed] = useState({});
+  const [platforms, setPlatforms] = useState([]);
 
   const isWrappedApp = typeof appName === 'string' && appName.toLowerCase().includes('wrapped');
+
+  // Normalize platform ids/names coming from different sources (SDK, backend, localStorage)
+  // so logos always render (e.g. "linkedin" -> "LinkedIn").
+  const normalizePlatformName = (p) => {
+    const key = String(p || '').trim();
+    const lower = key.toLowerCase();
+    const map = {
+      instagram: 'Instagram',
+      youtube: 'YouTube',
+      linkedin: 'LinkedIn',
+      reddit: 'Reddit',
+      pinterest: 'Pinterest',
+      github: 'GitHub',
+      facebook: 'Facebook',
+      gmail: 'Gmail',
+      twitter: 'Twitter',
+      x: 'Twitter',
+      chatgpt: 'ChatGPT',
+      claude: 'Claude',
+      gemini: 'Gemini',
+      grok: 'Grok',
+    };
+    return map[lower] || (key ? key.charAt(0).toUpperCase() + key.slice(1) : '');
+  };
 
   const toggle = (id, val) =>
     setSelected((p) => ({ ...p, [id]: val }));
@@ -140,44 +167,73 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
       isArray: Array.isArray(connectedPlatforms),
       type: typeof connectedPlatforms 
     });
-    
-    // If array provided, use it
-    if (Array.isArray(connectedPlatforms) && connectedPlatforms.length > 0) {
-      console.log('✅ Using connectedPlatforms prop (array):', connectedPlatforms);
-      return connectedPlatforms;
-    }
-    
-    // If object provided, map truthy keys
-    if (connectedPlatforms && typeof connectedPlatforms === "object" && !Array.isArray(connectedPlatforms)) {
-      const mapped = Object.entries(connectedPlatforms).filter(([_, v]) => Boolean(v)).map(([k]) => k);
-      console.log('✅ Using connectedPlatforms prop (object):', mapped);
-      return mapped;
-    }
-    
-    // Fallback: try localStorage onairosUser
+
+    // Prefer localStorage as the source of truth (it is updated by UniversalOnboarding on OAuth return).
+    // This avoids stale props causing "added platforms" to not show up until a full refresh.
     try {
       const u = JSON.parse(localStorage.getItem("onairosUser") || "{}");
       if (u && u.connectedAccounts) {
         // Check if it's an array
-        if (Array.isArray(u.connectedAccounts) && u.connectedAccounts.length > 0) {
-          console.log('✅ Using localStorage connectedAccounts (array):', u.connectedAccounts);
-          return u.connectedAccounts;
+        if (Array.isArray(u.connectedAccounts)) {
+          const normalized = u.connectedAccounts.map(normalizePlatformName).filter(Boolean);
+          console.log('✅ Using localStorage connectedAccounts (array):', u.connectedAccounts, '→', normalized);
+          return normalized;
         }
         // Check if it's an object
         if (typeof u.connectedAccounts === "object") {
-          const mapped = Object.entries(u.connectedAccounts).filter(([_, v]) => Boolean(v)).map(([k]) => k);
-          console.log('✅ Using localStorage connectedAccounts (object):', mapped);
+          const mappedRaw = Object.entries(u.connectedAccounts).filter(([_, v]) => Boolean(v)).map(([k]) => k);
+          const mapped = mappedRaw.map(normalizePlatformName).filter(Boolean);
+          console.log('✅ Using localStorage connectedAccounts (object):', mappedRaw, '→', mapped);
           return mapped;
         }
       }
     } catch (e) {
       console.error('❌ Failed to read localStorage:', e);
     }
+
+    // Fall back to prop if localStorage isn't available / doesn't have the field.
+    // If array provided, use it
+    if (Array.isArray(connectedPlatforms) && connectedPlatforms.length > 0) {
+      const normalized = connectedPlatforms.map(normalizePlatformName).filter(Boolean);
+      console.log('✅ Using connectedPlatforms prop (array):', connectedPlatforms, '→', normalized);
+      return normalized;
+    }
+    
+    // If object provided, map truthy keys
+    if (connectedPlatforms && typeof connectedPlatforms === "object" && !Array.isArray(connectedPlatforms)) {
+      const mappedRaw = Object.entries(connectedPlatforms).filter(([_, v]) => Boolean(v)).map(([k]) => k);
+      const mapped = mappedRaw.map(normalizePlatformName).filter(Boolean);
+      console.log('✅ Using connectedPlatforms prop (object):', mappedRaw, '→', mapped);
+      return mapped;
+    }
     
     console.log('⚠️ No connected platforms found');
     return [];
   };
-  const platforms = getConnected();
+
+  // Refresh platforms list on mount and when connectedAccounts changes
+  useEffect(() => {
+    const refreshPlatforms = () => {
+      const newPlatforms = getConnected();
+      console.log('🔄 DataRequest refreshing platforms:', newPlatforms);
+      setPlatforms(newPlatforms);
+    };
+
+    // Initial load
+    refreshPlatforms();
+
+    // Listen for custom event from UniversalOnboarding
+    const handleConnectedAccountsUpdate = () => {
+      console.log('📡 DataRequest received connectedAccountsUpdate event');
+      refreshPlatforms();
+    };
+    window.addEventListener('onairos-connected-accounts-update', handleConnectedAccountsUpdate);
+
+    return () => {
+      window.removeEventListener('onairos-connected-accounts-update', handleConnectedAccountsUpdate);
+    };
+  }, [connectedPlatforms]); // Re-run if connectedPlatforms prop changes
+
   console.log('🎯 Final platforms to display:', platforms);
 
   const isCapacitorNative = typeof window !== 'undefined' && 
@@ -217,10 +273,14 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
 
         {/* ICONS */}
         <div className="flex justify-center items-center gap-4 mb-5 md:mb-6">
-          {/* Wrapped: brain -> Onairos. Non-wrapped: Onairos -> app placeholder */}
+          {/* Wrapped: Onairos -> Persona. Non-wrapped: Onairos -> app placeholder */}
           <div className={`${isCapacitorNative ? 'w-14 h-14' : 'w-12 h-12'} rounded-2xl bg-white shadow flex items-center justify-center`}>
             {isWrappedApp ? (
-              <span className={`${isCapacitorNative ? 'text-3xl' : 'text-2xl'}`} aria-label="Brain">🧠</span>
+              <img 
+                src="https://onairos.sirv.com/Images/OnairosBlack.png" 
+                alt="Onairos"
+                className={`${isCapacitorNative ? 'w-10 h-10' : 'w-8 h-8'} object-contain`}
+              />
             ) : (
               <img 
                 src="https://onairos.sirv.com/Images/OnairosBlack.png" 
@@ -235,9 +295,10 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
           <div className={`${isCapacitorNative ? 'w-14 h-14' : 'w-12 h-12'} rounded-2xl bg-white shadow flex items-center justify-center`}>
             {isWrappedApp ? (
               <img 
-                src="https://onairos.sirv.com/Images/OnairosBlack.png" 
-                alt="Onairos"
-                className={`${isCapacitorNative ? 'w-10 h-10' : 'w-8 h-8'} object-contain`}
+                src={personaImg}
+                alt="Persona"
+                className={`${isCapacitorNative ? 'w-10 h-10' : 'w-8 h-8'} object-contain rounded-xl`}
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             ) : (
               <span className={`${isCapacitorNative ? 'text-2xl' : 'text-xl'} font-serif font-bold`}>J</span>
@@ -345,15 +406,33 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
                   Grok: 'https://anushkasirv.sirv.com/grok.png'
                 };
                 const src = logoMap[platform] || '';
+                const key = `${platform}-${index}`;
+                const failed = !!platformIconFailed[key];
+                const fallbackText = (() => {
+                  if (platform === 'LinkedIn') return 'in';
+                  if (platform === 'YouTube') return 'YT';
+                  if (platform === 'ChatGPT') return 'AI';
+                  return String(platform || '?').slice(0, 2).toUpperCase();
+                })();
                 return (
-                  <img
-                    key={`${platform}-${index}`}
-                    src={src}
-                    alt={platform}
-                    title={platform}
-                    className="w-6 h-6 rounded-md shadow-sm flex-shrink-0"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
+                  failed || !src ? (
+                    <div
+                      key={key}
+                      title={platform}
+                      className="w-6 h-6 rounded-md shadow-sm flex-shrink-0 bg-gray-100 text-gray-700 flex items-center justify-center text-[10px] font-semibold"
+                    >
+                      {fallbackText}
+                    </div>
+                  ) : (
+                    <img
+                      key={key}
+                      src={src}
+                      alt={platform}
+                      title={platform}
+                      className="w-6 h-6 rounded-md shadow-sm flex-shrink-0"
+                      onError={() => setPlatformIconFailed((p) => ({ ...p, [key]: true }))}
+                    />
+                  )
                 );
               })}
             </div>
@@ -362,13 +441,35 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
                 <button
                   type="button"
                   onClick={onConnectMoreApps}
-                  className="text-[11px] font-medium underline underline-offset-2 text-gray-700 hover:text-gray-900"
+                  className="text-[11px] font-medium text-gray-700 hover:text-gray-900 inline-flex items-center gap-1.5"
                   style={{ WebkitTextFillColor: '#111827' }}
                 >
-                  Connect more apps?
+                  <span>Connect more</span>
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-400 text-gray-800 leading-none"
+                    style={{ WebkitTextFillColor: '#111827' }}
+                  >
+                    +
+                  </span>
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* If no platforms are connected yet, still allow user to go connect apps */}
+        {(!platforms || platforms.length === 0) && typeof onConnectMoreApps === 'function' && (
+          <div className="mb-3 rounded-2xl bg-white/60 backdrop-blur border border-black/5 px-3 py-2 text-center">
+            <div className="text-[11px] text-gray-500 mb-1">No apps connected yet</div>
+            <button
+              type="button"
+              onClick={onConnectMoreApps}
+              className="text-[12px] font-medium underline underline-offset-2 text-gray-700 hover:text-gray-900"
+              style={{ WebkitTextFillColor: '#111827' }}
+            >
+              Connect apps?
+            </button>
           </div>
         )}
         <button

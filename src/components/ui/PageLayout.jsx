@@ -181,7 +181,7 @@ const ModalPageLayout = ({
     if (typeof window === 'undefined') return null;
     if (!isMobileBrowser) return null;
     const h = window.visualViewport?.height || window.innerHeight;
-    return Math.round(h * 0.9);
+    return Math.round(h * 0.85);
   });
 
   useEffect(() => {
@@ -189,7 +189,7 @@ const ModalPageLayout = ({
     if (!isMobileBrowser) return;
     const compute = () => {
       const h = window.visualViewport?.height || window.innerHeight;
-      setMobileModalHeightPx(Math.round(h * 0.9));
+      setMobileModalHeightPx(Math.round(h * 0.85));
     };
     compute();
     window.addEventListener('resize', compute);
@@ -249,8 +249,8 @@ const ModalPageLayout = ({
     borderBottomLeftRadius: (isCapacitorNative || isMobileBrowser) ? '0px' : '24px',
     borderBottomRightRadius: (isCapacitorNative || isMobileBrowser) ? '0px' : '24px',
     // Force height on mobile browser with !important via inline style
-    height: isMobileBrowser ? (mobileModalHeightPx ? `${mobileModalHeightPx}px` : '90vh') : (isCapacitorNative ? '100vh' : 'auto'),
-    maxHeight: isMobileBrowser ? (mobileModalHeightPx ? `${mobileModalHeightPx}px` : '90vh') : (isCapacitorNative ? '100vh' : '90vh'),
+    height: isMobileBrowser ? (mobileModalHeightPx ? `${mobileModalHeightPx}px` : '85vh') : (isCapacitorNative ? '100vh' : 'auto'),
+    maxHeight: isMobileBrowser ? (mobileModalHeightPx ? `${mobileModalHeightPx}px` : '85vh') : (isCapacitorNative ? '100vh' : '90vh'),
     minHeight: (isCapacitorNative || isMobileBrowser) ? 'auto' : '600px',
     width: '100%',
     maxWidth: isMobileBrowser ? '100%' : '500px',

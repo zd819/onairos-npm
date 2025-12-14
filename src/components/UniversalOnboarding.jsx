@@ -35,6 +35,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   const lottieRef = useRef(null);
   const lastFrameRef = useRef(0);
   const rafRef = useRef(null);
+  const initialLoadDone = useRef(false);
 
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [isConnecting, setIsConnecting] = useState(false);
@@ -61,6 +62,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  const INFO_SHEET_MAX_H = isMobile ? (vh * 0.18) : (vh * 0.2);
 
   const FOOTER_H = 88;
 
@@ -174,16 +177,65 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
   // Restricted platform list for onairos-wrapped only
   const wrappedPlatforms = [
-    { name: 'Reddit', connector: 'reddit', icon: Brand.Reddit },
     { name: 'YouTube', connector: 'youtube', icon: Brand.YouTube },
-    // Pinterest not implemented yet - add when connector is ready:
-    // { name: 'Pinterest', connector: 'pinterest', icon: Brand.Pinterest },
+    { name: 'LinkedIn', connector: 'linkedin', icon: Brand.LinkedIn },
+    { name: 'Reddit', connector: 'reddit', icon: Brand.Reddit },
   ];
 
   // Check if this is onairos-wrapped
-  const isWrappedApp = appName && (appName.toLowerCase().includes('wrapped') || appName === 'onairos-wrapped');
+  const isWrappedApp = typeof appName === 'string' && appName.toLowerCase().includes('onairos-wrapped');
   
   const allPlatforms = isWrappedApp ? wrappedPlatforms : allPlatformsDefault;
+
+  // Normalize platform strings coming from various sources (connector ids like "linkedin"
+  // vs display names like "LinkedIn") so connected rings render reliably.
+  const canonicalizePlatformName = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const lower = raw.toLowerCase();
+    const byConnector = allPlatforms.find((p) => String(p.connector).toLowerCase() === lower);
+    if (byConnector) return byConnector.name;
+    const byName = allPlatforms.find((p) => String(p.name).toLowerCase() === lower);
+    if (byName) return byName.name;
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  };
+
+  // Helper to notify DataRequest when connected accounts change
+  const notifyConnectedAccountsUpdate = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('onairos-connected-accounts-update'));
+    }
+  };
+
+  // Debug: Log connectedAccounts state changes
+  useEffect(() => {
+    console.log('🔄 connectedAccounts state changed:', connectedAccounts);
+  }, [connectedAccounts]);
+
+  // Auto-persist connected accounts to localStorage whenever they change
+  useEffect(() => {
+    console.log('💾 Persistence useEffect triggered. connectedAccounts:', connectedAccounts, 'length:', Object.keys(connectedAccounts).length);
+    
+    // Skip initial mount if connectedAccounts is empty
+    if (Object.keys(connectedAccounts).length === 0) {
+      console.log('⏭️ Skipping persistence (empty state)');
+      return;
+    }
+    
+    try {
+      const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+      const connectedArray = Object.entries(connectedAccounts)
+        .filter(([, v]) => !!v)
+        .map(([k]) => canonicalizePlatformName(k))
+        .filter(Boolean);
+      userData.connectedAccounts = connectedArray;
+      localStorage.setItem('onairosUser', JSON.stringify(userData));
+      console.log('✅ Auto-persisted connected accounts:', connectedArray);
+      notifyConnectedAccountsUpdate();
+    } catch (e) {
+      console.error('❌ Error auto-persisting connected accounts:', e);
+    }
+  }, [connectedAccounts]);
 
   const getPlatformsForPage = (page) => {
     // If wrapped app, show all platforms on one page (no pagination)
@@ -197,6 +249,17 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
   const platforms = getPlatformsForPage(currentPage);
 
+  // Wrapped-only: ensure we never show a default selection that isn't available (e.g. Instagram),
+  // and keep paging locked to a single page.
+  useEffect(() => {
+    if (!isWrappedApp) return;
+    if (currentPage !== 1) setCurrentPage(1);
+    const allowed = new Set(wrappedPlatforms.map((p) => p.name));
+    if (!allowed.has(selected)) {
+      setSelected('YouTube');
+    }
+  }, [isWrappedApp, currentPage, selected]);
+
   useEffect(() => {
     // Listener for immediate UI update from deep link (when component is already mounted)
     const handleAuthSuccess = (e) => {
@@ -204,20 +267,12 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
        console.log(`⚡️ Event received: OAuth success for ${platform}`);
        const plat = allPlatforms.find((p) => p.connector === platform);
        if (plat) {
-          setConnectedAccounts((s) => {
-            // Read existing connections from localStorage, not from stale state
-            const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
-            const existingArray = userData.connectedAccounts || [];
-            const existingObj = Array.isArray(existingArray) 
-              ? existingArray.reduce((acc, p) => ({ ...acc, [p]: true }), {})
-              : {};
-            
-            // Merge with new connection
-            const updated = { ...existingObj, [plat.name]: true };
-            const connectedArray = Object.entries(updated).filter(([, v]) => v).map(([k]) => k);
-            userData.connectedAccounts = connectedArray;
-            localStorage.setItem('onairosUser', JSON.stringify(userData));
-            console.log(`💾 Saved ${plat.name} to localStorage (event):`, connectedArray);
+          // Mark that we just processed OAuth (for 5 seconds)
+          sessionStorage.setItem('onairos_just_connected', Date.now().toString());
+          // Update state (persistence happens automatically via useEffect)
+          setConnectedAccounts((currentState) => {
+            const updated = { ...currentState, [plat.name]: true };
+            console.log(`✅ Connected ${plat.name} (event) - adding to:`, currentState, '→ result:', updated);
             return updated;
           });
        }
@@ -237,28 +292,21 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         console.log(`✅ ${sessionPlatform} OAuth detected via session signal`);
         const plat = allPlatforms.find((p) => p.connector === sessionPlatform);
         if (plat) {
-          setConnectedAccounts((s) => {
-            // Read existing connections from localStorage, not from stale state
-            const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
-            const existingArray = userData.connectedAccounts || [];
-            const existingObj = Array.isArray(existingArray) 
-              ? existingArray.reduce((acc, p) => ({ ...acc, [p]: true }), {})
-              : {};
-            
-            // Merge with new connection
-            const updated = { ...existingObj, [plat.name]: true };
-            const connectedArray = Object.entries(updated).filter(([, v]) => v).map(([k]) => k);
-            userData.connectedAccounts = connectedArray;
-            localStorage.setItem('onairosUser', JSON.stringify(userData));
-            console.log(`💾 Saved ${plat.name} to localStorage (session):`, connectedArray);
+          // Mark that we just processed OAuth (for 5 seconds)
+          sessionStorage.setItem('onairos_just_connected', Date.now().toString());
+          // Update state (persistence happens automatically via useEffect)
+          setConnectedAccounts((currentState) => {
+            const updated = { ...currentState, [plat.name]: true };
+            console.log(`✅ Connected ${plat.name} (session) - adding to:`, currentState, '→ result:', updated);
             return updated;
           });
         }
         // Clean up
         sessionStorage.removeItem('onairos_oauth_return_success');
         sessionStorage.removeItem('onairos_oauth_return_platform');
-        return;
+        return true; // Signal that OAuth was processed
       }
+      return false;
 
       // 2. Fallback to existing localStorage logic (same-domain or preserved state)
       const oauthContext = localStorage.getItem('onairos_oauth_context');
@@ -282,21 +330,12 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
             // Find platform by connector
             const plat = allPlatforms.find((p) => p.connector === platformConnector);
             if (plat) {
-              // Mark as connected
-              setConnectedAccounts((s) => {
-                // Read existing connections from localStorage, not from stale state
-                const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
-                const existingArray = userData.connectedAccounts || [];
-                const existingObj = Array.isArray(existingArray) 
-                  ? existingArray.reduce((acc, p) => ({ ...acc, [p]: true }), {})
-                  : {};
-                
-                // Merge with new connection
-                const updated = { ...existingObj, [plat.name]: true };
-                const connectedArray = Object.entries(updated).filter(([, v]) => v).map(([k]) => k);
-                userData.connectedAccounts = connectedArray;
-                localStorage.setItem('onairosUser', JSON.stringify(userData));
-                console.log(`💾 Saved ${plat.name} to localStorage (context):`, connectedArray);
+              // Mark that we just processed OAuth (for 5 seconds)
+              sessionStorage.setItem('onairos_just_connected', Date.now().toString());
+              // Update state (persistence happens automatically via useEffect)
+              setConnectedAccounts((currentState) => {
+                const updated = { ...currentState, [plat.name]: true };
+                console.log(`✅ Connected ${plat.name} (context) - adding to:`, currentState, '→ result:', updated);
                 return updated;
               });
             }
@@ -307,53 +346,69 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
             localStorage.removeItem('onairos_oauth_context');
             localStorage.removeItem('onairos_oauth_platform');
             localStorage.removeItem('onairos_return_url');
+            return true; // Signal that OAuth was processed
           }
         }
       }
+      return false;
     };
 
+    // FIRST: Load persisted connected accounts from localStorage ONLY on the very first mount
+    // (to prevent overwriting OAuth updates on subsequent remounts)
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      try {
+        const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+        console.log('🔄 UniversalOnboarding INITIAL mount: Loading persisted accounts from localStorage:', userData.connectedAccounts);
+        if (userData.connectedAccounts && Array.isArray(userData.connectedAccounts)) {
+          // Convert array to object format
+          const accountsObj = userData.connectedAccounts.reduce((acc, platform) => {
+            acc[canonicalizePlatformName(platform)] = true;
+            return acc;
+          }, {});
+          console.log('✅ Converted to object format:', accountsObj);
+          setConnectedAccounts(accountsObj);
+        } else {
+          console.log('⚠️ No valid connectedAccounts in localStorage');
+        }
+      } catch (error) {
+        console.error('❌ Failed to load persisted connected accounts:', error);
+      }
+    } else {
+      console.log('⏭️ Skipping localStorage load (not first mount)');
+    }
+    
+    // THEN: Check for OAuth success (which will ADD to existing connections)
     checkOAuthSuccess();
     
     // Legacy: Load OAuth platform returns (for backward compatibility)
     const p = localStorage.getItem('onairos_oauth_platform');
     if (p && !localStorage.getItem('onairos_oauth_context')) {
-      localStorage.removeItem('onairos_oauth_platform');
-      localStorage.removeItem('onairos_oauth_return');
-      setConnectedAccounts((s) => {
-        // Read existing connections from localStorage, not from stale state
-        const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
-        const existingArray = userData.connectedAccounts || [];
-        const existingObj = Array.isArray(existingArray) 
-          ? existingArray.reduce((acc, platform) => ({ ...acc, [platform]: true }), {})
-          : {};
-        
-        // Merge with new connection
-        const updated = { ...existingObj, [p]: true };
-        const connectedArray = Object.entries(updated).filter(([, v]) => v).map(([k]) => k);
-        userData.connectedAccounts = connectedArray;
-        localStorage.setItem('onairosUser', JSON.stringify(userData));
-        console.log(`💾 Saved ${p} to localStorage (legacy):`, connectedArray);
-        return updated;
-      });
-    }
-    
-    // Load persisted connected accounts from user data
-    try {
-      const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
-      console.log('🔄 UniversalOnboarding mount: Loading persisted accounts from localStorage:', userData.connectedAccounts);
-      if (userData.connectedAccounts && Array.isArray(userData.connectedAccounts)) {
-        // Convert array to object format
-        const accountsObj = userData.connectedAccounts.reduce((acc, platform) => {
-          acc[platform] = true;
-          return acc;
-        }, {});
-        console.log('✅ Converted to object format:', accountsObj);
-        setConnectedAccounts(accountsObj);
+      // Only accept legacy signals if there is a *real* recent success marker.
+      // Otherwise this can auto-toggle a platform for "new users" from stale leftovers.
+      const legacySuccess = localStorage.getItem(`onairos_${String(p).toLowerCase()}_success`) || localStorage.getItem(`onairos_${p}_success`);
+      const legacyTs = localStorage.getItem(`onairos_${String(p).toLowerCase()}_timestamp`) || localStorage.getItem(`onairos_${p}_timestamp`);
+      const legacyTsNum = legacyTs ? parseInt(legacyTs, 10) : NaN;
+      const legacyOk = legacySuccess === 'true' && Number.isFinite(legacyTsNum) && (Date.now() - legacyTsNum < 30000);
+
+      if (!legacyOk) {
+        // Clean up stale keys and do nothing.
+        localStorage.removeItem('onairos_oauth_platform');
+        localStorage.removeItem('onairos_oauth_return');
       } else {
-        console.log('⚠️ No valid connectedAccounts in localStorage');
+        localStorage.removeItem('onairos_oauth_platform');
+        localStorage.removeItem('onairos_oauth_return');
+        
+        // Mark that we just processed OAuth (for 5 seconds)
+        sessionStorage.setItem('onairos_just_connected', Date.now().toString());
+        // Update state (persistence happens automatically via useEffect)
+        const canonical = canonicalizePlatformName(p);
+        setConnectedAccounts((currentState) => {
+          const updated = { ...currentState, [canonical]: true };
+          console.log(`✅ Connected ${canonical} (legacy) - adding to:`, currentState);
+          return updated;
+        });
       }
-    } catch (error) {
-      console.error('❌ Failed to load persisted connected accounts:', error);
     }
     
     return () => {
@@ -375,13 +430,9 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         return true;
       }
 
-      // Immediately reflect selection in UI without spinner while starting OAuth
-      console.log(`🔌 Connecting to ${name} - updating connectedAccounts state`);
-      setConnectedAccounts((s) => {
-        const updated = { ...s, [name]: true };
-        console.log('📊 Updated connectedAccounts:', updated);
-        return updated;
-      });
+      // IMPORTANT: do NOT optimistically mark as connected before OAuth completes.
+      // Otherwise users can hit "Update" and persist a fake connection.
+      console.log(`🔌 Connecting to ${name} - starting OAuth (no optimistic connected state)`);
       setIsConnecting(true);
       setConnectingPlatform(name);
       
@@ -493,6 +544,22 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         throw new Error('no url');
       }
 
+      // Always store a return URL/context before launching OAuth.
+      // On iOS Safari, "popup" often becomes a new tab with no window.opener,
+      // so oauth-callback must rely on localStorage to navigate back.
+      try {
+        // Hint to the SDK: after OAuth completes, reopen the modal on UniversalOnboarding
+        // (otherwise existing users can get auto-routed to DataRequest on reload).
+        localStorage.setItem('onairos_post_oauth_flow', 'onboarding');
+        const returnUrl = window.location.href;
+        localStorage.setItem('onairos_return_url', returnUrl);
+        localStorage.setItem('onairos_oauth_context', 'platform-connector');
+        localStorage.setItem('onairos_oauth_platform', plat.connector);
+        console.log(`📌 Stored return URL for ${plat.connector}:`, returnUrl);
+      } catch (e) {
+        // ignore storage failures
+      }
+
       // PRIORITY 1: Use Capacitor Browser for native apps
 
       if (isCapacitorNative) {
@@ -500,8 +567,6 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         try {
           // Store context for when user returns
           const localStorageKey = `onairos_${plat.connector}_success`;
-          localStorage.setItem('onairos_oauth_context', 'platform-connector');
-          localStorage.setItem('onairos_oauth_platform', plat.connector);
           
           // Try to set up listener, but don't let it block
           // Note: 'browserFinished' is fired when the browser is closed by the user or programmatically
@@ -539,6 +604,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         
         // Store return URL and context for redirect back
         const returnUrl = window.location.href;
+        localStorage.setItem('onairos_post_oauth_flow', 'onboarding');
         localStorage.setItem('onairos_return_url', returnUrl);
         localStorage.setItem('onairos_oauth_context', 'platform-connector');
         localStorage.setItem('onairos_oauth_platform', plat.connector);
@@ -581,7 +647,22 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           clearInterval(pollInterval);
           setIsConnecting(false);
           setConnectingPlatform(null);
-          // Toggle is already ON from optimistic update
+          
+          // Mark connected ONLY after actual OAuth success (persistence happens automatically via useEffect)
+          setConnectedAccounts((currentState) => {
+            const updated = { ...currentState, [plat.name]: true };
+            console.log(`✅ Connected ${plat.name} (postMessage) - Current:`, currentState, '→ Updated:', updated);
+            return updated;
+          });
+
+          // Clean up any OAuth markers so they can't incorrectly affect future sessions.
+          try {
+            localStorage.removeItem(localStorageKey);
+            localStorage.removeItem(timestampKey);
+            localStorage.removeItem('onairos_oauth_context');
+            localStorage.removeItem('onairos_oauth_platform');
+            localStorage.removeItem('onairos_return_url');
+          } catch (e) {}
           
           // Close popup immediately
           try {
@@ -631,7 +712,22 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
               window.removeEventListener('message', messageHandler);
               setIsConnecting(false);
               setConnectingPlatform(null);
-              // Toggle is already ON from optimistic update
+              
+              // Mark connected ONLY after actual OAuth success (persistence happens automatically via useEffect)
+              setConnectedAccounts((currentState) => {
+                const updated = { ...currentState, [plat.name]: true };
+                console.log(`✅ Connected ${plat.name} (localStorage poll) - adding to:`, currentState, '→ result:', updated);
+                return updated;
+              });
+
+              // Clean up success markers + oauth context so they don't cause auto-toggles later.
+              try {
+                localStorage.removeItem(localStorageKey);
+                localStorage.removeItem(timestampKey);
+                localStorage.removeItem('onairos_oauth_context');
+                localStorage.removeItem('onairos_oauth_platform');
+                localStorage.removeItem('onairos_return_url');
+              } catch (e) {}
               
               // Close popup immediately
               try {
@@ -685,7 +781,15 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     }
     if (isConnecting && connectingPlatform !== name) return;
     const on = !!connectedAccounts[name];
-    if (on) setConnectedAccounts((s) => ({ ...s, [name]: false }));
+    if (on) {
+      // Toggle OFF (persistence happens automatically via useEffect)
+      setConnectedAccounts((currentState) => {
+        const updated = { ...currentState, [name]: false };
+        console.log(`🔴 Disconnected ${name}`);
+        return updated;
+      });
+      return;
+    }
     else await connectToPlatform(name);
   };
 
@@ -694,7 +798,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   useEffect(() => {
     if (!lottieRef.current) return;
     const totalFrames = (personaAnim.op || 0) - (personaAnim.ip || 0);
-    const TOTAL_PLATFORMS = isWrappedApp ? 2 : 9; // 2 for wrapped app, 9 for other apps
+    const TOTAL_PLATFORMS = isWrappedApp ? 3 : 9; // 3 for wrapped app, 9 for other apps
     const progress = connectedCount / TOTAL_PLATFORMS;
     const target = Math.max(0, Math.floor(progress * totalFrames));
     const start = lastFrameRef.current || 0;
@@ -773,8 +877,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         {/* header - MOBILE ONLY: smaller top padding to give persona space */}
         {/* Desktop: Reduced padding to fit everything */}
         <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? (isSmallMobile ? '2.0rem' : '2.25rem') : '1.5rem', paddingBottom: isMobile ? '0.5rem' : '0.25rem' }}>
-          {/* Web-only: lift header text slightly so it doesn't overlap the persona head */}
-          <div style={{ transform: isMobile ? 'none' : 'translateY(-10px)' }}>
+          {/* Nudge header/subheader up slightly on mobile without affecting layout below (transform doesn't affect flow). */}
+          <div style={{ transform: isMobile ? 'translateY(-6px)' : 'translateY(-10px)' }}>
             <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
             <p className="text-gray-600 text-base">More Connections, Better Personalization.</p>
           </div>
@@ -806,8 +910,14 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
             >
               {platforms.map((p, idx) => {
                 const on = !!connectedAccounts[p.name];
+                const showConnectedStyling = on;
                 const busy = false; // keep icon static visually per request
                 const isSel = selected === p.name;
+                
+                // Debug: Log connection state for each platform
+                if (on) {
+                  console.log(`🔵 ${p.name} is connected:`, { on, showConnectedStyling, connectedAccounts });
+                }
                 const shift = (currentPage === 1 ? idx : idx - 2) * 14;
                 return (
                   <div key={p.name} className="transition-all duration-300" style={{ opacity: 0, transform: `translateX(${shift}px)`, animation: 'fadeSlideIn 0.28s forwards', ['--slide-x']: `${shift}px` }}>
@@ -877,13 +987,13 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                       title={p.name}
                     >
                       <div 
-                        className={`rounded-full transition-all duration-200 ease-out flex items-center justify-center shadow-lg ${on ? 'ring-4 ring-blue-600 border-2 border-white bg-white text-black' : 'border-2 border-gray-300 hover:border-gray-400 bg-white text-black'}`}
+                        className={`rounded-full transition-all duration-200 ease-out flex items-center justify-center shadow-lg ${showConnectedStyling ? 'ring-4 ring-blue-600 border-2 border-white bg-white text-black' : 'border-2 border-gray-300 hover:border-gray-400 bg-white text-black'}`}
                         style={{ 
                           width: CIRCLE, 
                           height: CIRCLE, 
                           transform: `scale(${isSel ? ACTIVE_SCALE : 1})`, 
                           transformOrigin: 'center',
-                          boxShadow: on ? '0 0 0 4px rgb(37 99 235), 0 4px 6px -1px rgba(0, 0, 0, 0.1)' : undefined
+                          boxShadow: showConnectedStyling ? '0 0 0 4px rgb(37 99 235), 0 4px 6px -1px rgba(0, 0, 0, 0.1)' : undefined
                         }}
                       >
                         <div className="flex items-center justify-center" style={{ width: 20, height: 20 }}>
@@ -911,7 +1021,14 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
         {/* info sheet — positioned using flex, MOBILE ONLY: LOWER */}
         <div className="px-6 flex-shrink-0" style={{ marginBottom: isMobile ? 24 : 28, zIndex: 20 }}>
-          <div className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5" style={{ width: 'min(680px,92%)', maxHeight: isMobile ? (vh * 0.18) : (vh * 0.2) }}>
+          <div
+            className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5"
+            style={{ 
+              width: 'min(680px,92%)', 
+              maxHeight: isMobile ? INFO_SHEET_MAX_H : 'none',
+              overflow: isMobile ? 'hidden' : 'visible'
+            }}
+          >
             <div className="flex items-center justify-between">
               <div className="text-gray-900 font-medium">{selected}</div>
               <button
@@ -945,7 +1062,13 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
               </button>
             </div>
             <div className="mt-3">
-              <div className="rounded-2xl bg-gray-50 text-gray-700 text-sm leading-6 px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
+              <div
+                className={`rounded-2xl bg-gray-50 text-gray-700 ${isMobile ? 'text-sm leading-6' : 'text-xs leading-5'} px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]`}
+                style={{ 
+                  maxHeight: isMobile ? Math.max(72, INFO_SHEET_MAX_H - 56) : 'none',
+                  overflowY: isMobile ? 'auto' : 'visible'
+                }}
+              >
                 {descriptions[selected] || null}
               </div>
               {!isMobileBrowser && !isNativePlatform && selected === 'ChatGPT' && (
