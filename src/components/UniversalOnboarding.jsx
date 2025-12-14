@@ -156,7 +156,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     LinkedIn: <>We study your <strong className="font-semibold">professional graph</strong> and <strong className="font-semibold">content</strong> to understand career interests.</>,
   };
 
-  const allPlatforms = [
+  // Full platform list for all apps
+  const allPlatformsDefault = [
     // Page 1
     { name: 'Instagram', connector: 'instagram', icon: Brand.Instagram },
     { name: 'YouTube', connector: 'youtube', icon: Brand.YouTube },
@@ -171,7 +172,24 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     { name: 'Grok', connector: 'grok', icon: Brand.Grok, directLink: aiLinks.Grok },
   ];
 
+  // Restricted platform list for onairos-wrapped only
+  const wrappedPlatforms = [
+    { name: 'Reddit', connector: 'reddit', icon: Brand.Reddit },
+    { name: 'YouTube', connector: 'youtube', icon: Brand.YouTube },
+    // Pinterest not implemented yet - add when connector is ready:
+    // { name: 'Pinterest', connector: 'pinterest', icon: Brand.Pinterest },
+  ];
+
+  // Check if this is onairos-wrapped
+  const isWrappedApp = appName && (appName.toLowerCase().includes('wrapped') || appName === 'onairos-wrapped');
+  
+  const allPlatforms = isWrappedApp ? wrappedPlatforms : allPlatformsDefault;
+
   const getPlatformsForPage = (page) => {
+    // If wrapped app, show all platforms on one page (no pagination)
+    if (isWrappedApp) return allPlatforms;
+    
+    // For other apps, use pagination
     if (page === 1) return allPlatforms.slice(0, 3);
     if (page === 2) return allPlatforms.slice(3, 6);
     return allPlatforms.slice(6);
@@ -676,7 +694,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   useEffect(() => {
     if (!lottieRef.current) return;
     const totalFrames = (personaAnim.op || 0) - (personaAnim.ip || 0);
-    const TOTAL_PLATFORMS = 9; // Total number of platforms across all pages
+    const TOTAL_PLATFORMS = isWrappedApp ? 2 : 9; // 2 for wrapped app, 9 for other apps
     const progress = connectedCount / TOTAL_PLATFORMS;
     const target = Math.max(0, Math.floor(progress * totalFrames));
     const start = lastFrameRef.current || 0;
@@ -698,8 +716,11 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   const onTouchMove  = (e) => { touchDeltaX.current = e.touches[0].clientX - touchStartX.current; };
   const onTouchEnd   = () => {
     const dx = touchDeltaX.current; const THRESH = 40;
-    if (dx < -THRESH && currentPage < 3) setCurrentPage(currentPage + 1);
-    else if (dx > THRESH && currentPage > 1) setCurrentPage(currentPage - 1);
+    // Disable pagination swipe for wrapped app
+    if (!isWrappedApp) {
+      if (dx < -THRESH && currentPage < 3) setCurrentPage(currentPage + 1);
+      else if (dx > THRESH && currentPage > 1) setCurrentPage(currentPage - 1);
+    }
   };
 
   return (
@@ -877,14 +898,16 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           </div>
         </div>
 
-        {/* dots navigation (no numbers) - directly under icons, above card */}
-        <div className="relative flex items-center justify-center gap-3 select-none flex-shrink-0" style={{ marginTop: isMobile ? 12 : 24, marginBottom: isMobile ? 20 : 20, zIndex: 25 }}>
-          {[1,2,3].map(n => (
-            <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }}>
-              <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-125' : 'bg-gray-300'} transition-transform`} style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }} />
-            </button>
-          ))}
-        </div>
+        {/* Pagination dots - hidden for wrapped app */}
+        {!isWrappedApp && (
+          <div className="relative flex items-center justify-center gap-3 select-none flex-shrink-0" style={{ marginTop: isMobile ? 12 : 24, marginBottom: isMobile ? 20 : 20, zIndex: 25 }}>
+            {[1,2,3].map(n => (
+              <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }}>
+                <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-125' : 'bg-gray-300'} transition-transform`} style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }} />
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* info sheet — positioned using flex, MOBILE ONLY: LOWER */}
         <div className="px-6 flex-shrink-0" style={{ marginBottom: isMobile ? 24 : 28, zIndex: 20 }}>
