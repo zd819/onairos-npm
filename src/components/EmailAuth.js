@@ -482,35 +482,74 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
 
         console.log('📧 Email verification response:', data);
 
-        // Log accountStatus if available
-        if (data.accountStatus) {
-          console.log('✅ Account status:', {
-            exists: data.accountStatus.exists,
-            hasTrainedModel: data.accountStatus.hasTrainedModel,
-            hasPersonalityTraits: data.accountStatus.hasPersonalityTraits,
-            connectedPlatforms: data.accountStatus.connectedPlatforms,
-            needsDataConnection: data.accountStatus.needsDataConnection,
-            needsTraining: data.accountStatus.needsTraining,
-            canUseInference: data.accountStatus.canUseInference
+        // NEW: Check account status explicitly, same as Google sign-in flow
+        // This ensures consistent behavior between Google and email auth
+        let accountInfo = data.accountInfo || null;
+        let accountStatus = data.accountStatus || null;
+        let existingUser = data.existingUser || false;
+
+        try {
+          console.log('🔍 Checking account status for:', email);
+          const accountCheckResponse = await fetch(`${baseUrl}/getAccountInfo/email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+            },
+            body: JSON.stringify({
+              Info: {
+                identifier: email.trim().toLowerCase()
+              }
+            })
           });
+
+          if (accountCheckResponse.ok) {
+            const accountData = await accountCheckResponse.json();
+            
+            if (accountData.AccountInfo) {
+              accountInfo = accountData.AccountInfo;
+              accountStatus = accountData.accountStatus;
+              existingUser = accountStatus?.exists || false;
+              
+              console.log('✅ Account status from explicit check:', {
+                exists: existingUser,
+                hasTrainedModel: accountStatus?.hasTrainedModel,
+                hasPersonalityTraits: accountStatus?.hasPersonalityTraits,
+                connectedPlatforms: accountStatus?.connectedPlatforms,
+                needsDataConnection: accountStatus?.needsDataConnection,
+                needsTraining: accountStatus?.needsTraining,
+                canUseInference: accountStatus?.canUseInference
+              });
+            } else {
+              console.log('ℹ️ No existing account found - new user');
+            }
+          } else {
+            console.log('ℹ️ Account check returned non-OK status - using verification response data');
+          }
+        } catch (accountCheckError) {
+          console.warn('⚠️ Could not check account status, using verification response data:', accountCheckError);
         }
 
         setStep('success');
         setTimeout(() => {
-          // Pass complete API response for flow determination
+          // Pass complete API response with explicit account check data
           onSuccess({ 
             email, 
             verified: true, 
             token: data.token || data.jwtToken,
             userName: data.userName,
-            existingUser: data.existingUser,
-            accountInfo: data.accountInfo,
-            accountStatus: data.accountStatus, // NEW: Include accountStatus from backend
-            isNewUser: !data.existingUser, // Set based on API response
-            flowType: data.existingUser ? 'dataRequest' : 'onboarding',
+            existingUser: existingUser,
+            accountInfo: accountInfo,
+            accountStatus: accountStatus, // Now includes explicit account check
+            isNewUser: !existingUser, // Based on explicit account check
+            flowType: existingUser ? 'dataRequest' : 'onboarding',
             adminMode: data.adminMode,
             userCreated: data.userCreated,
-            accountDetails: data.accountDetails
+            accountDetails: accountInfo || data.accountDetails || {
+              email: email,
+              createdAt: data.createdAt || new Date().toISOString(),
+              provider: 'email'
+            }
           });
         }, 1000);
       }

@@ -2,6 +2,54 @@
 
 All notable changes to the Onairos SDK will be documented in this file.
 
+## [4.2.2] - 2025-12-14
+
+### 🐛 Fixed - Email Authentication Routing for Existing Users
+
+#### Problem Resolved
+- **Critical Bug**: Existing users authenticating via email verification were incorrectly routed to onboarding instead of dataRequest page
+- **Root Cause**: Frontend was checking non-existent `data.existingUser` field instead of `data.isNewUser` returned by backend
+- **Impact**: Existing users had to go through onboarding again instead of proceeding directly to data request
+
+#### Solution Implemented
+- Added explicit account status check via `/getAccountInfo/email` endpoint (matching Google sign-in behavior)
+- Email verification flow now fetches complete account data after code verification
+- Both Google OAuth and email authentication flows now return identical account data structures
+- Uses `accountStatus.exists` field for consistent user routing logic
+
+#### Technical Details
+**Before Fix:**
+```javascript
+// Backend returns: { isNewUser: false }
+// Frontend checked: data.existingUser (undefined)
+// Result: existingUser = false (WRONG!)
+// Route: onboarding (WRONG for existing users!)
+```
+
+**After Fix:**
+```javascript
+// Explicit account check via /getAccountInfo/email
+// Gets: { accountStatus: { exists: true } }
+// Result: existingUser = true (CORRECT!)
+// Route: dataRequest (CORRECT for existing users!)
+```
+
+#### Files Changed
+- `src/components/EmailAuth.js` - Added explicit account status check in `handleCodeSubmit()`
+- Improved logging for account status verification
+- Enhanced error handling and fallback logic
+
+#### Benefits
+- ✅ Existing users now correctly route to dataRequest page via email auth
+- ✅ Consistent behavior between Google and email authentication
+- ✅ Full account data available for both authentication flows
+- ✅ Better user experience for returning users
+- ✅ No breaking changes to existing functionality
+
+For detailed technical analysis, see `EMAIL_AUTH_CONSISTENCY_FIX.md`
+
+---
+
 ## [4.0.16] - 2025-12-01
 
 ### 🎉 Major Fix: Full Tailwind CSS v3 & v4 Compatibility
