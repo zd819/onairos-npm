@@ -1,2 +1,0 @@
-export const __webpack_esm_id__=941;export const __webpack_esm_ids__=[941];export const __webpack_esm_modules__={941:(s,e,o)=>{o.d(e,{BrowserWeb:()=>n});var _=o(546);class n extends _.E_{constructor(){super(),this._lastWindow=null}async open(s){this._lastWindow=window.open(s.url,s.windowName||"_blank")}async close(){return new Promise((s,e)=>{null!=this._lastWindow?(this._lastWindow.close(),this._lastWindow=null,s()):e("No active window to close!")})}}new n}};
-//# sourceMappingURL=941.onairos.esm.js.map
