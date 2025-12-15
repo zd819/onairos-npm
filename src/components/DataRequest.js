@@ -69,17 +69,17 @@ const DataTypeToggle = ({ dataType, enabled, onToggle, isNative }) => {
       onClick={handle}
       className="
         w-full flex items-center justify-between
-        py-2.5 px-2
+        py-2 px-2
         bg-white/40 backdrop-blur-sm
         hover:bg-white/70
         transition rounded-xl shadow-sm
       "
     >
-      <div className="flex items-center gap-3">
-        <div className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100">
+      <div className="flex items-center gap-2.5">
+        <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-100">
           <Icon type={dataType.icon} />
         </div>
-        <span className={`${isNative ? 'text-[15px]' : 'text-[14px]'} text-gray-900 font-medium`}>
+        <span className={`${isNative ? 'text-[14px]' : 'text-[13px]'} text-gray-900 font-medium`} style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
           {dataType.name}
         </span>
       </div>
@@ -269,53 +269,53 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
     <div className="flex flex-col h-full max-h-full md:max-h-[90vh] bg-white/70 backdrop-blur-2xl rounded-3xl overflow-hidden">
 
       {/* CONTENT */}
-      <div className="flex-1 overflow-y-auto px-6 pt-6 md:pt-10 pb-4">
+      <div className="flex-1 overflow-y-auto px-6 pt-3 md:pt-6 pb-2">
 
         {/* ICONS */}
-        <div className="flex justify-center items-center gap-4 mb-5 md:mb-6">
+        <div className="flex justify-center items-center gap-3 mb-3 md:mb-4">
           {/* Wrapped: Onairos -> Persona. Non-wrapped: Onairos -> app placeholder */}
-          <div className={`${isCapacitorNative ? 'w-14 h-14' : 'w-12 h-12'} rounded-2xl bg-white shadow flex items-center justify-center`}>
+          <div className={`${isCapacitorNative ? 'w-12 h-12' : 'w-10 h-10'} rounded-2xl bg-white shadow flex items-center justify-center`}>
             {isWrappedApp ? (
               <img 
                 src="https://onairos.sirv.com/Images/OnairosBlack.png" 
                 alt="Onairos"
-                className={`${isCapacitorNative ? 'w-10 h-10' : 'w-8 h-8'} object-contain`}
+                className={`${isCapacitorNative ? 'w-8 h-8' : 'w-6 h-6'} object-contain`}
               />
             ) : (
               <img 
                 src="https://onairos.sirv.com/Images/OnairosBlack.png" 
                 alt="Onairos"
-                className={`${isCapacitorNative ? 'w-10 h-10' : 'w-8 h-8'} object-contain`}
+                className={`${isCapacitorNative ? 'w-8 h-8' : 'w-6 h-6'} object-contain`}
               />
             )}
           </div>
-          <svg className={`${isCapacitorNative ? 'w-8 h-8' : 'w-6 h-6'} text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`${isCapacitorNative ? 'w-6 h-6' : 'w-5 h-5'} text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
-          <div className={`${isCapacitorNative ? 'w-14 h-14' : 'w-12 h-12'} rounded-2xl bg-white shadow flex items-center justify-center`}>
+          <div className={`${isCapacitorNative ? 'w-12 h-12' : 'w-10 h-10'} rounded-2xl bg-white shadow flex items-center justify-center`}>
             {isWrappedApp ? (
               <img 
                 src={personaImg}
                 alt="Persona"
-                className={`${isCapacitorNative ? 'w-10 h-10' : 'w-8 h-8'} object-contain rounded-xl`}
+                className={`${isCapacitorNative ? 'w-8 h-8' : 'w-6 h-6'} object-contain rounded-xl`}
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             ) : (
-              <span className={`${isCapacitorNative ? 'text-2xl' : 'text-xl'} font-serif font-bold`}>J</span>
+              <span className={`${isCapacitorNative ? 'text-xl' : 'text-lg'} font-serif font-bold`} style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>J</span>
             )}
           </div>
         </div>
 
         {/* TITLE */}
-        <div className="text-center mb-6 md:mb-8">
-          <h1 className={`${isCapacitorNative ? 'text-[26px] md:text-[28px]' : 'text-[24px] md:text-[26px]'} font-semibold text-gray-900 leading-tight tracking-tight`}>
+        <div className="text-center mb-4 md:mb-5">
+          <h1 className={`${isCapacitorNative ? 'text-[22px] md:text-[24px]' : 'text-[20px] md:text-[22px]'} font-semibold text-gray-900 leading-tight tracking-tight`} style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>
             {appName} wants to personalize your experience
           </h1>
-          <p className={`${isCapacitorNative ? 'text-[14px]' : 'text-[13px]'} text-gray-500 mt-1`}>choose what to share</p>
+          <p className={`${isCapacitorNative ? 'text-[13px]' : 'text-[12px]'} text-gray-500 mt-1`} style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>choose what to share</p>
         </div>
 
         {/* TOGGLES */}
-        <div className={`${isCapacitorNative ? 'flex flex-col gap-3' : 'flex flex-col sm:grid sm:grid-cols-2 gap-3 sm:gap-4'} mb-6 md:mb-10`}>
+        <div className={`${isCapacitorNative ? 'flex flex-col gap-2' : 'flex flex-col sm:grid sm:grid-cols-2 gap-2 sm:gap-3'} mb-4 md:mb-6`}>
           {availableOptions.map((opt) => (
             <DataTypeToggle
               key={opt.id}
@@ -331,10 +331,10 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
         {showTime && (
           <div className="p-5 rounded-3xl bg-white/50 backdrop-blur-md border border-black/5 shadow-sm">
             <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-medium text-gray-900">
+              <span className="text-sm font-medium text-gray-900" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
                 How often can {appName} receive updates?
               </span>
-              <span className="text-[11px] text-gray-500">
+              <span className="text-[11px] text-gray-500" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
                 {freq === "once"
                   ? "one-time only"
                   : freq === "weekly"
@@ -368,13 +368,13 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
               />
             </div>
 
-            <div className="grid grid-cols-3 text-center text-[12px] font-medium">
+            <div className="grid grid-cols-3 text-center text-[12px] font-medium" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
               <button onClick={() => setFreq("once")} className="text-gray-700">1× only</button>
               <button onClick={() => setFreq("weekly")} className="text-gray-900 font-semibold">1× weekly</button>
               <button onClick={() => setFreq("daily")} className="text-gray-700">1× daily</button>
             </div>
 
-            <p className="text-[11px] text-gray-500 mt-3 leading-snug">
+            <p className="text-[11px] text-gray-500 mt-3 leading-snug" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
               This only controls update frequency; It does not grant more access.
             </p>
           </div>
@@ -383,11 +383,14 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
       </div>
 
       {/* FOOTER */}
-      <div className="px-6 py-4 md:py-5 bg-white/80 backdrop-blur border-t border-black/5">
+      <div className="px-6 py-3 md:py-4 bg-white/80 backdrop-blur border-t border-black/5">
         {/* Connected platforms pinned above CTAs so it never gets cropped on mobile */}
         {platforms && platforms.length > 0 && (
-          <div className="mb-3 rounded-2xl bg-white/60 backdrop-blur border border-black/5 px-3 py-2">
-            <div className="text-center text-[11px] text-gray-500 mb-1">Connected Platforms</div>
+          <div className="mb-3 rounded-2xl bg-white/60 backdrop-blur border border-black/5 px-3 py-2.5">
+            <div className="text-center mb-1">
+              <div className="text-[13px] font-semibold text-gray-900" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>Connect Platforms</div>
+              <div className="text-[11px] text-gray-500" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>more connections, smarter personalization</div>
+            </div>
             <div className="flex items-center justify-center gap-2 overflow-x-auto whitespace-nowrap pb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
               {platforms.map((platform, index) => {
                 const logoMap = {
@@ -442,9 +445,9 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
                   type="button"
                   onClick={onConnectMoreApps}
                   className="text-[11px] font-medium text-gray-700 hover:text-gray-900 inline-flex items-center gap-1.5"
-                  style={{ WebkitTextFillColor: '#111827' }}
+                  style={{ WebkitTextFillColor: '#111827', fontFamily: 'Inter, system-ui, sans-serif' }}
                 >
-                  <span>Connect more</span>
+                  <span style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Connect more</span>
                   <span
                     aria-hidden="true"
                     className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-400 text-gray-800 leading-none"
@@ -461,20 +464,20 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
         {/* If no platforms are connected yet, still allow user to go connect apps */}
         {(!platforms || platforms.length === 0) && typeof onConnectMoreApps === 'function' && (
           <div className="mb-3 rounded-2xl bg-white/60 backdrop-blur border border-black/5 px-3 py-2 text-center">
-            <div className="text-[11px] text-gray-500 mb-1">No apps connected yet</div>
+            <div className="text-[11px] text-gray-500 mb-1" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>No apps connected yet</div>
             <button
               type="button"
               onClick={onConnectMoreApps}
               className="text-[12px] font-medium underline underline-offset-2 text-gray-700 hover:text-gray-900"
-              style={{ WebkitTextFillColor: '#111827' }}
+              style={{ WebkitTextFillColor: '#111827', fontFamily: 'Inter, system-ui, sans-serif' }}
             >
               Connect apps?
             </button>
           </div>
         )}
         <button
-          className="w-full rounded-full py-3 bg-gray-900 text-sm font-medium shadow-sm flex items-center justify-center mb-3"
-          style={{ color: '#ffffff' }}
+          className="w-full rounded-full py-3 bg-gray-900 text-sm font-medium shadow-sm flex items-center justify-center"
+          style={{ color: '#ffffff', fontFamily: 'Inter, system-ui, sans-serif' }}
           disabled={selectedCount === 0}
           onClick={() => {
             if (selectedCount === 0) return;
@@ -485,38 +488,6 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
           }}
         >
           Accept & Continue
-        </button>
-
-        <style>{`
-          .decline-button {
-            color: #000000 !important;
-          }
-          .decline-button * {
-            color: #000000 !important;
-          }
-          .decline-button span {
-            color: #000000 !important;
-          }
-          button.decline-button {
-            color: #000000 !important;
-          }
-          .decline-button-text {
-            color: #000000 !important;
-            -webkit-text-fill-color: #000000 !important;
-          }
-        `}</style>
-        <button
-          className="w-full rounded-full py-3 bg-gray-100 text-sm font-medium shadow-sm decline-button"
-          style={{ color: '#000000' }}
-          onClick={() => {
-            onComplete?.({
-              approved: [],
-              freq,
-              declined: true,
-            });
-          }}
-        >
-          <span className="decline-button-text" style={{ color: '#000000' }}>Decline</span>
         </button>
       </div>
     </div>

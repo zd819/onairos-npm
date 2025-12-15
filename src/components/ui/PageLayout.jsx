@@ -53,7 +53,7 @@ const PageLayout = ({
   };
 
   const titleStyle = {
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'IBM Plex Sans, system-ui, sans-serif',
     fontSize: 'clamp(20px, 5vw, 28px)',
     fontWeight: '700',
     color: COLORS.textPrimary,

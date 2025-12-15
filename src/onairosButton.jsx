@@ -424,7 +424,7 @@ export function OnairosButton({
         setCurrentFlow('onboarding');
         return;
       }
-
+      
       const savedUser = localStorage.getItem('onairosUser');
       if (savedUser) {
         try {
@@ -737,7 +737,7 @@ export function OnairosButton({
     // - Existing users: go straight to DataRequest (data permissions)
     if (isNewUser) {
       console.log('🚀 Auth successful (new user) → Starting onboarding flow (data connectors page)');
-      setCurrentFlow('onboarding');
+    setCurrentFlow('onboarding');
     } else {
       console.log('🚀 Auth successful (existing user) → Going straight to DataRequest (data permissions)');
       setCurrentFlow('dataRequest');
@@ -759,7 +759,7 @@ export function OnairosButton({
       setReturnToDataRequestAfterOnboarding(false);
       setCurrentFlow('dataRequest');
     } else {
-      setCurrentFlow('pin');
+    setCurrentFlow('pin');
     }
   };
 
@@ -1278,7 +1278,7 @@ export function OnairosButton({
           console.log('🎁 Wrapped dashboard still processing - keeping loading screen open and NOT calling onComplete yet');
         } else {
           console.log('✅ Calling onComplete for wrapped app with final dashboard data');
-          onComplete(enhancedResult);
+        onComplete(enhancedResult);
         }
       } catch (error) {
         console.error('❌ Error in onComplete callback:', error);

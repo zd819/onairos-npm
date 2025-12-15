@@ -192,26 +192,31 @@
                     console.log('📍 Redirecting to:', redirectUrl.toString());
                     window.location.replace(redirectUrl.toString());
                 } else {
-                    // Fallback: show message and try to close
-                    successDetails.textContent = isMobile 
-                        ? 'You can close this tab and return to the app.' 
-                        : 'This tab will close automatically.';
+                    // Fallback: show message with manual navigation option
+                    const appUrl = window.location.origin;
+                    successDetails.innerHTML = `
+                        <div style="margin-bottom: 16px;">Connection successful! You can close this tab.</div>
+                        <a href="${appUrl}" 
+                           style="display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;"
+                           onclick="localStorage.setItem('onairos_should_check_oauth', 'true');">
+                           Return to App
+                        </a>
+                    `;
                     
+                    // Still try to auto-close, but provide manual option
                     setTimeout(() => {
                         console.log('🚪 Attempting to close OAuth tab (success, no return URL)');
                         try {
                             window.close();
                             setTimeout(() => {
                                 if (!document.hidden) {
-                                    successDetails.textContent = 'Please close this tab and return to the app.';
                                     console.log('⚠️ Tab could not be auto-closed (mobile limitation)');
                                 }
                             }, 500);
                         } catch (e) {
                             console.log('⚠️ Could not close tab:', e.message);
-                            successDetails.textContent = 'Please close this tab and return to the app.';
                         }
-                    }, isMobile ? 2000 : 1500);
+                    }, isMobile ? 3000 : 2000); // Longer delay to let user see the button
                 }
             }
             

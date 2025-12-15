@@ -1,21 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Mail, ArrowRight, Check } from 'lucide-react';
-import { GoogleLogin } from '@react-oauth/google';
 import PrimaryButton from './ui/PrimaryButton.jsx';
 import { COLORS } from '../theme/colors.js';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
+import { isMobileBrowser } from '../utils/capacitorDetection';
 
-export default function EmailAuth({ onSuccess, testMode = true }) {
+// Custom Google Button for consistent dimensions
+const GoogleButton = ({ onPress, disabled }) => {
+  const [isPressed, setIsPressed] = useState(false);
+
+  return (
+    <button
+      onClick={onPress}
+      disabled={disabled}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      onMouseLeave={() => setIsPressed(false)}
+      onTouchStart={() => setIsPressed(true)}
+      onTouchEnd={() => setIsPressed(false)}
+      className={`w-full h-14 bg-[#FAFAFA] rounded-lg border border-[#E5E5E5] flex items-center justify-center px-4 transition-all ${isPressed ? 'bg-[#F0F0F0] border-[#D0D0D0] scale-[0.98]' : 'shadow-sm'}`}
+      style={{ 
+        outline: 'none',
+        // Match dimensions of the email input (h-14 = 3.5rem = 56px)
+        height: '56px'
+      }}
+      type="button"
+    >
+      <img 
+        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+        alt="Google" 
+        className="w-5 h-5 mr-3" 
+      />
+      <span 
+        className="text-base font-medium text-[#1F242F]"
+        style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+      >
+        Continue with Google
+      </span>
+    </button>
+  );
+};
+
+export default function EmailAuth({ onSuccess, testMode = false }) {
   const [email, setEmail] = useState('');
-  // Store verification code as per-digit state to avoid losing position when users click/paste/autofill.
+  // Store verification code as per-digit state
   const [codeDigits, setCodeDigits] = useState(() => Array(6).fill(''));
   const [step, setStep] = useState('email'); // 'email' | 'code' | 'success'
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [emailSent, setEmailSent] = useState(true); // Track if email was actually sent
-  const [emailServiceMessage, setEmailServiceMessage] = useState(''); // Store service message
-  const code = codeDigits.join('');
+  const [emailSent, setEmailSent] = useState(true);
+  const [emailServiceMessage, setEmailServiceMessage] = useState('');
+  
   const isCodeComplete = codeDigits.every((d) => typeof d === 'string' && d.length === 1);
   const resetCodeDigits = () => setCodeDigits(Array(6).fill(''));
+  const isMobileWeb = isMobileBrowser();
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -32,8 +71,6 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     return response;
   };
 
-  // Prefer the newer single-endpoint API: POST /email/verification { action: 'request'|'verify' }
-  // Fall back to legacy /email/verify and /email/verify/confirm if needed.
   const requestEmailVerification = async ({ baseUrl, apiKey, email: rawEmail }) => {
     const normalizedEmail = (rawEmail || '').trim().toLowerCase();
 
@@ -73,25 +110,20 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         code: normalizedCode,
       });
       if (res.ok) return await res.json();
-      // If it's a hard failure, surface its message
       try {
         const err = await res.json();
         throw new Error(err?.error || err?.message || 'Verification failed');
       } catch (e) {
-        // If parsing fails, fall through to legacy retry below
         if (e instanceof Error) throw e;
       }
     } catch (e) {
-      // If server doesn't support /email/verification or network hiccup, try legacy below.
-      // If it's a real "invalid code" error, we rethrow and don't spam retries.
       const msg = e?.message || '';
       if (msg && !msg.toLowerCase().includes('not found') && !msg.toLowerCase().includes('cannot')) {
-        // Keep going to legacy; it might be the only supported path.
+        // Keep going to legacy
       }
     }
 
-    // Legacy endpoint with light retry for multi-instance deployments:
-    // "No verification code found" often means request+confirm hit different servers.
+    // Legacy endpoint with retry
     const maxAttempts = 5;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const res = await postJson(`${baseUrl}/email/verify/confirm`, apiKey, {
@@ -110,7 +142,6 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
         }
       } catch {}
 
-      // Retry only for the "code missing" case
       if (errMsg.toLowerCase().includes('no verification code found') && attempt < maxAttempts) {
         await sleep(150 * attempt);
         continue;
@@ -122,7 +153,6 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     throw new Error('Verification failed');
   };
 
-  // Helper function to handle OAuth success (Gmail) - defined early for useEffect
   const handleOAuthSuccess = async (gmailEmail) => {
     try {
       setIsLoading(true);
@@ -131,56 +161,7 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
       const normalizedEmail = (gmailEmail || '').trim().toLowerCase();
       setEmail(normalizedEmail);
 
-      // Check if this email already has an account in the backend
-      const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
-      const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
-
-      let accountInfo = null;
-      let accountStatus = null;
-      let existingUser = false;
-
-      try {
-        console.log('🔍 Checking if account exists for:', normalizedEmail);
-        const accountCheckResponse = await fetch(`${baseUrl}/getAccountInfo/email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-          },
-          body: JSON.stringify({
-            Info: {
-              identifier: normalizedEmail
-            }
-          })
-        });
-
-        if (accountCheckResponse.ok) {
-          const accountData = await accountCheckResponse.json();
-          
-          if (accountData.AccountInfo) {
-            accountInfo = accountData.AccountInfo;
-            accountStatus = accountData.accountStatus;
-            existingUser = accountStatus?.exists || false;
-            
-            console.log('✅ Existing account found:', {
-              exists: existingUser,
-              hasTrainedModel: accountStatus?.hasTrainedModel,
-              hasPersonalityTraits: accountStatus?.hasPersonalityTraits,
-              connectedPlatforms: accountStatus?.connectedPlatforms,
-              needsDataConnection: accountStatus?.needsDataConnection,
-              needsTraining: accountStatus?.needsTraining,
-              canUseInference: accountStatus?.canUseInference
-            });
-          } else {
-            console.log('ℹ️ No existing account found - new user');
-          }
-        } else {
-          console.log('ℹ️ Account check returned non-OK status - treating as new user');
-        }
-      } catch (accountCheckError) {
-        console.warn('⚠️ Could not check account status, treating as new user:', accountCheckError);
-      }
-
+      // Simple success without deep account check for speed, backend handles creation
       setStep('success');
       setIsLoading(false);
 
@@ -190,14 +171,10 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
           verified: true,
           token: null,
           userName: normalizedEmail.split('@')[0],
-          existingUser: existingUser,
-          accountInfo: accountInfo,
-          accountStatus: accountStatus, // NEW: Pass the accountStatus object
-          isNewUser: !existingUser,
-          flowType: existingUser ? 'dataRequest' : 'onboarding',
-          adminMode: false,
-          userCreated: !existingUser,
-          accountDetails: existingUser ? accountInfo : {
+          existingUser: false, // Assume false or let parent handle
+          isNewUser: true,
+          flowType: 'onboarding',
+          accountDetails: {
             email: normalizedEmail,
             createdAt: new Date().toISOString(),
             ssoProvider: 'gmail'
@@ -212,95 +189,184 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     }
   };
 
-  // Check for Gmail OAuth success on mount (after redirect back)
+  // Check for Gmail OAuth return (URL params or localStorage)
   useEffect(() => {
     const checkGmailOAuthSuccess = () => {
-      const gmailSuccess = localStorage.getItem('onairos_gmail_success');
-      const gmailTimestamp = localStorage.getItem('onairos_gmail_timestamp');
-      const oauthContext = localStorage.getItem('onairos_oauth_context');
+      console.log('🔍 Checking for Gmail OAuth return...');
       
-      // Only process if we're coming back from Gmail auth flow
-      if (gmailSuccess === 'true' && gmailTimestamp && oauthContext === 'gmail-auth') {
-        const timestampNum = parseInt(gmailTimestamp, 10);
-        const now = Date.now();
-        
-        // Only process if timestamp is recent (within last 30 seconds)
-        if (now - timestampNum < 30000) {
-          console.log('✅ Gmail OAuth completed - processing redirect back');
-          
-          // Get email from localStorage
-          const gmailEmail = localStorage.getItem('onairos_gmail_email') || 
-                           localStorage.getItem('onairos_oauth_email');
-          
-          // Clean up localStorage
-          localStorage.removeItem('onairos_gmail_success');
-          localStorage.removeItem('onairos_gmail_timestamp');
-          localStorage.removeItem('onairos_oauth_context');
-          localStorage.removeItem('onairos_return_url');
-          
-          if (gmailEmail) {
-            // Process OAuth success
-            handleOAuthSuccess(gmailEmail);
-          }
-        }
-      }
-    };
-
-    checkGmailOAuthSuccess();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
-
-  // Check for OAuth completion on mount (for same-page redirect flow)
-  useEffect(() => {
-    const checkOAuthCompletion = () => {
-      // Check URL params for OAuth completion
+      // First check URL params (oauth-callback.html redirects with these)
       const urlParams = new URLSearchParams(window.location.search);
       const oauthSuccess = urlParams.get('onairos_oauth_success');
       const oauthPlatform = urlParams.get('onairos_oauth_platform');
       const oauthEmail = urlParams.get('onairos_oauth_email');
-
+      
       if (oauthSuccess === 'true' && oauthPlatform === 'gmail' && oauthEmail) {
-        console.log('✅ Gmail OAuth completion detected on page load');
+        console.log('✅ Gmail OAuth success detected in URL params');
+        
         // Clean up URL
         const newUrl = window.location.pathname;
         window.history.replaceState({}, '', newUrl);
+        
+        // Clean up localStorage
+        localStorage.removeItem('onairos_gmail_success');
+        localStorage.removeItem('onairos_gmail_timestamp');
+        localStorage.removeItem('onairos_oauth_context');
+        localStorage.removeItem('onairos_oauth_platform');
+        localStorage.removeItem('onairos_gmail_email');
+        localStorage.removeItem('onairos_oauth_email');
+        
         // Handle OAuth success
         handleOAuthSuccess(oauthEmail);
-      } else {
-        // Check localStorage for OAuth completion (fallback)
-        const success = localStorage.getItem('onairos_gmail_success');
-        const timestamp = localStorage.getItem('onairos_gmail_timestamp');
-        const gmailEmail = localStorage.getItem('onairos_gmail_email');
-
-        if (success === 'true' && timestamp && gmailEmail) {
-          const timestampNum = parseInt(timestamp, 10);
-          const now = Date.now();
+        return;
+      }
+      
+      // Fallback: Check localStorage (for older flows or edge cases)
+      const gmailSuccess = localStorage.getItem('onairos_gmail_success');
+      const gmailTimestamp = localStorage.getItem('onairos_gmail_timestamp');
+      const oauthContext = localStorage.getItem('onairos_oauth_context');
+      
+      if (gmailSuccess === 'true' && gmailTimestamp && oauthContext === 'gmail-auth') {
+        const timestampNum = parseInt(gmailTimestamp, 10);
+        if (Date.now() - timestampNum < 60000) { // 60 second window
+          const gmailEmail = localStorage.getItem('onairos_gmail_email') || 
+                           localStorage.getItem('onairos_oauth_email');
           
-          // Only process if timestamp is recent (within last 60 seconds)
-          if (now - timestampNum < 60000) {
-            console.log('✅ Gmail OAuth completion detected via localStorage');
-            // Clean up localStorage
-            localStorage.removeItem('onairos_gmail_success');
-            localStorage.removeItem('onairos_gmail_timestamp');
-            // Handle OAuth success
+          console.log('✅ Gmail OAuth success detected in localStorage');
+          
+          localStorage.removeItem('onairos_gmail_success');
+          localStorage.removeItem('onairos_gmail_timestamp');
+          localStorage.removeItem('onairos_oauth_context');
+          localStorage.removeItem('onairos_oauth_platform');
+          localStorage.removeItem('onairos_gmail_email');
+          localStorage.removeItem('onairos_oauth_email');
+          
+          if (gmailEmail) {
             handleOAuthSuccess(gmailEmail);
           }
         }
       }
     };
+    
+    // Check immediately on mount
+    checkGmailOAuthSuccess();
+    
+    // For Capacitor native: listen for app resume (when Browser closes)
+    const handleAppResume = () => {
+      console.log('📱 App resumed, checking for OAuth completion...');
+      setTimeout(checkGmailOAuthSuccess, 500);
+    };
+    
+    // Listen for storage events (when user clicks "Return to App" from oauth-callback)
+    const handleStorageChange = (e) => {
+      if (e.key === 'onairos_should_check_oauth' && e.newValue === 'true') {
+        console.log('🔄 Storage event detected, checking for OAuth completion...');
+        localStorage.removeItem('onairos_should_check_oauth');
+        setTimeout(checkGmailOAuthSuccess, 300);
+      }
+    };
+    
+    // Listen for window focus (when user returns from OAuth page)
+    const handleFocus = () => {
+      console.log('👁️ Window focused, checking for OAuth completion...');
+      setTimeout(checkGmailOAuthSuccess, 300);
+    };
+    
+    // Listen for Capacitor app state changes
+    if (typeof window !== 'undefined') {
+      if (window.Capacitor) {
+        document.addEventListener('resume', handleAppResume);
+      }
+      window.addEventListener('focus', handleFocus);
+      window.addEventListener('storage', handleStorageChange);
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        if (window.Capacitor) {
+          document.removeEventListener('resume', handleAppResume);
+        }
+        window.removeEventListener('focus', handleFocus);
+        window.removeEventListener('storage', handleStorageChange);
+      }
+    };
+  }, []);
 
-    checkOAuthCompletion();
-  }, []); // Run once on mount
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      // Store context and return URL before redirect
+      localStorage.setItem('onairos_oauth_context', 'gmail-auth');
+      localStorage.setItem('onairos_oauth_platform', 'gmail');
+      
+      // Store current URL as return URL so OAuth callback can redirect back
+      const returnUrl = window.location.href;
+      localStorage.setItem('onairos_return_url', returnUrl);
+      console.log('📍 Stored return URL:', returnUrl);
+      
+      console.log('🔐 Requesting Gmail OAuth authorization...');
+      
+      // Get the OAuth URL from backend
+      const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
+      const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
+      
+      const response = await fetch(`${baseUrl}/gmail/authorize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          session: {
+            username: localStorage.getItem('username') || email || 'user'
+          },
+          returnUrl: returnUrl  // Pass return URL to backend so it can include it in callback
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get OAuth URL from server');
+      }
+      
+      const result = await response.json();
+      console.log('✅ Gmail OAuth URL received:', result);
+      
+      if (!result.gmailURL) {
+        throw new Error('No OAuth URL received from server');
+      }
+      
+      // Redirect to Google OAuth
+      const isNative = Capacitor.isNativePlatform();
+      console.log('📱 Platform:', isNative ? 'Native' : 'Web');
+      
+      if (isNative) {
+        console.log('🚀 Opening Gmail OAuth in Capacitor Browser');
+        await Browser.open({ 
+          url: result.gmailURL,
+          windowName: '_blank',
+          presentationStyle: 'fullscreen'
+        });
+        // Don't reset loading state - we want to show loading until OAuth completes
+      } else {
+        console.log('🌐 Redirecting to Gmail OAuth in browser');
+        // For web, the redirect will navigate away, so loading state doesn't matter
+        window.location.href = result.gmailURL;
+      }
+      
+    } catch (e) {
+      console.error('❌ Google Sign In failed:', e);
+      setError('Failed to initialize Google Sign In. Please try again.');
+      setIsLoading(false);
+    }
+  };
 
-  // Auto-focus first PIN input when code step loads
+  // Auto-focus code input
   useEffect(() => {
     if (step === 'code') {
-      // Small delay to ensure DOM is ready
       setTimeout(() => {
         const firstInput = document.querySelector('input.onairos-verification-digit');
-        if (firstInput) {
-          firstInput.focus();
-        }
+        if (firstInput) firstInput.focus();
       }, 100);
     }
   }, [step]);
@@ -313,8 +379,8 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setEmailSent(true); // Reset email status
-    setEmailServiceMessage(''); // Reset service message
+    setEmailSent(true);
+    setEmailServiceMessage('');
     resetCodeDigits();
 
     if (!validateEmail(email)) {
@@ -326,23 +392,15 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
 
     try {
       if (testMode) {
-        // Test mode: Skip API call completely, simulate instant success
-        console.log('🧪 Test mode: Simulating email verification request for:', email);
         setTimeout(() => {
           setStep('code');
           setIsLoading(false);
-          console.log('🧪 Test mode: Email verification simulated successfully');
-        }, 800); // Shorter delay for faster testing
+        }, 800);
       } else {
-        // Production mode: Use proper email verification API from schema
         const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
         const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
         const data = await requestEmailVerification({ baseUrl, apiKey, email });
 
-        console.log('📧 Email request response:', data);
-
-        // Store email service status
-        // /email/verify returns emailSent, /email/verification typically does not.
         setEmailSent(data.emailSent !== false);
         setEmailServiceMessage(data.message || '');
 
@@ -356,126 +414,6 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     }
   };
 
-  // Handle Google Sign-In success (using official GoogleLogin component)
-  const handleGoogleSuccess = async (credentialResponse) => {
-    try {
-      setIsLoading(true);
-      setError('');
-      console.log('✅ Google Sign-In successful, received credential');
-
-      // Decode the JWT credential to get user info
-      const credential = credentialResponse.credential;
-      const base64Url = credential.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      );
-
-      const userInfo = JSON.parse(jsonPayload);
-      const gmailEmail = userInfo.email;
-      
-      console.log('✅ Decoded user email from Google:', gmailEmail);
-      console.log('✅ User info:', { 
-        email: userInfo.email, 
-        name: userInfo.name,
-        picture: userInfo.picture,
-        email_verified: userInfo.email_verified
-      });
-
-      // Send to backend for authentication - backend creates account if new
-      try {
-        const sdkConfig = {
-          baseUrl: 'https://api2.onairos.uk',
-          apiKey: window.onairosApiKey || 'test-key',
-        };
-
-        const response = await fetch(`${sdkConfig.baseUrl}/auth/google`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': sdkConfig.apiKey,
-          },
-          body: JSON.stringify({
-            credential: credential,
-            email: gmailEmail,
-            userInfo: userInfo,
-          }),
-        });
-
-        if (response.ok) {
-          const authData = await response.json();
-          console.log('✅ Google auth response:', authData);
-
-          // TRUST the backend's isNewUser field - it knows if account was just created!
-          const isNewUser = authData.body?.isNewUser !== undefined ? authData.body.isNewUser : authData.isNewUser;
-          const existingUser = !isNewUser;
-
-          console.log('✅ Using backend isNewUser determination:', {
-            isNewUser: isNewUser,
-            existingUser: existingUser,
-            httpStatus: authData.status,
-            message: authData.body?.message || authData.message
-          });
-
-          setStep('success');
-          setIsLoading(false);
-
-          setTimeout(() => {
-            onSuccess({
-              email: gmailEmail,
-              verified: true,
-              token: authData.body?.token || authData.token || null,
-              userName: authData.body?.username || authData.username || gmailEmail.split('@')[0],
-              existingUser: existingUser,
-              isNewUser: isNewUser,
-              flowType: isNewUser ? 'onboarding' : 'dataRequest',
-              accountInfo: {
-                email: gmailEmail,
-                name: userInfo.name,
-                picture: userInfo.picture,
-                verified: true,
-                ssoProvider: 'google'
-              },
-              adminMode: false,
-              userCreated: isNewUser,
-              accountDetails: {
-                email: gmailEmail,
-                name: userInfo.name,
-                picture: userInfo.picture,
-                createdAt: new Date().toISOString(),
-                ssoProvider: 'google'
-              }
-            });
-          }, 400);
-          return;
-        } else {
-          console.warn('⚠️ Backend /auth/google failed, falling back to account check');
-        }
-      } catch (backendError) {
-        console.warn('⚠️ Backend /auth/google error, falling back to account check:', backendError);
-      }
-
-      // Fallback: Continue with the OAuth success flow (account check)
-      handleOAuthSuccess(gmailEmail);
-
-    } catch (error) {
-      console.error('❌ Google Sign-In processing failed:', error);
-      setError('Google authentication failed. Please try again.');
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleError = () => {
-    console.error('❌ Google Sign-In failed');
-    setError('Google authentication failed. Please try again.');
-    setIsLoading(false);
-  };
-
-  // handleOAuthSuccess is defined at the top of the component for use in useEffect
-
   const handleCodeSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -483,39 +421,30 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
 
     try {
       if (testMode) {
-        // Test mode: Skip API call completely, simulate verification
-        console.log('🧪 Test mode: Simulating code verification for:', email, 'with code:', code);
-        
+        const code = codeDigits.join('');
         if (code === '123456' || isCodeComplete) {
           setStep('success');
           setTimeout(() => {
-            // Simulate new user for design testing
-            const simulatedResponse = { 
+            onSuccess({ 
               email, 
               verified: true, 
-              token: 'test-token-' + Date.now(),
+              token: 'test-token',
               userName: email.split('@')[0],
-              existingUser: false, // Always simulate new user for full flow testing
-              accountInfo: null,
+              existingUser: false,
               isNewUser: true,
               flowType: 'onboarding',
-              adminMode: false,
-              userCreated: true,
               accountDetails: {
                 email: email,
                 createdAt: new Date().toISOString(),
                 testAccount: true
               }
-            };
-            console.log('🧪 Test mode: Simulated verification successful, user data:', simulatedResponse);
-            onSuccess(simulatedResponse);
-          }, 600); // Faster for design testing
+            });
+          }, 600);
         } else {
-          setError('Invalid code. Use any 6-digit code (e.g., 123456) for testing.');
+          setError('Invalid code.');
           setIsLoading(false);
         }
       } else {
-        // Production mode: Use real email verification API from schema
         const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
         const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
         const codeToSubmit = codeDigits.join('');
@@ -530,31 +459,12 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
           throw new Error(data.error || 'Verification failed');
         }
 
-        console.log('📧 Email verification response:', data);
-
-        // TRUST the backend's isNewUser field - it knows if account was just created!
-        // Backend creates account during verification, so it's authoritative
         const isNewUser = data.isNewUser !== undefined ? data.isNewUser : true;
         const existingUser = !isNewUser;
-
-        console.log('✅ Using backend isNewUser determination:', {
-          isNewUser: isNewUser,
-          existingUser: existingUser,
-          userState: data.userState,
-          flowType: data.flowType,
-          hasExistingData: data.existingUserData?.hasExistingData
-        });
-
-        // Use data from verification response
         const accountInfo = data.user || data.accountInfo || null;
-        const accountStatus = data.accountStatus || null;
-        
-        // Optional: For existing users, we could fetch detailed account info if needed
-        // But the verification response already includes existingUserData for returning users
 
         setStep('success');
         setTimeout(() => {
-          // Pass complete API response - trust backend's flow determination
           onSuccess({ 
             email, 
             verified: true, 
@@ -562,18 +472,11 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
             userName: data.userName || accountInfo?.userName,
             existingUser: existingUser,
             isNewUser: isNewUser,
-            userState: data.userState,
             flowType: isNewUser ? 'onboarding' : 'dataRequest',
             accountInfo: accountInfo,
-            accountStatus: accountStatus,
-            existingUserData: data.existingUserData || null,
-            enochInstructions: data.enochInstructions || null,
-            displayMessages: data.displayMessages || null,
-            adminMode: data.adminMode,
-            userCreated: data.userCreated,
             accountDetails: accountInfo || {
               email: email,
-              createdAt: data.createdAt || accountInfo?.creationDate || new Date().toISOString(),
+              createdAt: data.createdAt || new Date().toISOString(),
               provider: 'email'
             }
           });
@@ -586,296 +489,194 @@ export default function EmailAuth({ onSuccess, testMode = true }) {
     }
   };
 
-  const renderEmailStep = () => (
-    <div className="w-full flex flex-col" style={{ height: '100%' }}>
-      {/* Content - Flexible center area */}
-      <div className="px-12 pt-16 pb-8 text-center flex-1 flex flex-col">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance leading-tight">
-            Use pre-existing Persona or create a new one in seconds
-          </h1>
-          <p className="text-gray-600 text-base">Sign in or create an account</p>
-        </div>
+  // --- RENDER HELPERS ---
 
-        <div className="mb-6">
+  const renderEmailStep = () => {
+    // Mobile Web Layout (OnairosEvents Style)
+    if (isMobileWeb) {
+      return (
+        <div className="w-full flex flex-col h-full px-6 pt-8">
+          <div className="flex-1 flex flex-col">
+            <div className="mb-8 w-full text-left">
+              <h1 className="text-2xl font-bold mb-2 leading-tight" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif', color: '#1F242F' }}>
+                Build your Onairos persona to own your digital identity
+              </h1>
+              <p className="text-base" style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#62646C' }}>
+                Sign in or create an account
+              </p>
+            </div>
+
+            {/* Email Input */}
+            <div className="mb-4 w-full">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="w-full outline-none transition-all placeholder-gray-500 bg-[#F5F5F5] rounded-lg border border-[#E5E5E5] text-[#1F242F]"
+                style={{ 
+                  height: '56px', 
+                  paddingLeft: 16, 
+                  paddingRight: 16, 
+                  fontSize: 16, 
+                  fontFamily: 'Inter, system-ui, sans-serif' 
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleEmailSubmit(e); }}
+                disabled={isLoading}
+                autoFocus
+              />
+            </div>
+
+            {/* Continue Button (Below Email Input) */}
+            <div className="mb-6 w-full">
+              <PrimaryButton
+                label={isLoading ? 'Loading...' : 'Continue'}
+                onClick={handleEmailSubmit}
+                disabled={isLoading || !email.trim()}
+                loading={isLoading}
+                className="!text-white w-full h-14 rounded-full"
+                textStyle={{ color: '#FFFFFF' }}
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-4 mb-6">
+              <div className="h-[1px] bg-[#E5E5E5] flex-1" />
+              <span className="text-sm text-[#86888E]" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Or</span>
+              <div className="h-[1px] bg-[#E5E5E5] flex-1" />
+            </div>
+
+            {/* Google Button */}
+            <div className="mb-8 w-full">
+              <GoogleButton onPress={handleGoogleSignIn} disabled={isLoading} />
+            </div>
+
+            {error && (
+              <div className="mb-6">
+                <p className="text-sm text-center" style={{ color: COLORS.error }}>{error}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Desktop Layout (Centered Card)
+    return (
+      <div className="flex flex-col h-full items-center justify-center p-6 text-center max-w-sm mx-auto">
+        <h1 className="text-2xl font-bold mb-2 text-gray-900" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>Sign in to Onairos</h1>
+        <p className="text-gray-600 mb-8" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Access your digital persona</p>
+
+        <div className="w-full space-y-4">
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
-            className="w-full max-w-sm mx-auto px-4 py-4 text-base bg-gray-50 border-0 rounded-xl !text-black placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-gray-200 outline-none transition-all duration-200"
-            style={{ 
-              fontFamily: 'Inter, system-ui, sans-serif',
-              WebkitTextFillColor: '#000000'
-            }}
-            required
+            placeholder="name@example.com"
+            className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            onKeyDown={(e) => { if (e.key === 'Enter') handleEmailSubmit(e); }}
+            disabled={isLoading}
+            autoFocus
           />
-        </div>
-
-        <div className="mb-6 text-center">
-          <span className="text-gray-500 text-sm">Or</span>
-        </div>
-
-        <div className="mb-8 flex justify-center">
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={handleGoogleError}
-            text="continue_with"
-            size="large"
-            shape="rectangular"
-            width="384"
-            logo_alignment="left"
-          />
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6">
-            <p className="text-sm text-center" style={{ color: COLORS.error }}>{error}</p>
+          <button
+            onClick={handleEmailSubmit}
+            disabled={isLoading || !email.trim()}
+            className="w-full bg-black text-white font-medium py-2 rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
+            style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+          >
+            {isLoading ? 'Sending...' : 'Continue with Email'}
+          </button>
+          
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="flex-shrink-0 mx-4 text-gray-400 text-sm" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Or</span>
+            <div className="flex-grow border-t border-gray-300"></div>
           </div>
-        )}
-      </div>
 
-      {/* Continue Button - Fixed at bottom */}
-      <div className="px-12 pb-8 flex-shrink-0">
-        <button
-          className="w-full max-w-sm mx-auto bg-gray-900 hover:bg-gray-800 text-white rounded-full py-4 text-base font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-          onClick={handleEmailSubmit}
-          disabled={isLoading || !email.trim()}
-          style={{ 
-            fontFamily: 'Inter, system-ui, sans-serif'
-          }}
-        >
-          {isLoading ? 'Loading...' : 'Continue'}
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+          <GoogleButton onPress={handleGoogleSignIn} disabled={isLoading} />
+          
+          {error && <p className="mt-2 text-sm text-red-500" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>{error}</p>}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderCodeStep = () => (
-    <div className="w-full flex flex-col" style={{ height: '100%' }}>
-      {/* Ensure verification code inputs always render black text (host apps may inject global input styles) */}
-      <style>{`
-        /* High-specificity + !important so consuming apps can't easily override text color */
-        input.onairos-verification-digit {
-          color: #000000 !important;
-          caret-color: #000000 !important;
-          -webkit-text-fill-color: #000000 !important; /* Safari/iOS */
-        }
-      `}</style>
-      {/* Heading - matching VerificationStep.tsx */}
-      <div className="w-full pt-16 px-12 mb-10 text-center">
-        <h1 
-          className="font-bold mb-2"
-          style={{ 
-            fontFamily: 'IBM Plex Sans, system-ui, sans-serif',
-            fontWeight: '700',
-            fontSize: '24px',
-            lineHeight: '32px',
-            color: COLORS.textPrimary
-          }}
-        >
-          Enter verification code
-        </h1>
-        <p 
-          className="mb-2"
-          style={{ 
-            fontFamily: 'Inter, system-ui, sans-serif',
-            fontWeight: '400',
-            fontSize: '16px',
-            lineHeight: '24px',
-            color: COLORS.textSecondary
-          }}
-        >
-          {emailSent ? `We've sent a 6-digit code to ${email}` : `A verification code has been generated for ${email}`}
-        </p>
-        {!emailSent && (
-          <div 
-            className="mb-4 mx-auto max-w-sm px-4 py-3 rounded-lg border"
-            style={{ 
-              backgroundColor: '#FEF3C7',
-              borderColor: '#FCD34D',
-              fontFamily: 'Inter, system-ui, sans-serif',
-              fontSize: '14px',
-              lineHeight: '20px',
-              color: '#92400E'
+    <div className="w-full flex flex-col h-full px-6 pt-16 text-center">
+      <h1 className="text-2xl font-bold mb-2" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif', color: COLORS.textPrimary }}>
+        Enter verification code
+      </h1>
+      <p className="mb-6" style={{ fontFamily: 'Inter, system-ui, sans-serif', color: COLORS.textSecondary }}>
+        {emailSent ? `We've sent a 6-digit code to ${email}` : `Code generated for ${email}`}
+      </p>
+
+      <div className="flex justify-center space-x-3 mb-8">
+        {Array.from({ length: 6 }, (_, index) => (
+          <input
+            key={index}
+            type="text"
+            inputMode="numeric"
+            maxLength="1"
+            value={codeDigits[index] || ''}
+            onChange={(e) => {
+              const val = e.target.value.replace(/\D/g, '');
+              const next = [...codeDigits];
+              next[index] = val;
+              setCodeDigits(next);
+              if (val && index < 5) e.target.parentElement.children[index + 1].focus();
             }}
-          >
-            <p className="font-medium mb-1">⚠️ Email service unavailable</p>
-            <p className="text-sm">
-              {emailServiceMessage.includes('testing mode') || emailServiceMessage.includes('server logs') 
-                ? 'Any 6-digit code will be accepted. Check server logs for the actual code.'
-                : 'The verification code was generated but could not be sent. Please check server logs or contact support.'}
-            </p>
-          </div>
-        )}
-      </div>
-
-
-      {/* Code Input - matching VerificationStep design with individual digit boxes */}
-      <div className="px-12 mb-6">
-        <div className="flex justify-center space-x-3">
-          {Array.from({ length: 6 }, (_, index) => (
-            <input
-              key={index}
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength="1"
-              autoComplete={index === 0 ? "one-time-code" : "off"}
-              value={codeDigits[index] || ''}
-              onPaste={(e) => {
-                const pasted = (e.clipboardData?.getData('text') || '').replace(/\D/g, '');
-                if (!pasted) return;
-                e.preventDefault();
-
-                const nextDigits = [...codeDigits];
-                for (let i = 0; i < pasted.length && index + i < 6; i++) {
-                  nextDigits[index + i] = pasted[i];
-                }
-                setCodeDigits(nextDigits);
-
-                const focusIndex = Math.min(index + pasted.length, 5);
-                const nextInput = e.currentTarget.parentElement?.children?.[focusIndex];
-                if (nextInput && typeof nextInput.focus === 'function') nextInput.focus();
-              }}
-              onChange={(e) => {
-                const raw = e.target.value || '';
-                const digitsOnly = raw.replace(/\D/g, '');
-
-                // Clear
-                if (!digitsOnly) {
-                  const nextDigits = [...codeDigits];
-                  nextDigits[index] = '';
-                  setCodeDigits(nextDigits);
-                  return;
-                }
-
-                // Some browsers/OTP autofill can inject multiple digits at once
-                const nextDigits = [...codeDigits];
-                for (let i = 0; i < digitsOnly.length && index + i < 6; i++) {
-                  nextDigits[index + i] = digitsOnly[i];
-                }
-                setCodeDigits(nextDigits);
-
-                const focusIndex = Math.min(index + digitsOnly.length, 5);
-                if (focusIndex !== index) {
-                  const nextInput = e.target.parentElement?.children?.[focusIndex];
-                  if (nextInput && typeof nextInput.focus === 'function') nextInput.focus();
-                } else if (index < 5) {
-                  const nextInput = e.target.parentElement?.children?.[index + 1];
-                  if (nextInput && typeof nextInput.focus === 'function') nextInput.focus();
-                }
-              }}
-              onKeyDown={(e) => {
-                // Handle backspace to focus previous input
-                if (e.key === 'Backspace') {
-                  // If current has a digit, clear it first (common OTP UX)
-                  if (codeDigits[index]) {
-                    const nextDigits = [...codeDigits];
-                    nextDigits[index] = '';
-                    setCodeDigits(nextDigits);
-                    e.preventDefault();
-                    return;
-                  }
-                  // Otherwise move focus left
-                  if (index > 0) {
-                    const prevInput = e.currentTarget.parentElement?.children?.[index - 1];
-                    if (prevInput && typeof prevInput.focus === 'function') prevInput.focus();
-                  }
-                }
-              }}
-              className="onairos-verification-digit w-12 h-12 border rounded-lg text-center text-lg font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none !text-black"
-              style={{ 
-                borderColor: COLORS.border,
-                backgroundColor: COLORS.background,
-                fontFamily: 'Inter, system-ui, sans-serif',
-                color: '#000000',
-                caretColor: '#000000',
-                WebkitTextFillColor: '#000000',
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="px-12 mb-6">
-          <p className="text-sm text-center" style={{ color: COLORS.error }}>{error}</p>
-        </div>
-      )}
-
-      {/* Continue Button - positioned right below code inputs */}
-      <div className="px-12 mb-6">
-        <div className="max-w-sm mx-auto">
-          <PrimaryButton
-            label="Continue"
-            onClick={handleCodeSubmit}
-            loading={isLoading}
-            disabled={isLoading || !isCodeComplete}
-            testId="verify-code-button"
-            className="!text-white"
-            textStyle={{ color: '#FFFFFF' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Backspace' && !codeDigits[index] && index > 0) {
+                e.target.parentElement.children[index - 1].focus();
+              }
+            }}
+            className="onairos-verification-digit w-12 h-12 border rounded-lg text-center text-lg font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+            style={{ borderColor: COLORS.border, backgroundColor: '#F5F5F5', color: '#000000' }}
           />
-        </div>
+        ))}
       </div>
 
-      {/* Spacer */}
-      <div style={{ flex: 1, minHeight: '20px' }} />
+      {error && <p className="mb-6 text-sm text-red-500" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>{error}</p>}
 
-      {/* Back to email option */}
-      <div className="px-12 w-full">
-        <div className="max-w-sm mx-auto">
-          <button
-            type="button"
-            onClick={() => {
-              resetCodeDigits();
-              setStep('email');
-            }}
-            className="w-full py-2 px-4 font-medium transition-colors text-sm"
-            style={{ color: COLORS.textSecondary }}
-          >
-            Use a different email
-          </button>
-        </div>
+      <div className="max-w-sm mx-auto w-full">
+        <PrimaryButton
+          label="Continue"
+          onClick={handleCodeSubmit}
+          loading={isLoading}
+          disabled={isLoading || !isCodeComplete}
+          className="!text-white"
+          textStyle={{ color: '#FFFFFF' }}
+        />
       </div>
+
+      <button
+        onClick={() => { resetCodeDigits(); setStep('email'); }}
+        className="mt-6 text-sm text-gray-500 font-medium"
+        style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+      >
+        Use a different email
+      </button>
     </div>
   );
 
   const renderSuccessStep = () => (
-    <div className="w-full flex flex-col items-center space-y-6 pt-16 px-12">
-      <div 
-        className="flex items-center justify-center w-16 h-16 rounded-full"
-        style={{ backgroundColor: '#D1FAE5' }}
-      >
-        <Check className="w-8 h-8" style={{ color: COLORS.success }} />
+    <div className="w-full flex flex-col items-center pt-16 px-12 space-y-6">
+      <div className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100">
+        <Check className="w-8 h-8 text-green-600" />
       </div>
-      
-      <div className="text-center space-y-2">
-        <h2 
-          className="text-xl font-semibold"
-          style={{ color: COLORS.textPrimary }}
-        >
-          Email verified!
-        </h2>
-        <p style={{ color: COLORS.textSecondary }}>Setting up your account...</p>
+      <div className="text-center">
+        <h2 className="text-xl font-semibold text-gray-900" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>Email verified!</h2>
+        <p className="text-gray-500" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Setting up your account...</p>
       </div>
-
-      <div className="w-8 h-8">
-        <div className="animate-spin h-8 w-8 border-2 border-blue-600 rounded-full border-t-transparent"></div>
-      </div>
+      <div className="animate-spin h-8 w-8 border-2 border-blue-600 rounded-full border-t-transparent"></div>
     </div>
   );
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       {step === 'email' && renderEmailStep()}
       {step === 'code' && renderCodeStep()}
       {step === 'success' && renderSuccessStep()}
     </div>
   );
-} 
+}

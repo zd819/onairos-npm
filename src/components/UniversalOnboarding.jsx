@@ -884,8 +884,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? (isSmallMobile ? '2.0rem' : '2.25rem') : '1.5rem', paddingBottom: isMobile ? '0.5rem' : '0.25rem' }}>
           {/* Nudge header/subheader up slightly on mobile without affecting layout below (transform doesn't affect flow). */}
           <div style={{ transform: isMobile ? 'translateY(-6px)' : 'translateY(-10px)' }}>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">Connect App Data</h1>
-            <p className="text-gray-600 text-base">More Connections, Better Personalization.</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>Connect App Data</h1>
+            <p className="text-gray-600 text-base" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>More Connections, Better Personalization.</p>
           </div>
         </div>
 
@@ -1035,7 +1035,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
             }}
           >
             <div className="flex items-center justify-between">
-              <div className="text-gray-900 font-medium">{selected}</div>
+              <div className="text-gray-900 font-medium" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>{selected}</div>
               <button
                 type="button"
                 role="switch"
@@ -1083,7 +1083,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                     onClick={() => setShowChatGPTModal(true)}
                     className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900"
                   >
-                    <span>Connect ChatGPT</span>
+                    <span style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Connect ChatGPT</span>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="16"
@@ -1108,7 +1108,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
         {/* footer — anchored at bottom using flex */}
         <div className="px-6 flex-shrink-0" style={{ paddingBottom: isMobile ? 12 : 16, background: isMobile ? 'transparent' : 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
-          <div className="w-full bg-gray-900 hover:bg-gray-800 rounded-full text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors"
+          <div className="w-full bg-gray-900 hover:bg-gray-800 rounded-full text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
             style={{ paddingTop: isSmallMobile ? 12 : 16, paddingBottom: isSmallMobile ? 12 : 16, color: '#ffffff' }}
             onClick={() => {
             console.log('🔥 UniversalOnboarding: Update clicked');
@@ -1120,7 +1120,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
             Update
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="#ffffff" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </div>
-          <div onClick={() => onComplete?.({ connectedAccounts: [], totalConnections: 0 })} className="w-full text-gray-600 text-base font-medium py-2 text-center cursor-pointer hover:text-gray-800 transition-colors" style={{ paddingTop: isSmallMobile ? 6 : 8, paddingBottom: isSmallMobile ? 6 : 8 }}>Skip</div>
+          <div onClick={() => onComplete?.({ connectedAccounts: [], totalConnections: 0 })} className="w-full text-gray-600 text-base font-medium py-2 text-center cursor-pointer hover:text-gray-800 transition-colors" style={{ paddingTop: isSmallMobile ? 6 : 8, paddingBottom: isSmallMobile ? 6 : 8, fontFamily: 'Inter, system-ui, sans-serif' }}>Skip</div>
         </div>
       </div>
       {/* Modal - Always render if state is true, regardless of isMobile prop */}

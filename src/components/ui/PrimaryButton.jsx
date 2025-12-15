@@ -23,7 +23,8 @@ const IconCircle = ({
           style={{
             fontSize: '20px',
             color: COLORS.btnLabel,
-            backgroundColor: 'transparent'
+            backgroundColor: 'transparent',
+            fontFamily: 'Inter, system-ui, sans-serif'
           }}
         >
           →
