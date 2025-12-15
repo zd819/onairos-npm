@@ -246,7 +246,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         }
       }
     };
-    
+
     // Check immediately on mount
     checkGmailOAuthSuccess();
     
@@ -352,7 +352,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         console.log('🌐 Redirecting to Gmail OAuth in browser');
         // For web, the redirect will navigate away, so loading state doesn't matter
         window.location.href = result.gmailURL;
-      }
+          }
       
     } catch (e) {
       console.error('❌ Google Sign In failed:', e);
@@ -452,7 +452,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         if (!isCodeComplete) {
           throw new Error('Please enter the full 6-digit code.');
         }
-        
+
         const data = await verifyEmailCode({ baseUrl, apiKey, email, code: codeToSubmit.trim() });
         
         if (!data.success) {
@@ -498,34 +498,36 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         <div className="w-full flex flex-col h-full px-6 pt-8">
           <div className="flex-1 flex flex-col">
             <div className="mb-8 w-full text-left">
-              <h1 className="text-2xl font-bold mb-2 leading-tight" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif', color: '#1F242F' }}>
+              <h1 className="text-2xl font-bold mb-2 leading-tight" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif', color: '#000000' }}>
                 Build your Onairos persona to own your digital identity
-              </h1>
+          </h1>
               <p className="text-base" style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#62646C' }}>
                 Sign in or create an account
               </p>
-            </div>
+        </div>
 
             {/* Email Input */}
             <div className="mb-4 w-full">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
                 className="w-full outline-none transition-all placeholder-gray-500 bg-[#F5F5F5] rounded-lg border border-[#E5E5E5] text-[#1F242F]"
-                style={{ 
+            style={{ 
                   height: '56px', 
                   paddingLeft: 16, 
                   paddingRight: 16, 
                   fontSize: 16, 
-                  fontFamily: 'Inter, system-ui, sans-serif' 
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  color: '#000000',
+                  WebkitTextFillColor: '#000000'
                 }}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleEmailSubmit(e); }}
                 disabled={isLoading}
                 autoFocus
-              />
-            </div>
+          />
+        </div>
 
             {/* Continue Button (Below Email Input) */}
             <div className="mb-6 w-full">
@@ -549,14 +551,14 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
             {/* Google Button */}
             <div className="mb-8 w-full">
               <GoogleButton onPress={handleGoogleSignIn} disabled={isLoading} />
-            </div>
+        </div>
 
-            {error && (
-              <div className="mb-6">
-                <p className="text-sm text-center" style={{ color: COLORS.error }}>{error}</p>
-              </div>
-            )}
+        {error && (
+          <div className="mb-6">
+            <p className="text-sm text-center" style={{ color: COLORS.error }}>{error}</p>
           </div>
+        )}
+      </div>
         </div>
       );
     }
@@ -574,18 +576,19 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@example.com"
             className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            style={{ color: '#000000', WebkitTextFillColor: '#000000', fontFamily: 'Inter, system-ui, sans-serif' }}
             onKeyDown={(e) => { if (e.key === 'Enter') handleEmailSubmit(e); }}
             disabled={isLoading}
             autoFocus
           />
-          <button
-            onClick={handleEmailSubmit}
-            disabled={isLoading || !email.trim()}
+        <button
+          onClick={handleEmailSubmit}
+          disabled={isLoading || !email.trim()}
             className="w-full bg-black text-white font-medium py-2 rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
             style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
-          >
+        >
             {isLoading ? 'Sending...' : 'Continue with Email'}
-          </button>
+        </button>
           
           <div className="relative flex py-2 items-center">
             <div className="flex-grow border-t border-gray-300"></div>
@@ -596,66 +599,66 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
           <GoogleButton onPress={handleGoogleSignIn} disabled={isLoading} />
           
           {error && <p className="mt-2 text-sm text-red-500" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>{error}</p>}
-        </div>
       </div>
-    );
+    </div>
+  );
   };
 
   const renderCodeStep = () => (
     <div className="w-full flex flex-col h-full px-6 pt-16 text-center">
       <h1 className="text-2xl font-bold mb-2" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif', color: COLORS.textPrimary }}>
-        Enter verification code
-      </h1>
+          Enter verification code
+        </h1>
       <p className="mb-6" style={{ fontFamily: 'Inter, system-ui, sans-serif', color: COLORS.textSecondary }}>
         {emailSent ? `We've sent a 6-digit code to ${email}` : `Code generated for ${email}`}
-      </p>
+        </p>
 
       <div className="flex justify-center space-x-3 mb-8">
-        {Array.from({ length: 6 }, (_, index) => (
-          <input
-            key={index}
-            type="text"
-            inputMode="numeric"
-            maxLength="1"
+          {Array.from({ length: 6 }, (_, index) => (
+            <input
+              key={index}
+              type="text"
+              inputMode="numeric"
+              maxLength="1"
             value={codeDigits[index] || ''}
-            onChange={(e) => {
+              onChange={(e) => {
               const val = e.target.value.replace(/\D/g, '');
               const next = [...codeDigits];
               next[index] = val;
               setCodeDigits(next);
               if (val && index < 5) e.target.parentElement.children[index + 1].focus();
-            }}
-            onKeyDown={(e) => {
+              }}
+              onKeyDown={(e) => {
               if (e.key === 'Backspace' && !codeDigits[index] && index > 0) {
                 e.target.parentElement.children[index - 1].focus();
-              }
-            }}
+                }
+              }}
             className="onairos-verification-digit w-12 h-12 border rounded-lg text-center text-lg font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-            style={{ borderColor: COLORS.border, backgroundColor: '#F5F5F5', color: '#000000' }}
-          />
-        ))}
+            style={{ borderColor: COLORS.border, backgroundColor: '#F5F5F5', color: '#000000', WebkitTextFillColor: '#000000', caretColor: '#000000' }}
+            />
+          ))}
       </div>
 
       {error && <p className="mb-6 text-sm text-red-500" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>{error}</p>}
 
       <div className="max-w-sm mx-auto w-full">
-        <PrimaryButton
-          label="Continue"
-          onClick={handleCodeSubmit}
-          loading={isLoading}
+          <PrimaryButton
+            label="Continue"
+            onClick={handleCodeSubmit}
+            loading={isLoading}
           disabled={isLoading || !isCodeComplete}
-          className="!text-white"
-          textStyle={{ color: '#FFFFFF' }}
-        />
-      </div>
+            className="!text-white"
+            textStyle={{ color: '#FFFFFF' }}
+          />
+        </div>
 
-      <button
+          <button
         onClick={() => { resetCodeDigits(); setStep('email'); }}
         className="mt-6 text-sm text-gray-500 font-medium"
         style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
-      >
-        Use a different email
-      </button>
+          >
+            Use a different email
+          </button>
     </div>
   );
 
@@ -668,7 +671,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         <h2 className="text-xl font-semibold text-gray-900" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>Email verified!</h2>
         <p className="text-gray-500" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Setting up your account...</p>
       </div>
-      <div className="animate-spin h-8 w-8 border-2 border-blue-600 rounded-full border-t-transparent"></div>
+        <div className="animate-spin h-8 w-8 border-2 border-blue-600 rounded-full border-t-transparent"></div>
     </div>
   );
 
@@ -679,4 +682,4 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       {step === 'success' && renderSuccessStep()}
     </div>
   );
-}
+} 

@@ -34,8 +34,8 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
       {/* Content - Flexible center area */}
       <div className="px-6 pt-16 flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }}>
         <div className="mb-6 flex-shrink-0">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Create a PIN</h1>
-          <p className="text-gray-600 text-base">A PIN so only you have the access to your data</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>Create a PIN</h1>
+          <p className="text-gray-600 text-base" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>A PIN so only you have the access to your data</p>
         </div>
 
         <div className="mb-6 flex-shrink-0">
@@ -49,7 +49,9 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
             style={{
               WebkitTextFillColor: '#000000',
               backgroundColor: '#FFFFFF',
-              color: '#000000'
+              color: '#000000',
+              caretColor: '#000000',
+              fontFamily: 'Inter, system-ui, sans-serif'
             }}
           />
         </div>

@@ -167,7 +167,7 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
       isArray: Array.isArray(connectedPlatforms),
       type: typeof connectedPlatforms 
     });
-
+    
     // Prefer localStorage as the source of truth (it is updated by UniversalOnboarding on OAuth return).
     // This avoids stale props causing "added platforms" to not show up until a full refresh.
     try {
@@ -282,11 +282,11 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
                 className={`${isCapacitorNative ? 'w-8 h-8' : 'w-6 h-6'} object-contain`}
               />
             ) : (
-              <img 
-                src="https://onairos.sirv.com/Images/OnairosBlack.png" 
-                alt="Onairos"
+            <img 
+              src="https://onairos.sirv.com/Images/OnairosBlack.png" 
+              alt="Onairos"
                 className={`${isCapacitorNative ? 'w-8 h-8' : 'w-6 h-6'} object-contain`}
-              />
+            />
             )}
           </div>
           <svg className={`${isCapacitorNative ? 'w-6 h-6' : 'w-5 h-5'} text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -429,12 +429,12 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
                   ) : (
                     <img
                       key={key}
-                      src={src}
-                      alt={platform}
-                      title={platform}
+                    src={src}
+                    alt={platform}
+                    title={platform}
                       className="w-6 h-6 rounded-md shadow-sm flex-shrink-0"
                       onError={() => setPlatformIconFailed((p) => ({ ...p, [key]: true }))}
-                    />
+                  />
                   )
                 );
               })}
@@ -473,7 +473,7 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
             >
               Connect apps?
             </button>
-          </div>
+      </div>
         )}
         <button
           className="w-full rounded-full py-3 bg-gray-900 text-sm font-medium shadow-sm flex items-center justify-center"

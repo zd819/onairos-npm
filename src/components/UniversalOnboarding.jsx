@@ -360,22 +360,22 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     // ALWAYS load from localStorage on mount UNLESS we're actively processing OAuth right now
     // (to avoid overwriting the OAuth update that just happened)
     if (!inOAuthFlow) {
-      try {
-        const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
-        console.log('🔄 UniversalOnboarding mount: Loading persisted accounts from localStorage:', userData.connectedAccounts);
-        if (userData.connectedAccounts && Array.isArray(userData.connectedAccounts)) {
-          // Convert array to object format
-          const accountsObj = userData.connectedAccounts.reduce((acc, platform) => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+      console.log('🔄 UniversalOnboarding mount: Loading persisted accounts from localStorage:', userData.connectedAccounts);
+      if (userData.connectedAccounts && Array.isArray(userData.connectedAccounts)) {
+        // Convert array to object format
+        const accountsObj = userData.connectedAccounts.reduce((acc, platform) => {
             acc[canonicalizePlatformName(platform)] = true;
-            return acc;
-          }, {});
+          return acc;
+        }, {});
           console.log('✅ Loaded connected accounts:', accountsObj);
-          setConnectedAccounts(accountsObj);
-        } else {
-          console.log('⚠️ No valid connectedAccounts in localStorage');
-        }
-      } catch (error) {
-        console.error('❌ Failed to load persisted connected accounts:', error);
+        setConnectedAccounts(accountsObj);
+      } else {
+        console.log('⚠️ No valid connectedAccounts in localStorage');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load persisted connected accounts:', error);
       }
     } else {
       console.log('⏭️ Skipping localStorage load (OAuth just completed)');
@@ -827,8 +827,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     const dx = touchDeltaX.current; const THRESH = 40;
     // Disable pagination swipe for wrapped app
     if (!isWrappedApp) {
-      if (dx < -THRESH && currentPage < 3) setCurrentPage(currentPage + 1);
-      else if (dx > THRESH && currentPage > 1) setCurrentPage(currentPage - 1);
+    if (dx < -THRESH && currentPage < 3) setCurrentPage(currentPage + 1);
+    else if (dx > THRESH && currentPage > 1) setCurrentPage(currentPage - 1);
     }
   };
 
@@ -881,7 +881,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       }}>
         {/* header - MOBILE ONLY: smaller top padding to give persona space */}
         {/* Desktop: Reduced padding to fit everything */}
-        <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? (isSmallMobile ? '2.0rem' : '2.25rem') : '1.5rem', paddingBottom: isMobile ? '0.5rem' : '0.25rem' }}>
+        <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? (isSmallMobile ? '2.5rem' : '3rem') : '2rem', paddingBottom: isMobile ? '0.5rem' : '0.25rem' }}>
           {/* Nudge header/subheader up slightly on mobile without affecting layout below (transform doesn't affect flow). */}
           <div style={{ transform: isMobile ? 'translateY(-6px)' : 'translateY(-10px)' }}>
             <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>Connect App Data</h1>
@@ -891,8 +891,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
         {/* Spacer - MOBILE ONLY: push icons/card WAY down so PERSONA SHINES */}
         {/* Desktop: Increased spacer to push content lower on page */}
-        {isMobile && <div className="flex-1" style={{ minHeight: isSmallMobile ? 120 : 150 }} />}
-        {!isMobile && <div className="flex-1" style={{ minHeight: 80 }} />}
+        {isMobile && <div className="flex-1" style={{ minHeight: isSmallMobile ? 140 : 170 }} />}
+        {!isMobile && <div className="flex-1" style={{ minHeight: 100 }} />}
 
         {/* icons band */}
         <div className="px-6 flex-shrink-0" style={{ height: ICONS_H }}>
@@ -1015,13 +1015,13 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
         {/* Pagination dots - hidden for wrapped app */}
         {!isWrappedApp && (
-          <div className="relative flex items-center justify-center gap-3 select-none flex-shrink-0" style={{ marginTop: isMobile ? 12 : 24, marginBottom: isMobile ? 20 : 20, zIndex: 25 }}>
-            {[1,2,3].map(n => (
-              <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }}>
-                <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-125' : 'bg-gray-300'} transition-transform`} style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }} />
-              </button>
-            ))}
-          </div>
+        <div className="relative flex items-center justify-center gap-3 select-none flex-shrink-0" style={{ marginTop: isMobile ? 12 : 24, marginBottom: isMobile ? 20 : 20, zIndex: 25 }}>
+          {[1,2,3].map(n => (
+            <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }}>
+              <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-125' : 'bg-gray-300'} transition-transform`} style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }} />
+            </button>
+          ))}
+        </div>
         )}
 
         {/* info sheet — positioned using flex, MOBILE ONLY: LOWER */}
@@ -1120,7 +1120,6 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
             Update
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="#ffffff" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </div>
-          <div onClick={() => onComplete?.({ connectedAccounts: [], totalConnections: 0 })} className="w-full text-gray-600 text-base font-medium py-2 text-center cursor-pointer hover:text-gray-800 transition-colors" style={{ paddingTop: isSmallMobile ? 6 : 8, paddingBottom: isSmallMobile ? 6 : 8, fontFamily: 'Inter, system-ui, sans-serif' }}>Skip</div>
         </div>
       </div>
       {/* Modal - Always render if state is true, regardless of isMobile prop */}
