@@ -430,6 +430,20 @@ export function OnairosButton({
       if (savedUser) {
         try {
           const user = JSON.parse(savedUser);
+
+          // If this is a wrapped app, remove any cached API responses to force a fresh fetch
+          // This prevents the SDK from immediately thinking it's "done" based on old data
+          if (webpageName && webpageName.toLowerCase().includes('wrapped')) {
+            if (user.apiResponse || user.lastDataRequest) {
+              console.log('🧼 Cleaning old wrapped data from session to force fresh state');
+              delete user.apiResponse;
+              // We keep connectedAccounts/token but nuke the result
+              // However, keep lastDataRequest if it contains permissions, just remove the result part?
+              // Actually, lastDataRequest usually contains 'approved' array. We want to keep that.
+              // But handleDataRequestComplete merges new result anyway.
+            }
+          }
+          
           setUserData(user);
           // If user has completed onboarding and PIN setup, go directly to data request
           if (user.onboardingComplete && user.pinCreated) {
@@ -447,7 +461,7 @@ export function OnairosButton({
     };
 
     checkExistingSession();
-  }, [testMode]);
+  }, [testMode, webpageName]);
 
   // Check for OAuth return (Google login redirect back)
   useEffect(() => {
@@ -941,12 +955,31 @@ export function OnairosButton({
                ...fetchBody,
                forceFresh: true,
                cacheBust: Date.now(),
+               // Explicitly tell backend this is a retry/refresh if we've seen this email before
+               // FIX: Always set retry to false to force full regeneration, ignoring previous attempts
+               retry: false, // localStorage.getItem('onairos_last_wrapped_email') === userData?.email,
+               // Additional flags for backend variations
+               force_refresh: true,
+               refresh: true
              };
+             
+             // Append cachebuster to URL to prevent any edge/proxy caching
+             if (fetchUrl.includes('?')) {
+               fetchUrl += `&cb=${Date.now()}`;
+             } else {
+               fetchUrl += `?cb=${Date.now()}`;
+             }
+
              try {
                const currentEmail = userData?.email;
                if (currentEmail) localStorage.setItem('onairos_last_wrapped_email', currentEmail);
              } catch {}
-             console.log('🧼 Wrapped forceFresh enabled (always for wrapped):', { email: userData?.email });
+             console.log('🧼 Wrapped forceFresh enabled (always for wrapped):', { 
+               email: userData?.email,
+               url: fetchUrl,
+               body: fetchBody,
+               isRetry: fetchBody.retry
+             });
           } else {
             // Non-wrapped: do NOT re-run training here. Use apiUrl from getAPIurlMobile for traits/inference.
             fetchBody = {
@@ -1078,14 +1111,25 @@ export function OnairosButton({
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
                 
                 try {
-                  const pollResponse = await fetch(fetchUrl, {
+                  // Ensure polling request is unique to bypass proxy caches
+                  const pollUrl = new URL(fetchUrl);
+                  pollUrl.searchParams.set('poll_cb', Date.now());
+
+                  // CRITICAL: Do NOT send forceFresh during polling, or we might restart the generation!
+                  const pollBody = { ...fetchBody };
+                  delete pollBody.forceFresh;
+                  delete pollBody.retry; // Don't signal retry on polls
+                  delete pollBody.force_refresh;
+                  delete pollBody.refresh;
+
+                  const pollResponse = await fetch(pollUrl.toString(), {
                     method: method,
                     headers: {
                       'Authorization': `Bearer ${urlData.token}`,
                       'Content-Type': 'application/json'
                     },
                     cache: 'no-store',
-                    body: method === 'POST' ? JSON.stringify(fetchBody) : undefined
+                    body: method === 'POST' ? JSON.stringify(pollBody) : undefined
                   });
                   
                   if (pollResponse.ok) {
