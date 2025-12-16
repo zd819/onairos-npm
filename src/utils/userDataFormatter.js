@@ -30,7 +30,7 @@ export function formatUserDataForDisplay(result) {
       userType: result.userData?.userType || 'Unknown',
       onboardingComplete: result.userData?.onboardingComplete || false,
       pinCreated: result.userData?.pinCreated || false,
-      trainingComplete: result.userData?.trainingComplete || false,
+      trainingComplete: result.userData?.trainingComplete || result.userData?.trainingCompleted || false,
       modelReady: result.userData?.modelReady || false
     },
     

@@ -11,6 +11,7 @@ import TrainingScreen from './components/TrainingScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import WrappedLoadingPage from './components/WrappedLoadingPage.jsx';
 import { formatOnairosResponse } from './utils/responseFormatter.js';
+import { logOnairosResponse } from './utils/apiResponseLogger.js';
 import { logFormattedUserData } from './utils/userDataFormatter.js';
 import { ModalPageLayout } from './components/ui/PageLayout.jsx';
 import { isMobileApp, isMobileBrowser } from './utils/capacitorDetection.js';
@@ -819,6 +820,8 @@ export function OnairosButton({
     console.log('🎓 Training completed:', trainingResult);
     const updatedUserData = {
       ...userData,
+      // Persist a stable flag name used across SDK helpers/formatters
+      trainingComplete: !(trainingResult?.fallback || trainingResult?.error),
       trainingCompleted: true,
       ...trainingResult
     };
@@ -833,6 +836,7 @@ export function OnairosButton({
     console.log('🎓 Training screen completed:', trainingResult);
     const updatedUserData = {
       ...userData,
+      trainingComplete: !(trainingResult?.fallback || trainingResult?.error),
       trainingCompleted: true,
       ...trainingResult
     };
@@ -865,11 +869,11 @@ export function OnairosButton({
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
 
     // Handle data fetching if autoFetch is enabled
-    // For non-wrapped apps, training already happened in TrainingScreen, so skip this
+    // Non-wrapped apps still need this call to produce InferenceResult (output + traits) for host apps.
     let finalResult = requestResult;
     
-    if (autoFetch && requestResult.approved?.length > 0 && isWrappedApp) {
-      console.log('🚀 Auto-fetching data from Onairos API for wrapped app...');
+    if (autoFetch && requestResult.approved?.length > 0) {
+      console.log(`🚀 Auto-fetching data from Onairos API (${isWrappedApp ? 'wrapped' : 'non-wrapped'})...`);
       
       try {
         // 1. Get the API URL from the backend
@@ -902,7 +906,8 @@ export function OnairosButton({
             setCurrentFlow('wrappedLoading');
             console.log('📊 Showing wrapped loading screen for wrapped app');
           } else {
-            console.log('📊 Skipping loading screen - not a wrapped app');
+            setCurrentFlow('loading');
+            console.log('📊 Showing simple loading screen for non-wrapped app');
           }
           
           // Emit custom event for host app
@@ -925,29 +930,8 @@ export function OnairosButton({
              includeLlmData: requestResult.approved.includes('rawMemories')
           };
 
-          // Override for non-wrapped apps (Regular SDK training) to use Training API
-          if (!isWrappedApp) {
-             fetchUrl = 'https://api2.onairos.uk/mobile-training/clean';
-             
-             // Construct training body
-             const connected = [];
-             if (userData?.connectedAccounts) {
-               if (Array.isArray(userData.connectedAccounts)) {
-                 connected.push(...userData.connectedAccounts);
-               } else if (typeof userData.connectedAccounts === 'object') {
-                 connected.push(...Object.keys(userData.connectedAccounts).filter(k => userData.connectedAccounts[k]));
-               }
-             }
-             
-             fetchBody = {
-               Info: {
-                 username: userData?.email || userData?.username,
-                 connectedPlatforms: connected
-               }
-             };
-             
-             console.log('🚀 Switching to Training API for non-wrapped app:', fetchUrl);
-          } else {
+          // Wrapped: keep the traits-only dashboard generation behavior
+          if (isWrappedApp) {
              console.log('🎁 WRAPPED APP DETECTED - Using traits-only endpoint from backend:', fetchUrl);
              console.log('🎁 This should call the wrapped dashboard generation');
 
@@ -963,6 +947,13 @@ export function OnairosButton({
                if (currentEmail) localStorage.setItem('onairos_last_wrapped_email', currentEmail);
              } catch {}
              console.log('🧼 Wrapped forceFresh enabled (always for wrapped):', { email: userData?.email });
+          } else {
+            // Non-wrapped: do NOT re-run training here. Use apiUrl from getAPIurlMobile for traits/inference.
+            fetchBody = {
+              email: userData?.email,
+              includeLlmData: requestResult.approved.includes('rawMemories')
+            };
+            console.log('✅ Non-wrapped: Using apiUrl from getAPIurlMobile for traits/inference:', fetchUrl);
           }
           
           console.log(`📡 Fetching/Training data from ${fetchUrl} (${method})...`);
@@ -1029,6 +1020,45 @@ export function OnairosButton({
               hasSlides: !!apiResponse.slides,
               responseKeys: Object.keys(apiResponse)
             });
+
+            // ─────────────────────────────────────────────────────────────
+            // Normalize + log API response in the exact SDK format expected
+            // (see SDK_API_USAGE_EXAMPLES.md) using apiResponseLogger.
+            // ─────────────────────────────────────────────────────────────
+            try {
+              const normalizedForLogging = (() => {
+                // Wrapped dashboard responses are logged elsewhere; skip here.
+                if (apiResponse?.slides || apiResponse?.dashboard || apiResponse?.data?.dashboard) return null;
+
+                // Standard inference shape already
+                if (apiResponse?.InferenceResult) return apiResponse;
+
+                // traits-only: { success, traits, userTraits, llmData? }
+                if (apiResponse?.traits && typeof apiResponse.traits === 'object') {
+                  return {
+                    InferenceResult: {
+                      // Output may be absent for traits-only; logger will still print traits nicely.
+                      output: apiResponse.output || apiResponse.InferenceResult?.output || [],
+                      traits: { personality_traits: apiResponse.traits }
+                    },
+                    llmData: apiResponse.llmData,
+                    inference_metadata: {
+                      source: 'traits-only',
+                      retrievedAt: apiResponse?.metadata?.retrievedAt,
+                      note: 'Normalized traits-only response into InferenceResult for logging'
+                    }
+                  };
+                }
+
+                return apiResponse;
+              })();
+
+              if (normalizedForLogging) {
+                logOnairosResponse(normalizedForLogging, fetchUrl, { detailed: true, showRawData: false });
+              }
+            } catch (logErr) {
+              console.warn('⚠️ Failed to log Onairos response:', logErr);
+            }
             
             // Check if dashboard is still being generated (wrapped app only)
             if (isWrappedApp && apiResponse.status === 'processing') {
@@ -1510,7 +1540,7 @@ export function OnairosButton({
           </div>
         );
       case 'loading':
-        return <LoadingScreen onComplete={handleLoadingComplete} />;
+        return <LoadingScreen onComplete={handleLoadingComplete} appName={webpageName} />;
       default:
         return (
           <div className="flex flex-col items-center space-y-4 p-6">

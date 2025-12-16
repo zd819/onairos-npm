@@ -4,25 +4,27 @@ import rainAnim from '../../public/rain-anim.json';
 import io from 'socket.io-client';
 
 const trainingPhrases = [
-  "Analyzing your data patterns...",
-  "Building your personality model...",
-  "Training neural networks...",
-  "Running inference algorithms...",
-  "Generating personalized insights...",
-  "Finalizing your profile...",
+  "Training your data...",
+  "Gathering your traits...",
+  "Building your profile...",
+  "Analyzing patterns...",
+  "Creating insights...",
+  "Finalizing...",
   "Almost done..."
 ];
 
 export default function TrainingScreen({ onComplete, onTrainingStart, userEmail, connectedAccounts = [], userToken }) {
   const [progress, setProgress] = useState(0);
   const [currentPhrase, setCurrentPhrase] = useState(trainingPhrases[0]);
-  const [currentStage, setCurrentStage] = useState('training'); // 'training' | 'inference' | 'complete'
   const lottieRef = useRef(null);
 
   useEffect(() => {
     let socket = null;
     let progressTimer = null;
     let didSignalStart = false;
+    let watchdogTimer = null;
+    let phraseTimer = null;
+    let phraseIndex = 0;
 
     const signalTrainingStarted = () => {
       if (didSignalStart) return;
@@ -32,6 +34,36 @@ export default function TrainingScreen({ onComplete, onTrainingStart, userEmail,
       } catch (e) {
         // never block training due to callback issues
       }
+    };
+
+    // UI should stay vague; do NOT surface backend trainingUpdate/status strings.
+    const startVaguePhraseRotation = () => {
+      if (phraseTimer) return;
+      phraseTimer = setInterval(() => {
+        phraseIndex = (phraseIndex + 1) % trainingPhrases.length;
+        setCurrentPhrase(trainingPhrases[phraseIndex]);
+      }, 4000);
+    };
+
+    const resetWatchdog = () => {
+      // We keep a long watchdog to avoid infinite hangs, but we do not scare the user
+      // and we do not auto-complete while backend is actively sending updates.
+      if (watchdogTimer) clearTimeout(watchdogTimer);
+      watchdogTimer = setTimeout(() => {
+        // Silent timeout -> complete with fallback so flow can proceed,
+        // but keep UI vague.
+        try { if (progressTimer) clearInterval(progressTimer); } catch {}
+        setProgress(100);
+        setCurrentPhrase('Finalizing...');
+        try { if (socket) socket.disconnect(); } catch {}
+        setTimeout(() => {
+          onComplete?.({
+            fallback: true,
+            message: 'Training timed out (watchdog)',
+            autoCompleted: true
+          });
+        }, 800);
+      }, 10 * 60 * 1000); // 10 minutes
     };
     
     // ACTUALLY run training + inference using Socket.IO
@@ -72,8 +104,9 @@ export default function TrainingScreen({ onComplete, onTrainingStart, userEmail,
         console.log('✅ Token found, starting Socket.IO training...', token.substring(0, 20) + '...');
 
         // Phase 1: Connect to Socket.IO
-        setCurrentStage('training');
-        setCurrentPhrase('Connecting to server...');
+        setCurrentPhrase(trainingPhrases[0]);
+        startVaguePhraseRotation();
+        resetWatchdog();
         console.log('🔌 Connecting to Socket.IO server...');
 
         socket = io('https://api2.onairos.uk', {
@@ -88,15 +121,16 @@ export default function TrainingScreen({ onComplete, onTrainingStart, userEmail,
           console.log('✅ Socket connected:', socket.id);
           // At this point, training can actually start (server reachable).
           signalTrainingStarted();
-          setCurrentPhrase('Starting training...');
+          startVaguePhraseRotation();
+          resetWatchdog();
           
-          // Start progress animation
+          // Start progress animation (slow + steady; completion comes from backend event)
           progressTimer = setInterval(() => {
             setProgress(prev => {
-              if (prev < 95) return prev + 0.5; // Slow smooth progress
+              if (prev < 95) return prev + 0.5; // Slower progress
               return prev;
             });
-          }, 200);
+          }, 300);
 
           // Trigger training
           console.log('🚀 Emitting start-training event with:', {
@@ -112,6 +146,7 @@ export default function TrainingScreen({ onComplete, onTrainingStart, userEmail,
             platforms: connectedAccounts,
             connectedAccounts: connectedAccounts
           });
+          resetWatchdog();
         });
 
         // Handle training progress updates
@@ -119,43 +154,110 @@ export default function TrainingScreen({ onComplete, onTrainingStart, userEmail,
           console.log('📊 Training progress:', data);
           // Progress events mean training has definitely started.
           signalTrainingStarted();
+          startVaguePhraseRotation();
+          resetWatchdog();
+          
           if (data.percentage) {
             setProgress(Math.min(data.percentage, 95)); // Cap at 95% until complete
           }
-          if (data.message) {
-            setCurrentPhrase(data.message);
+        });
+
+        // Handle training updates (legacy event name from old mobile SDK)
+        socket.on('trainingUpdate', (data) => {
+          console.log('📊 Training update:', data);
+          // We are receiving backend updates; reset watchdog so we don't timeout mid-training.
+          startVaguePhraseRotation();
+          resetWatchdog();
+          
+          // Check if this is an error
+          if (data.error) {
+            console.error('❌ Training error from trainingUpdate event:', data);
+            
+            if (progressTimer) clearInterval(progressTimer);
+            if (watchdogTimer) clearTimeout(watchdogTimer);
+            if (phraseTimer) clearInterval(phraseTimer);
+            
+            // Check if it's insufficient data error
+            if (data.code === 'INSUFFICIENT_DATA') {
+              console.error('❌ INSUFFICIENT DATA:', {
+                upvoted: data.details?.upvotedCount || 0,
+                downvoted: data.details?.downvotedCount || 0,
+                total: data.details?.totalCount || 0
+              });
+              console.error('💡 Suggestions:', data.details?.suggestions || []);
+            }
+            
+            setProgress(100);
+            setCurrentPhrase('Finalizing...');
+            
+            socket.disconnect();
+            
+            setTimeout(() => {
+              // Complete anyway with fallback flag
+              onComplete?.({ 
+                error: data.error,
+                errorCode: data.code,
+                errorDetails: data.details,
+                fallback: true 
+              });
+            }, 500);
+            return;
           }
-          if (data.stage) {
-            setCurrentStage(data.stage);
-          }
+        });
+
+        // Handle old training completion event (trainingCompleted)
+        socket.on('trainingCompleted', (result) => {
+          console.log('✅ Training completed via trainingCompleted event:', result);
+          
+          // Clear timers
+          if (progressTimer) clearInterval(progressTimer);
+          if (watchdogTimer) clearTimeout(watchdogTimer);
+          if (phraseTimer) clearInterval(phraseTimer);
+          
+          setProgress(100);
+          setCurrentPhrase('Finalizing...');
+          
+          socket.disconnect();
+          
+          setTimeout(() => {
+            onComplete?.(result || { success: true, fallback: false });
+          }, 500);
         });
 
         // Handle training completion
         socket.on('training-complete', (result) => {
           console.log('✅ Training complete via Socket.IO:', result);
           
+          // Clear timers
           if (progressTimer) clearInterval(progressTimer);
+          if (watchdogTimer) clearTimeout(watchdogTimer);
+          if (phraseTimer) clearInterval(phraseTimer);
+          
           setProgress(100);
-          setCurrentStage('complete');
-          setCurrentPhrase('Training complete!');
+          setCurrentPhrase('Finalizing...');
 
-          // Log complete results to console
-          console.log('\n🎉 ===== TRAINING + INFERENCE COMPLETE =====\n');
-          console.log('📊 Training Results:', {
-            status: 'completed',
-            userEmail,
-            connectedPlatforms: connectedAccounts,
-            traits: result.traits || result.trainingResults?.traits || {},
-            timestamp: new Date().toISOString()
+          // Log complete results to console with detailed formatting
+          const traits = result?.traits || result?.userTraits || {};
+          import('../utils/apiResponseLogger.js').then(logger => {
+            const responseData = {
+              InferenceResult: {
+                traits: {
+                  personality_traits: traits
+                },
+                output: result.inferenceResults?.output || []
+              },
+              inference_metadata: {
+                source: 'TrainingScreen',
+                completionType: 'socket-event'
+              }
+            };
+            logger.logOnairosResponse(responseData, 'Socket: training-complete', { detailed: true });
+          }).catch(e => {
+            // Fallback logging if dynamic import fails
+            console.log('\n🎉 ===== TRAINING + INFERENCE COMPLETE =====\n');
+            console.log(JSON.stringify(result, null, 2));
           });
-          
-          console.log('\n🧠 Traits Retrieved:', {
-            traits: result.traits || result.trainingResults?.traits || {},
-            userTraits: result.userTraits || result.trainingResults?.userTraits || {},
-            hasLlmData: !!result.llmData,
-            inferenceResults: result.inferenceResults || null
-          });
-          
+
           console.log('\n✅ Model ready for predictions!\n');
 
           // Disconnect socket
@@ -172,9 +274,11 @@ export default function TrainingScreen({ onComplete, onTrainingStart, userEmail,
           console.error('❌ Training error from Socket.IO:', error);
           
           if (progressTimer) clearInterval(progressTimer);
+          if (watchdogTimer) clearTimeout(watchdogTimer);
+          if (phraseTimer) clearInterval(phraseTimer);
           
           setProgress(100);
-          setCurrentPhrase('Error occurred, continuing...');
+          setCurrentPhrase('Finalizing...');
           
           socket.disconnect();
           
@@ -191,9 +295,11 @@ export default function TrainingScreen({ onComplete, onTrainingStart, userEmail,
           console.error('❌ Socket.IO connection error:', error);
           
           if (progressTimer) clearInterval(progressTimer);
+          if (watchdogTimer) clearTimeout(watchdogTimer);
+          if (phraseTimer) clearInterval(phraseTimer);
           
           setProgress(100);
-          setCurrentPhrase('Connection error, continuing...');
+          setCurrentPhrase('Finalizing...');
           
           socket.disconnect();
           
@@ -214,6 +320,8 @@ export default function TrainingScreen({ onComplete, onTrainingStart, userEmail,
         console.error('❌ Training/Inference Error:', error);
         
         if (progressTimer) clearInterval(progressTimer);
+        if (watchdogTimer) clearTimeout(watchdogTimer);
+        if (phraseTimer) clearInterval(phraseTimer);
         if (socket) socket.disconnect();
         
         // Fallback: still complete but show error
@@ -233,6 +341,8 @@ export default function TrainingScreen({ onComplete, onTrainingStart, userEmail,
     // Cleanup on unmount
     return () => {
       if (progressTimer) clearInterval(progressTimer);
+      if (watchdogTimer) clearTimeout(watchdogTimer);
+      if (phraseTimer) clearInterval(phraseTimer);
       if (socket) {
         console.log('🧹 Cleaning up socket connection');
         socket.disconnect();
@@ -241,98 +351,57 @@ export default function TrainingScreen({ onComplete, onTrainingStart, userEmail,
   }, [userEmail, connectedAccounts, userToken, onComplete]);
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-        .float-animation {
-          animation: float 6s ease-in-out infinite;
-        }
-        .glow-bar {
-          box-shadow: 0 0 20px rgba(59, 130, 246, 0.5),
-                      0 0 40px rgba(139, 92, 246, 0.3),
-                      inset 0 0 20px rgba(255, 255, 255, 0.1);
-        }
-      `}</style>
-
-      {/* Rain Animation - Sleek and centered */}
-      <div className="w-full max-w-sm mb-6 float-animation">
-        <Lottie 
-          lottieRef={lottieRef}
-          animationData={rainAnim}
-          loop={true}
-          autoplay={true}
-          style={{ width: '100%', height: '240px', filter: 'brightness(1.1)' }}
-        />
-      </div>
-
-      {/* Training Status - Sleeker design */}
-      <div className="w-full max-w-lg">
-        {/* Title with stage indicator */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 mb-3 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
-            <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
-            <span className="text-xs font-medium text-blue-100 uppercase tracking-wider">
-              {currentStage === 'training' ? 'Training Model' : 
-               currentStage === 'inference' ? 'Running Inference' : 'Complete'}
-            </span>
-          </div>
-          
-          <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">
-            {currentStage === 'complete' ? 'Ready!' : 'Building Your Profile'}
-          </h2>
-          
-          <p className="text-blue-200 text-sm font-medium">
+    <div className="h-full w-full flex flex-col items-center justify-center px-6 py-4">
+      {/* Fixed layout container to prevent shifting when phrases change */}
+      <div
+        className="w-full max-w-md flex flex-col items-center"
+        style={{
+          // Keep consistent vertical rhythm across devices
+          minHeight: 520,
+          justifyContent: 'center',
+          gap: 18
+        }}
+      >
+        {/* Vague message only (never show backend training/inference details) */}
+        <div className="text-center" style={{ minHeight: 56, display: 'flex', alignItems: 'center' }}>
+          <h2
+            className="text-xl md:text-2xl font-semibold text-gray-900"
+            style={{
+              fontFamily: 'IBM Plex Sans, system-ui, sans-serif',
+              lineHeight: 1.2,
+              maxWidth: 360
+            }}
+          >
             {currentPhrase}
-          </p>
+          </h2>
         </div>
 
-        {/* Progress Bar - Sleek glassmorphism design */}
-        <div className="relative mb-4">
-          <div className="w-full bg-white/5 backdrop-blur-sm rounded-full h-3 overflow-hidden border border-white/10">
+        {/* Lottie Animation */}
+        <div className="w-full flex items-center justify-center" style={{ height: 300 }}>
+          <div className="relative" style={{ width: 300, height: 300 }}>
+            <Lottie 
+              lottieRef={lottieRef}
+              animationData={rainAnim}
+              loop={true}
+              autoplay={true}
+              className="absolute inset-0"
+              style={{ width: '100%', height: '100%' }}
+            />
+          </div>
+        </div>
+
+        {/* Black and White Loading Bar - Below Lottie */}
+        <div className="w-full" style={{ maxWidth: 360 }}>
+          <div className="relative w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div 
-              className="h-full rounded-full transition-all duration-300 ease-out glow-bar"
+              className="absolute top-0 left-0 h-full bg-gray-900 rounded-full transition-all duration-300 ease-out"
               style={{ 
-                width: `${progress}%`,
-                background: 'linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)'
+                width: `${progress}%`
               }}
             />
           </div>
-          
-          {/* Progress percentage overlay */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs font-bold text-white drop-shadow-lg">
-              {progress}%
-            </span>
-          </div>
         </div>
 
-        {/* Stage indicators */}
-        <div className="flex justify-between items-center px-2 mb-6">
-          <div className={`text-xs font-medium transition-colors ${progress >= 0 ? 'text-blue-400' : 'text-gray-500'}`}>
-            Training
-          </div>
-          <div className={`text-xs font-medium transition-colors ${progress >= 50 ? 'text-purple-400' : 'text-gray-500'}`}>
-            Inference
-          </div>
-          <div className={`text-xs font-medium transition-colors ${progress >= 100 ? 'text-pink-400' : 'text-gray-500'}`}>
-            Complete
-          </div>
-        </div>
-
-        {/* Info box - Sleek and minimal */}
-        <div className="mt-6 p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10">
-          <div className="flex items-center justify-center gap-2 text-blue-100">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <p className="text-xs">
-              Processing your data securely • {connectedAccounts.length} {connectedAccounts.length === 1 ? 'platform' : 'platforms'} connected
-            </p>
-          </div>
-        </div>        
       </div>
     </div>
   );

@@ -1,355 +1,249 @@
 /**
- * API Response Logger for Onairos SDK
- * Provides detailed console logging with explanatory labels for API responses
+ * Onairos API Response Logger
  * 
- * Response Format from Backend:
- * {
- *   InferenceResult: {
- *     output: [[0.95], [0.89], ...],  // Content preference scores (0-1 scale)
- *     traits: {
- *       personality_traits: {
- *         positive_traits: {...},      // Strengths (0-100 scale)
- *         traits_to_improve: {...}     // Growth areas (0-100 scale)
- *       }
- *     }
- *   },
- *   persona: {...},                    // Optional: test persona info
- *   inference_metadata: {...},         // Optional: context about inference
- *   llmData: {...},                    // Optional: LLM conversation data
- *   available_personas: [...]          // Optional: persona list
- * }
+ * Provides detailed, formatted logging for Onairos API responses
+ * with visual indicators, explanatory labels, and formatted tables.
+ * 
+ * Usage:
+ *   import { logOnairosResponse } from '../utils/apiResponseLogger';
+ *   logOnairosResponse(apiData, endpointUrl, { detailed: true, showRawData: false });
  */
 
+// Content category names for the 16 output scores
+const CONTENT_CATEGORIES = [
+  'Technology & Innovation',
+  'Entertainment & Media',
+  'Health & Wellness',
+  'Education & Learning',
+  'Finance & Business',
+  'Travel & Adventure',
+  'Food & Cooking',
+  'Sports & Fitness',
+  'Arts & Culture',
+  'Science & Nature',
+  'Fashion & Style',
+  'Gaming & Esports',
+  'Social & Relationships',
+  'Politics & News',
+  'DIY & Crafts',
+  'Music & Audio'
+];
+
 /**
- * Format a score as a visual bar
- * @param {number} score - Score between 0 and 1
- * @param {number} maxBars - Maximum number of bars to display
+ * Get emoji and level label based on score
+ * @param {number} score - Score value (0-1 for content prefs, 0-100 for traits)
+ * @param {boolean} isPercentage - Whether score is 0-100 scale
+ * @returns {{emoji: string, level: string}}
+ */
+function getScoreIndicator(score, isPercentage = false) {
+  const normalizedScore = isPercentage ? score / 100 : score;
+  
+  if (normalizedScore >= 0.8) return { emoji: '🔥', level: isPercentage ? 'Exceptional' : 'Very High' };
+  if (normalizedScore >= 0.6) return { emoji: '⭐', level: isPercentage ? 'Strong' : 'High' };
+  if (normalizedScore >= 0.4) return { emoji: '👍', level: isPercentage ? 'Moderate' : 'Moderate' };
+  if (normalizedScore >= 0.2) return { emoji: '📊', level: isPercentage ? 'Developing' : 'Low' };
+  return { emoji: '📉', level: isPercentage ? 'Low Priority' : 'Very Low' };
+}
+
+/**
+ * Create visual progress bar
+ * @param {number} score - Score value (0-1 for content prefs, 0-100 for traits)
+ * @param {boolean} isPercentage - Whether score is 0-100 scale
  * @returns {string} Visual bar representation
  */
-function formatScoreBar(score, maxBars = 10) {
-  const filledBars = Math.round(score * maxBars);
-  const emptyBars = maxBars - filledBars;
-  return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
+function createProgressBar(score, isPercentage = false) {
+  const normalizedScore = isPercentage ? score / 100 : score;
+  // Clamp score between 0 and 1 safely
+  const clampedScore = Math.max(0, Math.min(1, normalizedScore));
+  const filledBlocks = Math.round(clampedScore * 10);
+  const emptyBlocks = 10 - filledBlocks;
+  return '█'.repeat(filledBlocks) + '░'.repeat(emptyBlocks);
 }
 
 /**
- * Format a percentage score as a visual bar
- * @param {number} score - Score between 0 and 100
- * @param {number} maxBars - Maximum number of bars to display
- * @returns {string} Visual bar representation
- */
-function formatPercentageBar(score, maxBars = 10) {
-  const filledBars = Math.round((score / 100) * maxBars);
-  const emptyBars = maxBars - filledBars;
-  return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
-}
-
-/**
- * Get emoji indicator for score level
- * @param {number} score - Score between 0 and 1
- * @returns {string} Emoji indicator
- */
-function getScoreEmoji(score) {
-  if (score >= 0.8) return '🔥';
-  if (score >= 0.6) return '⭐';
-  if (score >= 0.4) return '👍';
-  if (score >= 0.2) return '📊';
-  return '📉';
-}
-
-/**
- * Get emoji indicator for percentage score
- * @param {number} score - Score between 0 and 100
- * @returns {string} Emoji indicator
- */
-function getPercentageEmoji(score) {
-  if (score >= 80) return '🔥';
-  if (score >= 60) return '⭐';
-  if (score >= 40) return '👍';
-  if (score >= 20) return '📊';
-  return '📉';
-}
-
-/**
- * Log content preference scores with detailed explanations
- * @param {Array} output - Array of content preference scores
+ * Log content preference scores with visual formatting
+ * @param {Array<Array<number>>} output - 2D array of scores [[0.95], [0.89], ...]
  */
 function logContentPreferences(output) {
-  if (!output || !Array.isArray(output)) {
-    console.log('   No content preference data available');
+  if (!output || !Array.isArray(output) || output.length === 0) {
+    console.log('   ⚠️ No content preferences found');
     return;
   }
 
-  console.log('   📊 Content Preference Scores (0.0 = Not Interested, 1.0 = Highly Interested)');
-  console.log('   ─────────────────────────────────────────────────────────────────────');
-  
-  // Category names for the 16 content types
-  const categories = [
-    'Technology & Innovation',
-    'Entertainment & Media', 
-    'Health & Wellness',
-    'Business & Finance',
-    'Education & Learning',
-    'Travel & Adventure',
-    'Food & Cooking',
-    'Sports & Fitness',
-    'Art & Creativity',
-    'Science & Research',
-    'Fashion & Style',
-    'Gaming & Esports',
-    'Music & Audio',
-    'News & Politics',
-    'Home & Garden',
-    'Automotive & Transport'
-  ];
+  console.log('   🎯 Content Preferences');
+  console.log('      📊 Content Preference Scores (0.0 = Not Interested, 1.0 = Highly Interested)');
+  console.log('      ─────────────────────────────────────────────────────────────────────');
+  console.log('');
+  console.log('      Category                    Score    Visual              Interest Level');
+  console.log('      ──────────────────────────────────────────────────────────────────────');
 
-  const formattedScores = output.map((scoreArray, index) => {
-    const score = Array.isArray(scoreArray) ? scoreArray[0] : scoreArray;
-    const categoryName = categories[index] || `Category ${index + 1}`;
-    return {
-      Category: categoryName,
-      Score: score.toFixed(3),
-      'Visual': `${formatScoreBar(score)} ${getScoreEmoji(score)}`,
-      'Interest Level': score >= 0.8 ? 'Very High' : 
-                       score >= 0.6 ? 'High' : 
-                       score >= 0.4 ? 'Moderate' : 
-                       score >= 0.2 ? 'Low' : 'Very Low'
-    };
+  const scores = output.map((item, index) => {
+    const score = Array.isArray(item) ? item[0] : item;
+    const category = CONTENT_CATEGORIES[index] || `Category ${index + 1}`;
+    const indicator = getScoreIndicator(score);
+    const bar = createProgressBar(score);
+
+    console.log(`      ${category.padEnd(28)} ${score.toFixed(3)}    ${bar} ${indicator.emoji}       ${indicator.level}`);
+
+    return { category, score };
   });
 
-  console.table(formattedScores);
-  
   // Summary statistics
-  const scores = output.map(s => Array.isArray(s) ? s[0] : s);
-  const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-  const maxScore = Math.max(...scores);
-  const minScore = Math.min(...scores);
-  const topCategory = categories[scores.indexOf(maxScore)];
-  
-  console.log(`   📈 Summary: Avg ${avgScore.toFixed(3)} | Max ${maxScore.toFixed(3)} (${topCategory}) | Min ${minScore.toFixed(3)}`);
+  const avg = scores.reduce((sum, s) => sum + s.score, 0) / scores.length;
+  const max = Math.max(...scores.map(s => s.score));
+  const min = Math.min(...scores.map(s => s.score));
+  const maxCategory = scores.find(s => s.score === max)?.category;
+
+  console.log('');
+  console.log(`      📈 Summary: Avg ${avg.toFixed(3)} | Max ${max.toFixed(3)} (${maxCategory}) | Min ${min.toFixed(3)}`);
 }
 
 /**
- * Log personality traits with detailed explanations
- * @param {Object} traits - Personality traits object
+ * Log personality traits with visual formatting
+ * @param {Object} personalityTraits - Personality traits object with positive_traits and traits_to_improve
  */
-function logPersonalityTraits(traits) {
-  if (!traits || !traits.personality_traits) {
-    console.log('   No personality trait data available');
+function logPersonalityTraits(personalityTraits) {
+  if (!personalityTraits || typeof personalityTraits !== 'object') {
+    console.log('   ⚠️ No personality traits found');
     return;
   }
 
-  const { positive_traits, traits_to_improve } = traits.personality_traits;
+  console.log('   🧠 Personality Analysis');
 
-  // Log positive traits (strengths)
-  if (positive_traits && Object.keys(positive_traits).length > 0) {
-    console.log('   ✨ Positive Traits (Strengths) - Scale: 0-100');
-    console.log('   ─────────────────────────────────────────────────────────────────────');
-    
-    const positiveData = Object.entries(positive_traits).map(([trait, score]) => ({
-      Trait: trait.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      Score: score.toFixed(1),
-      'Visual': `${formatPercentageBar(score)} ${getPercentageEmoji(score)}`,
-      'Level': score >= 80 ? 'Exceptional' : 
-               score >= 60 ? 'Strong' : 
-               score >= 40 ? 'Moderate' : 
-               score >= 20 ? 'Developing' : 'Emerging'
-    }));
-    
-    console.table(positiveData);
-  }
+  // Positive traits (strengths)
+  if (personalityTraits.positive_traits) {
+    console.log('      ✨ Positive Traits (Strengths) - Scale: 0-100');
+    console.log('      ─────────────────────────────────────────────────────────────────────');
+    console.log('');
+    console.log('      Trait                  Score    Visual              Level');
+    console.log('      ──────────────────────────────────────────────────────────────────────');
 
-  // Log traits to improve (growth areas)
-  if (traits_to_improve && Object.keys(traits_to_improve).length > 0) {
-    console.log('   🎯 Traits to Improve (Growth Areas) - Scale: 0-100');
-    console.log('   ─────────────────────────────────────────────────────────────────────');
-    
-    const improvementData = Object.entries(traits_to_improve).map(([trait, score]) => ({
-      Trait: trait.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      Score: score.toFixed(1),
-      'Visual': `${formatPercentageBar(score)} ${getPercentageEmoji(score)}`,
-      'Priority': score >= 80 ? 'High Priority' : 
-                  score >= 60 ? 'Medium Priority' : 
-                  score >= 40 ? 'Low Priority' : 
-                  score >= 20 ? 'Optional' : 'Minimal'
-    }));
-    
-    console.table(improvementData);
-  }
-}
+    Object.entries(personalityTraits.positive_traits).forEach(([trait, score]) => {
+      const indicator = getScoreIndicator(score, true);
+      const bar = createProgressBar(score, true);
+      const traitName = trait.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-/**
- * Log persona information
- * @param {Object} persona - Persona object
- */
-function logPersonaInfo(persona) {
-  if (!persona) return;
-
-  console.log('   👤 Applied Persona');
-  console.log('   ─────────────────────────────────────────────────────────────────────');
-  console.log(`   Name: ${persona.name || 'Unknown'}`);
-  console.log(`   ID: ${persona.id || 'N/A'}`);
-  if (persona.description) {
-    console.log(`   Description: ${persona.description}`);
-  }
-}
-
-/**
- * Log inference metadata
- * @param {Object} metadata - Inference metadata object
- */
-function logInferenceMetadata(metadata) {
-  if (!metadata) return;
-
-  console.log('   ℹ️  Inference Metadata');
-  console.log('   ─────────────────────────────────────────────────────────────────────');
-  if (metadata.size_used) console.log(`   Model Size: ${metadata.size_used}`);
-  if (metadata.total_outputs) console.log(`   Total Outputs: ${metadata.total_outputs}`);
-  if (metadata.persona_applied) console.log(`   Persona Applied: ${metadata.persona_applied}`);
-  if (metadata.inference_categories) {
-    console.log(`   Categories: ${metadata.inference_categories.join(', ')}`);
-  }
-}
-
-/**
- * Log LLM conversation data
- * @param {Object} llmData - LLM data object
- */
-function logLLMData(llmData) {
-  if (!llmData || !llmData.hasLlmData) {
-    console.log('   No LLM conversation data included');
-    return;
-  }
-
-  console.log('   💬 LLM Conversation Data');
-  console.log('   ─────────────────────────────────────────────────────────────────────');
-  console.log(`   Total Interactions: ${llmData.totalInteractions || 0}`);
-  
-  if (llmData.platforms) {
-    console.log('   Platforms:');
-    Object.entries(llmData.platforms).forEach(([platform, count]) => {
-      console.log(`      ${platform}: ${count} interactions`);
+      console.log(`      ${traitName.padEnd(22)} ${score.toFixed(1).padStart(5)}    ${bar} ${indicator.emoji}       ${indicator.level}`);
     });
+
+    console.log('');
   }
-  
-  if (llmData.recentInteractions && llmData.recentInteractions.length > 0) {
-    console.log(`   Recent Interactions: ${llmData.recentInteractions.length} available`);
+
+  // Traits to improve (growth areas)
+  if (personalityTraits.traits_to_improve) {
+    console.log('      🎯 Traits to Improve (Growth Areas) - Scale: 0-100');
+    console.log('      ─────────────────────────────────────────────────────────────────────');
+    console.log('');
+    console.log('      Trait                  Score    Visual              Priority');
+    console.log('      ──────────────────────────────────────────────────────────────────────');
+
+    Object.entries(personalityTraits.traits_to_improve).forEach(([trait, score]) => {
+      const indicator = getScoreIndicator(score, true);
+      const bar = createProgressBar(score, true);
+      const traitName = trait.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      const priority = score < 40 ? 'Low Priority' : score < 60 ? 'Medium Priority' : 'High Priority';
+
+      console.log(`      ${traitName.padEnd(22)} ${score.toFixed(1).padStart(5)}    ${bar} ${indicator.emoji}       ${priority}`);
+    });
+
+    console.log('');
   }
 }
 
 /**
- * Main logging function for Onairos API responses
- * Logs the complete API response with detailed explanations
- * 
- * @param {Object} response - The complete API response object
- * @param {string} endpoint - The endpoint that was called (for context)
- * @param {Object} options - Logging options
- * @param {boolean} options.detailed - Whether to show detailed logs (default: true)
- * @param {boolean} options.showRawData - Whether to show raw response data (default: false)
+ * Log Onairos API response with detailed formatting
+ * @param {Object} response - API response object
+ * @param {string} endpoint - API endpoint URL
+ * @param {Object} options - Logging options { detailed: boolean, showRawData: boolean }
  */
-export function logOnairosResponse(response, endpoint = 'unknown', options = {}) {
+export function logOnairosResponse(response, endpoint = 'Unknown', options = {}) {
   const { detailed = true, showRawData = false } = options;
 
-  console.group('🎯 Onairos API Response');
-  console.log(`📡 Endpoint: ${endpoint}`);
-  console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
-  console.log('═══════════════════════════════════════════════════════════════════════');
+  console.log('\n🎯 Onairos API Response');
+  console.log(`  📡 Endpoint: ${endpoint}`);
+  console.log(`  ⏰ Timestamp: ${new Date().toISOString()}`);
+  console.log('  ═══════════════════════════════════════════════════════════════════════');
+  console.log('');
 
   if (!response) {
-    console.error('❌ No response data received');
-    console.groupEnd();
+    console.log('  ⚠️ Empty response');
     return;
   }
 
-  // Log InferenceResult data
+  // Log inference results
   if (response.InferenceResult) {
-    console.group('📊 Inference Result');
-    
-    // Log content preferences (output scores)
+    console.log('  📊 Inference Result');
+
+    // Content preferences
     if (response.InferenceResult.output) {
-      console.group('🎯 Content Preferences');
       logContentPreferences(response.InferenceResult.output);
-      console.groupEnd();
     }
-    
-    // Log personality traits
-    if (response.InferenceResult.traits) {
-      console.group('🧠 Personality Analysis');
-      logPersonalityTraits(response.InferenceResult.traits);
-      console.groupEnd();
+
+    // Personality traits
+    if (response.InferenceResult.traits?.personality_traits) {
+      console.log('');
+      logPersonalityTraits(response.InferenceResult.traits.personality_traits);
     }
-    
-    console.groupEnd();
+
+    console.log('');
   }
 
-  // Log persona information (test mode)
+  // Log persona information (if present)
   if (response.persona) {
-    console.group('👤 Persona Information');
-    logPersonaInfo(response.persona);
-    console.groupEnd();
+    console.log('  🎭 Persona Information');
+    console.log(`     ID: ${response.persona.id}`);
+    console.log(`     Name: ${response.persona.name}`);
+    if (response.persona.description) {
+      console.log(`     Description: ${response.persona.description}`);
+    }
+    console.log('');
   }
 
-  // Log inference metadata
+  // Log inference metadata (if present)
   if (response.inference_metadata) {
-    console.group('ℹ️  Metadata');
-    logInferenceMetadata(response.inference_metadata);
-    console.groupEnd();
+    console.log('  ℹ️ Inference Metadata');
+    console.log(`     Model Size: ${response.inference_metadata.size_used || 'N/A'}`);
+    console.log(`     Total Outputs: ${response.inference_metadata.total_outputs || 'N/A'}`);
+    if (response.inference_metadata.persona_applied) {
+      console.log(`     Persona Applied: ${response.inference_metadata.persona_applied}`);
+    }
+    console.log('');
   }
 
-  // Log LLM data if included
+  // Log LLM data summary (if present)
   if (response.llmData) {
-    console.group('💬 LLM Data');
-    logLLMData(response.llmData);
-    console.groupEnd();
-  }
-
-  // Log available personas if present
-  if (response.available_personas && Array.isArray(response.available_personas)) {
-    console.group('👥 Available Personas');
-    console.log(`   Total: ${response.available_personas.length} personas available`);
-    console.table(response.available_personas.map(p => ({
-      ID: p.id,
-      Name: p.name,
-      Description: p.description?.substring(0, 50) + '...'
-    })));
-    console.groupEnd();
+    console.log('  💬 LLM Data');
+    console.log(`     Has LLM Data: ${response.llmData.hasLlmData || false}`);
+    console.log(`     Total Interactions: ${response.llmData.totalInteractions || 0}`);
+    if (response.llmData.platforms) {
+      const platforms = Object.keys(response.llmData.platforms).filter(k => response.llmData.platforms[k]);
+      console.log(`     Platforms: ${platforms.join(', ') || 'None'}`);
+    }
+    console.log('');
   }
 
   // Show raw data if requested
   if (showRawData) {
-    console.group('📦 Raw Response Data');
-    console.log(response);
-    console.groupEnd();
+    console.log('  📄 Raw Response Data:');
+    console.log(JSON.stringify(response, null, 2));
+    console.log('');
   }
 
-  console.log('═══════════════════════════════════════════════════════════════════════');
-  console.log('✅ Response logging complete');
-  console.groupEnd();
+  console.log('  ✅ Response logging complete');
+  console.log('  ═══════════════════════════════════════════════════════════════════════\n');
 }
 
 /**
- * Log a simplified version of the response (for production)
- * @param {Object} response - The API response
- * @param {string} endpoint - The endpoint called
+ * Simple one-line logging for API responses
+ * @param {Object} response - API response object
+ * @param {string} endpoint - API endpoint URL
  */
-export function logOnairosResponseSimple(response, endpoint = 'unknown') {
-  console.log('🎯 Onairos API Response:', {
-    endpoint,
-    timestamp: new Date().toISOString(),
-    hasInferenceResult: !!response?.InferenceResult,
-    hasContentPreferences: !!response?.InferenceResult?.output,
-    hasPersonalityTraits: !!response?.InferenceResult?.traits,
-    hasLLMData: !!response?.llmData?.hasLlmData,
-    contentCategoriesCount: response?.InferenceResult?.output?.length || 0,
-    personalityTraitsCount: response?.InferenceResult?.traits?.personality_traits ? 
-      Object.keys(response.InferenceResult.traits.personality_traits.positive_traits || {}).length +
-      Object.keys(response.InferenceResult.traits.personality_traits.traits_to_improve || {}).length : 0
-  });
+export function logOnairosResponseSimple(response, endpoint = 'Unknown') {
+  const contentCount = response?.InferenceResult?.output?.length || 0;
+  const hasTraits = !!(response?.InferenceResult?.traits?.personality_traits);
+  const hasLlm = !!(response?.llmData?.hasLlmData);
+
+  console.log(`🎯 Onairos Response [${endpoint}]: ${contentCount} content scores, Traits: ${hasTraits}, LLM: ${hasLlm}`);
 }
 
-export default {
-  logOnairosResponse,
-  logOnairosResponseSimple
-};
-
-
+export default { logOnairosResponse, logOnairosResponseSimple };

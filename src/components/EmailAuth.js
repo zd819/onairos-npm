@@ -161,7 +161,52 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       const normalizedEmail = (gmailEmail || '').trim().toLowerCase();
       setEmail(normalizedEmail);
 
-      // Simple success without deep account check for speed, backend handles creation
+      // Check if this email already has an account in the backend
+      const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
+      const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
+
+      let accountInfo = null;
+      let accountStatus = null;
+      let existingUser = false;
+
+      try {
+        console.log('🔍 Checking if account exists for:', normalizedEmail);
+        const accountCheckResponse = await fetch(`${baseUrl}/getAccountInfo/email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            Info: {
+              identifier: normalizedEmail
+            }
+          })
+        });
+
+        if (accountCheckResponse.ok) {
+          const accountData = await accountCheckResponse.json();
+          
+          if (accountData.AccountInfo) {
+            accountInfo = accountData.AccountInfo;
+            accountStatus = accountData.accountStatus;
+            existingUser = accountStatus?.exists || false;
+            
+            console.log('✅ Account check complete:', {
+              exists: existingUser,
+              hasTrainedModel: accountStatus?.hasTrainedModel,
+              connectedPlatforms: accountStatus?.connectedPlatforms
+            });
+          } else {
+            console.log('ℹ️ No existing account found - new user');
+          }
+        } else {
+          console.log('ℹ️ Account check returned non-OK status - treating as new user');
+        }
+      } catch (accountCheckError) {
+        console.warn('⚠️ Could not check account status, treating as new user:', accountCheckError);
+      }
+
       setStep('success');
       setIsLoading(false);
 
@@ -171,10 +216,14 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
           verified: true,
           token: null,
           userName: normalizedEmail.split('@')[0],
-          existingUser: false, // Assume false or let parent handle
-          isNewUser: true,
-          flowType: 'onboarding',
-          accountDetails: {
+          existingUser: existingUser,
+          accountInfo: accountInfo,
+          accountStatus: accountStatus,
+          isNewUser: !existingUser,
+          flowType: existingUser ? 'dataRequest' : 'onboarding',
+          adminMode: false,
+          userCreated: !existingUser,
+          accountDetails: existingUser ? accountInfo : {
             email: normalizedEmail,
             createdAt: new Date().toISOString(),
             ssoProvider: 'gmail'
@@ -271,6 +320,30 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       setTimeout(checkGmailOAuthSuccess, 300);
     };
     
+    // Listen for postMessage from OAuth popup window
+    const handleMessage = (event) => {
+      // Validate message structure and type
+      if (event.data && event.data.type === 'oauth-success') {
+        console.log('📨 Received postMessage from OAuth popup:', event.data);
+        
+        if (event.data.platform === 'gmail' && event.data.email) {
+          console.log('✅ Gmail OAuth success via postMessage');
+          
+          // Clean up localStorage
+          localStorage.removeItem('onairos_gmail_success');
+          localStorage.removeItem('onairos_gmail_timestamp');
+          localStorage.removeItem('onairos_oauth_context');
+          localStorage.removeItem('onairos_oauth_platform');
+          localStorage.removeItem('onairos_gmail_email');
+          localStorage.removeItem('onairos_oauth_email');
+          localStorage.removeItem('onairos_return_url');
+          
+          // Handle OAuth success
+          handleOAuthSuccess(event.data.email);
+        }
+      }
+    };
+    
     // Listen for Capacitor app state changes
     if (typeof window !== 'undefined') {
       if (window.Capacitor) {
@@ -278,6 +351,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       }
       window.addEventListener('focus', handleFocus);
       window.addEventListener('storage', handleStorageChange);
+      window.addEventListener('message', handleMessage);
     }
     
     return () => {
@@ -287,6 +361,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         }
         window.removeEventListener('focus', handleFocus);
         window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('message', handleMessage);
       }
     };
   }, []);
@@ -338,7 +413,8 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       
       // Redirect to Google OAuth
       const isNative = Capacitor.isNativePlatform();
-      console.log('📱 Platform:', isNative ? 'Native' : 'Web');
+      const isMobile = isMobileBrowser();
+      console.log('📱 Platform:', isNative ? 'Native' : isMobile ? 'Mobile Web' : 'Desktop Web');
       
       if (isNative) {
         console.log('🚀 Opening Gmail OAuth in Capacitor Browser');
@@ -348,11 +424,38 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
           presentationStyle: 'fullscreen'
         });
         // Don't reset loading state - we want to show loading until OAuth completes
-      } else {
-        console.log('🌐 Redirecting to Gmail OAuth in browser');
-        // For web, the redirect will navigate away, so loading state doesn't matter
+      } else if (isMobile) {
+        console.log('🌐 Redirecting to Gmail OAuth in mobile browser (same window)');
+        // For mobile web, redirect in the same window
         window.location.href = result.gmailURL;
+      } else {
+        console.log('🪟 Opening Gmail OAuth in desktop popup window');
+        // For desktop web, open in a popup window
+        const width = 600;
+        const height = 700;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+        const popup = window.open(
+          result.gmailURL,
+          'GoogleOAuth',
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no`
+        );
+        
+        if (!popup) {
+          throw new Error('Popup blocked. Please allow popups for this site.');
+        }
+        
+        // Poll for popup closure and check localStorage for OAuth completion
+        const pollInterval = setInterval(() => {
+          if (popup.closed) {
+            console.log('🚪 Popup closed by user');
+            clearInterval(pollInterval);
+            setIsLoading(false);
           }
+        }, 500);
+        
+        // Don't reset loading state - the OAuth completion listener will handle it
+      }
       
     } catch (e) {
       console.error('❌ Google Sign In failed:', e);
@@ -459,9 +562,19 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
           throw new Error(data.error || 'Verification failed');
         }
 
+        // Use isNewUser flag from verification response (DO NOT check getAccountInfo after verification!)
+        // The verification endpoint creates the account, so checking after will always find them as existing
         const isNewUser = data.isNewUser !== undefined ? data.isNewUser : true;
         const existingUser = !isNewUser;
-        const accountInfo = data.user || data.accountInfo || null;
+        const accountInfo = data.user || null;
+        
+        console.log('✅ Email verification complete:', {
+          isNewUser,
+          existingUser,
+          flowType: data.flowType,
+          userState: data.userState,
+          email: email
+        });
 
         setStep('success');
         setTimeout(() => {
@@ -469,11 +582,14 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
             email, 
             verified: true, 
             token: data.token || data.jwtToken,
-            userName: data.userName || accountInfo?.userName,
+            userName: data.userName || accountInfo?.userName || email.split('@')[0],
             existingUser: existingUser,
-            isNewUser: isNewUser,
-            flowType: isNewUser ? 'onboarding' : 'dataRequest',
             accountInfo: accountInfo,
+            accountStatus: data.existingUserData || null, // Use existingUserData from verification response
+            isNewUser: isNewUser,
+            flowType: data.flowType || (isNewUser ? 'onboarding' : 'dataRequest'),
+            adminMode: false,
+            userCreated: isNewUser,
             accountDetails: accountInfo || {
               email: email,
               createdAt: data.createdAt || new Date().toISOString(),
@@ -519,10 +635,10 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
                   paddingLeft: 16, 
                   paddingRight: 16, 
                   fontSize: 16, 
-                  fontFamily: 'Inter, system-ui, sans-serif',
+              fontFamily: 'Inter, system-ui, sans-serif',
                   color: '#000000',
-                  WebkitTextFillColor: '#000000'
-                }}
+              WebkitTextFillColor: '#000000'
+            }}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleEmailSubmit(e); }}
                 disabled={isLoading}
                 autoFocus

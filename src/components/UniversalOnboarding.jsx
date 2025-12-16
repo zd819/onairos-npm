@@ -1108,18 +1108,49 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
         {/* footer — anchored at bottom using flex */}
         <div className="px-6 flex-shrink-0" style={{ paddingBottom: isMobile ? 12 : 16, background: isMobile ? 'transparent' : 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
-          <div className="w-full bg-gray-900 hover:bg-gray-800 rounded-full text-base font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
-            style={{ paddingTop: isSmallMobile ? 12 : 16, paddingBottom: isSmallMobile ? 12 : 16, color: '#ffffff' }}
-            onClick={() => {
-            console.log('🔥 UniversalOnboarding: Update clicked');
-            console.log('🔍 Current connectedAccounts state:', connectedAccounts);
+          {(() => {
             const connected = Object.entries(connectedAccounts).filter(([, v]) => v).map(([k]) => k);
-            console.log('✅ Sending to onComplete:', { connectedAccounts: connected, totalConnections: connected.length });
-            onComplete?.({ connectedAccounts: connected, totalConnections: connected.length });
-          }}>
-            Update
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="#ffffff" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-          </div>
+            const hasConnections = connected.length > 0;
+            
+            return (
+              <div 
+                className={`w-full rounded-full text-base font-medium flex items-center justify-center gap-2 transition-colors ${
+                  hasConnections 
+                    ? 'bg-gray-900 hover:bg-gray-800 cursor-pointer' 
+                    : 'bg-gray-300 cursor-not-allowed'
+                }`}
+                style={{ 
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  paddingTop: isSmallMobile ? 12 : 16, 
+                  paddingBottom: isSmallMobile ? 12 : 16, 
+                  color: hasConnections ? '#ffffff' : '#9CA3AF',
+                  opacity: hasConnections ? 1 : 0.6
+                }}
+                onClick={() => {
+                  if (!hasConnections) {
+                    console.log('⚠️ UniversalOnboarding: Cannot continue - no platforms connected');
+                    return;
+                  }
+                  console.log('🔥 UniversalOnboarding: Continue clicked');
+                  console.log('🔍 Current connectedAccounts state:', connectedAccounts);
+                  console.log('✅ Sending to onComplete:', { connectedAccounts: connected, totalConnections: connected.length });
+                  onComplete?.({ connectedAccounts: connected, totalConnections: connected.length });
+                }}
+              >
+                Continue
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  width="16" 
+                  height="16" 
+                  fill="none" 
+                  stroke={hasConnections ? '#ffffff' : '#9CA3AF'} 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            );
+          })()}
         </div>
       </div>
       {/* Modal - Always render if state is true, regardless of isMobile prop */}
