@@ -5,6 +5,7 @@ import { COLORS } from '../theme/colors.js';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { isMobileBrowser } from '../utils/capacitorDetection';
+import { useGoogleLogin } from '@react-oauth/google';
 
 // Custom Google Button for consistent dimensions
 const GoogleButton = ({ onPress, disabled }) => {
@@ -161,52 +162,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       const normalizedEmail = (gmailEmail || '').trim().toLowerCase();
       setEmail(normalizedEmail);
 
-      // Check if this email already has an account in the backend
-      const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
-      const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
-
-      let accountInfo = null;
-      let accountStatus = null;
-      let existingUser = false;
-
-      try {
-        console.log('🔍 Checking if account exists for:', normalizedEmail);
-        const accountCheckResponse = await fetch(`${baseUrl}/getAccountInfo/email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-          },
-          body: JSON.stringify({
-            Info: {
-              identifier: normalizedEmail
-            }
-          })
-        });
-
-        if (accountCheckResponse.ok) {
-          const accountData = await accountCheckResponse.json();
-          
-          if (accountData.AccountInfo) {
-            accountInfo = accountData.AccountInfo;
-            accountStatus = accountData.accountStatus;
-            existingUser = accountStatus?.exists || false;
-            
-            console.log('✅ Account check complete:', {
-              exists: existingUser,
-              hasTrainedModel: accountStatus?.hasTrainedModel,
-              connectedPlatforms: accountStatus?.connectedPlatforms
-            });
-          } else {
-            console.log('ℹ️ No existing account found - new user');
-          }
-        } else {
-          console.log('ℹ️ Account check returned non-OK status - treating as new user');
-        }
-      } catch (accountCheckError) {
-        console.warn('⚠️ Could not check account status, treating as new user:', accountCheckError);
-      }
-
+      // Simple success without deep account check for speed, backend handles creation
       setStep('success');
       setIsLoading(false);
 
@@ -216,14 +172,10 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
           verified: true,
           token: null,
           userName: normalizedEmail.split('@')[0],
-          existingUser: existingUser,
-          accountInfo: accountInfo,
-          accountStatus: accountStatus,
-          isNewUser: !existingUser,
-          flowType: existingUser ? 'dataRequest' : 'onboarding',
-          adminMode: false,
-          userCreated: !existingUser,
-          accountDetails: existingUser ? accountInfo : {
+          existingUser: false, // Assume false or let parent handle
+          isNewUser: true,
+          flowType: 'onboarding',
+          accountDetails: {
             email: normalizedEmail,
             createdAt: new Date().toISOString(),
             ssoProvider: 'gmail'
@@ -238,224 +190,53 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
     }
   };
 
-  // Check for Gmail OAuth return (URL params or localStorage)
-  useEffect(() => {
-    const checkGmailOAuthSuccess = () => {
-      console.log('🔍 Checking for Gmail OAuth return...');
-      
-      // First check URL params (oauth-callback.html redirects with these)
-      const urlParams = new URLSearchParams(window.location.search);
-      const oauthSuccess = urlParams.get('onairos_oauth_success');
-      const oauthPlatform = urlParams.get('onairos_oauth_platform');
-      const oauthEmail = urlParams.get('onairos_oauth_email');
-      
-      if (oauthSuccess === 'true' && oauthPlatform === 'gmail' && oauthEmail) {
-        console.log('✅ Gmail OAuth success detected in URL params');
-        
-        // Clean up URL
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
-        
-        // Clean up localStorage
-        localStorage.removeItem('onairos_gmail_success');
-        localStorage.removeItem('onairos_gmail_timestamp');
-        localStorage.removeItem('onairos_oauth_context');
-        localStorage.removeItem('onairos_oauth_platform');
-        localStorage.removeItem('onairos_gmail_email');
-        localStorage.removeItem('onairos_oauth_email');
-        
-        // Handle OAuth success
-        handleOAuthSuccess(oauthEmail);
-        return;
-      }
-      
-      // Fallback: Check localStorage (for older flows or edge cases)
-      const gmailSuccess = localStorage.getItem('onairos_gmail_success');
-      const gmailTimestamp = localStorage.getItem('onairos_gmail_timestamp');
-      const oauthContext = localStorage.getItem('onairos_oauth_context');
-      
-      if (gmailSuccess === 'true' && gmailTimestamp && oauthContext === 'gmail-auth') {
-        const timestampNum = parseInt(gmailTimestamp, 10);
-        if (Date.now() - timestampNum < 60000) { // 60 second window
-          const gmailEmail = localStorage.getItem('onairos_gmail_email') || 
-                           localStorage.getItem('onairos_oauth_email');
-          
-          console.log('✅ Gmail OAuth success detected in localStorage');
-          
-          localStorage.removeItem('onairos_gmail_success');
-          localStorage.removeItem('onairos_gmail_timestamp');
-          localStorage.removeItem('onairos_oauth_context');
-          localStorage.removeItem('onairos_oauth_platform');
-          localStorage.removeItem('onairos_gmail_email');
-          localStorage.removeItem('onairos_oauth_email');
-          
-          if (gmailEmail) {
-            handleOAuthSuccess(gmailEmail);
-          }
-        }
-      }
-    };
+  // Note: No OAuth callback checking needed - frontend SDK handles everything automatically
 
-    // Check immediately on mount
-    checkGmailOAuthSuccess();
-    
-    // For Capacitor native: listen for app resume (when Browser closes)
-    const handleAppResume = () => {
-      console.log('📱 App resumed, checking for OAuth completion...');
-      setTimeout(checkGmailOAuthSuccess, 500);
-    };
-    
-    // Listen for storage events (when user clicks "Return to App" from oauth-callback)
-    const handleStorageChange = (e) => {
-      if (e.key === 'onairos_should_check_oauth' && e.newValue === 'true') {
-        console.log('🔄 Storage event detected, checking for OAuth completion...');
-        localStorage.removeItem('onairos_should_check_oauth');
-        setTimeout(checkGmailOAuthSuccess, 300);
-      }
-    };
-    
-    // Listen for window focus (when user returns from OAuth page)
-    const handleFocus = () => {
-      console.log('👁️ Window focused, checking for OAuth completion...');
-      setTimeout(checkGmailOAuthSuccess, 300);
-    };
-    
-    // Listen for postMessage from OAuth popup window
-    const handleMessage = (event) => {
-      // Validate message structure and type
-      if (event.data && event.data.type === 'oauth-success') {
-        console.log('📨 Received postMessage from OAuth popup:', event.data);
+  // Google Sign-In using frontend SDK (no backend call needed)
+  // Only requests basic scopes: openid, email, profile (NO Gmail reading permissions)
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        console.log('✅ Google OAuth successful');
         
-        if (event.data.platform === 'gmail' && event.data.email) {
-          console.log('✅ Gmail OAuth success via postMessage');
-          
-          // Clean up localStorage
-          localStorage.removeItem('onairos_gmail_success');
-          localStorage.removeItem('onairos_gmail_timestamp');
-          localStorage.removeItem('onairos_oauth_context');
-          localStorage.removeItem('onairos_oauth_platform');
-          localStorage.removeItem('onairos_gmail_email');
-          localStorage.removeItem('onairos_oauth_email');
-          localStorage.removeItem('onairos_return_url');
-          
-          // Handle OAuth success
-          handleOAuthSuccess(event.data.email);
+        // Get user info from Google
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+        });
+        
+        if (!userInfoResponse.ok) {
+          throw new Error('Failed to get user info from Google');
         }
+        
+        const userInfo = await userInfoResponse.json();
+        console.log('✅ Google user info retrieved:', { email: userInfo.email, name: userInfo.name });
+        
+        // Handle OAuth success with user email
+        await handleOAuthSuccess(userInfo.email);
+        
+      } catch (error) {
+        console.error('❌ Error fetching Google user info:', error);
+        setError('Failed to get your Google account information. Please try again.');
+        setIsLoading(false);
       }
-    };
-    
-    // Listen for Capacitor app state changes
-    if (typeof window !== 'undefined') {
-      if (window.Capacitor) {
-        document.addEventListener('resume', handleAppResume);
-      }
-      window.addEventListener('focus', handleFocus);
-      window.addEventListener('storage', handleStorageChange);
-      window.addEventListener('message', handleMessage);
-    }
-    
-    return () => {
-      if (typeof window !== 'undefined') {
-        if (window.Capacitor) {
-          document.removeEventListener('resume', handleAppResume);
-        }
-        window.removeEventListener('focus', handleFocus);
-        window.removeEventListener('storage', handleStorageChange);
-        window.removeEventListener('message', handleMessage);
-      }
-    };
-  }, []);
+    },
+    onError: (error) => {
+      console.error('❌ Google Sign In failed:', error);
+      setError('Failed to sign in with Google. Please try again.');
+      setIsLoading(false);
+    },
+    scope: 'openid email profile', // Basic scopes only - NO Gmail reading permissions
+    flow: 'implicit'
+  });
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
       setError('');
+      console.log('🔐 Initiating Google Sign-In (basic auth only)...');
       
-      // Store context and return URL before redirect
-      localStorage.setItem('onairos_oauth_context', 'gmail-auth');
-      localStorage.setItem('onairos_oauth_platform', 'gmail');
-      
-      // Store current URL as return URL so OAuth callback can redirect back
-      const returnUrl = window.location.href;
-      localStorage.setItem('onairos_return_url', returnUrl);
-      console.log('📍 Stored return URL:', returnUrl);
-      
-      console.log('🔐 Requesting Gmail OAuth authorization...');
-      
-      // Get the OAuth URL from backend
-      const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
-      const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
-      
-      const response = await fetch(`${baseUrl}/gmail/authorize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          session: {
-            username: localStorage.getItem('username') || email || 'user'
-          },
-          returnUrl: returnUrl  // Pass return URL to backend so it can include it in callback
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to get OAuth URL from server');
-      }
-      
-      const result = await response.json();
-      console.log('✅ Gmail OAuth URL received:', result);
-      
-      if (!result.gmailURL) {
-        throw new Error('No OAuth URL received from server');
-      }
-      
-      // Redirect to Google OAuth
-      const isNative = Capacitor.isNativePlatform();
-      const isMobile = isMobileBrowser();
-      console.log('📱 Platform:', isNative ? 'Native' : isMobile ? 'Mobile Web' : 'Desktop Web');
-      
-      if (isNative) {
-        console.log('🚀 Opening Gmail OAuth in Capacitor Browser');
-        await Browser.open({ 
-          url: result.gmailURL,
-          windowName: '_blank',
-          presentationStyle: 'fullscreen'
-        });
-        // Don't reset loading state - we want to show loading until OAuth completes
-      } else if (isMobile) {
-        console.log('🌐 Redirecting to Gmail OAuth in mobile browser (same window)');
-        // For mobile web, redirect in the same window
-        window.location.href = result.gmailURL;
-      } else {
-        console.log('🪟 Opening Gmail OAuth in desktop popup window');
-        // For desktop web, open in a popup window
-        const width = 600;
-        const height = 700;
-        const left = window.screen.width / 2 - width / 2;
-        const top = window.screen.height / 2 - height / 2;
-        const popup = window.open(
-          result.gmailURL,
-          'GoogleOAuth',
-          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no`
-        );
-        
-        if (!popup) {
-          throw new Error('Popup blocked. Please allow popups for this site.');
-        }
-        
-        // Poll for popup closure and check localStorage for OAuth completion
-        const pollInterval = setInterval(() => {
-          if (popup.closed) {
-            console.log('🚪 Popup closed by user');
-            clearInterval(pollInterval);
-            setIsLoading(false);
-          }
-        }, 500);
-        
-        // Don't reset loading state - the OAuth completion listener will handle it
-      }
+      // Trigger Google login
+      googleLogin();
       
     } catch (e) {
       console.error('❌ Google Sign In failed:', e);
@@ -562,19 +343,9 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
           throw new Error(data.error || 'Verification failed');
         }
 
-        // Use isNewUser flag from verification response (DO NOT check getAccountInfo after verification!)
-        // The verification endpoint creates the account, so checking after will always find them as existing
         const isNewUser = data.isNewUser !== undefined ? data.isNewUser : true;
         const existingUser = !isNewUser;
-        const accountInfo = data.user || null;
-        
-        console.log('✅ Email verification complete:', {
-          isNewUser,
-          existingUser,
-          flowType: data.flowType,
-          userState: data.userState,
-          email: email
-        });
+        const accountInfo = data.user || data.accountInfo || null;
 
         setStep('success');
         setTimeout(() => {
@@ -582,14 +353,11 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
             email, 
             verified: true, 
             token: data.token || data.jwtToken,
-            userName: data.userName || accountInfo?.userName || email.split('@')[0],
+            userName: data.userName || accountInfo?.userName,
             existingUser: existingUser,
-            accountInfo: accountInfo,
-            accountStatus: data.existingUserData || null, // Use existingUserData from verification response
             isNewUser: isNewUser,
-            flowType: data.flowType || (isNewUser ? 'onboarding' : 'dataRequest'),
-            adminMode: false,
-            userCreated: isNewUser,
+            flowType: isNewUser ? 'onboarding' : 'dataRequest',
+            accountInfo: accountInfo,
             accountDetails: accountInfo || {
               email: email,
               createdAt: data.createdAt || new Date().toISOString(),
@@ -635,10 +403,10 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
                   paddingLeft: 16, 
                   paddingRight: 16, 
                   fontSize: 16, 
-              fontFamily: 'Inter, system-ui, sans-serif',
+                  fontFamily: 'Inter, system-ui, sans-serif',
                   color: '#000000',
-              WebkitTextFillColor: '#000000'
-            }}
+                  WebkitTextFillColor: '#000000'
+                }}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleEmailSubmit(e); }}
                 disabled={isLoading}
                 autoFocus
