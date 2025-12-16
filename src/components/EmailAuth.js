@@ -162,7 +162,51 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       const normalizedEmail = (gmailEmail || '').trim().toLowerCase();
       setEmail(normalizedEmail);
 
-      // Simple success without deep account check for speed, backend handles creation
+      // Check if this email already has an account in the backend
+      const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
+      const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
+
+      let accountInfo = null;
+      let accountStatus = null;
+      let existingUser = false;
+
+      try {
+        console.log('🔍 Checking if account exists for:', normalizedEmail);
+        const accountCheckResponse = await fetch(`${baseUrl}/getAccountInfo/email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            Info: {
+              identifier: normalizedEmail
+            }
+          })
+        });
+
+        if (accountCheckResponse.ok) {
+          const accountData = await accountCheckResponse.json();
+          
+          if (accountData.AccountInfo) {
+            accountInfo = accountData.AccountInfo;
+            accountStatus = accountData.accountStatus;
+            existingUser = accountStatus?.exists || false;
+            
+            console.log('✅ Account check complete:', {
+              exists: existingUser,
+              accountStatus: accountStatus
+            });
+          } else {
+            console.log('ℹ️ No existing account found - new user');
+          }
+        } else {
+          console.log('ℹ️ Account check returned non-OK status - treating as new user');
+        }
+      } catch (accountCheckError) {
+        console.warn('⚠️ Could not check account status, treating as new user:', accountCheckError);
+      }
+
       setStep('success');
       setIsLoading(false);
 
@@ -172,10 +216,14 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
           verified: true,
           token: null,
           userName: normalizedEmail.split('@')[0],
-          existingUser: false, // Assume false or let parent handle
-          isNewUser: true,
-          flowType: 'onboarding',
-          accountDetails: {
+          existingUser: existingUser,
+          accountInfo: accountInfo,
+          accountStatus: accountStatus,
+          isNewUser: !existingUser,
+          flowType: existingUser ? 'dataRequest' : 'onboarding',
+          adminMode: false,
+          userCreated: !existingUser,
+          accountDetails: existingUser ? accountInfo : {
             email: normalizedEmail,
             createdAt: new Date().toISOString(),
             ssoProvider: 'gmail'
