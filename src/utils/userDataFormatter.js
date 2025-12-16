@@ -31,7 +31,7 @@ export function formatUserDataForDisplay(result) {
       onboardingComplete: result.userData?.onboardingComplete || false,
       pinCreated: result.userData?.pinCreated || false,
       trainingComplete: result.userData?.trainingComplete || result.userData?.trainingCompleted || false,
-      modelReady: result.userData?.modelReady || false
+      modelReady: !!(result.apiResponse?.InferenceResult?.traits || result.apiResponse?.traits) // Model is ready if we have traits
     },
     
     // Connected platforms/accounts
@@ -42,7 +42,7 @@ export function formatUserDataForDisplay(result) {
     
     // Success status and any errors
     status: {
-      success: result.success || false,
+      success: result.success !== false, // Default to true if undefined, unless explicitly false
       hasApiResponse: !!result.apiResponse,
       hasErrors: !!result.error || !!result.apiError
     }

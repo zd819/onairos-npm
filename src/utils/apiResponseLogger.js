@@ -170,21 +170,88 @@ export function logOnairosResponse(response, endpoint = 'Unknown', options = {})
     return;
   }
 
-  // Log inference results
+  // Log inference results in a proper table format using console.table for better readability
   if (response.InferenceResult) {
-    console.log('  📊 Inference Result');
+    console.group('  📊 Inference Result');
 
     // Content preferences
-    if (response.InferenceResult.output) {
-      logContentPreferences(response.InferenceResult.output);
+    if (response.InferenceResult.output && Array.isArray(response.InferenceResult.output) && response.InferenceResult.output.length > 0) {
+      console.log('    🎯 Content Preferences (Scale: 0.0 - 1.0)');
+      
+      const contentTableData = response.InferenceResult.output.map((item, index) => {
+        const score = Array.isArray(item) ? item[0] : item;
+        const indicator = getScoreIndicator(score);
+        return {
+          Category: CONTENT_CATEGORIES[index] || `Category ${index + 1}`,
+          Score: score.toFixed(3),
+          Level: `${indicator.emoji} ${indicator.level}`
+        };
+      });
+      
+      console.table(contentTableData);
+      
+      // Summary statistics
+      const scores = response.InferenceResult.output.map(item => Array.isArray(item) ? item[0] : item);
+      const avg = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+      const max = Math.max(...scores);
+      const min = Math.min(...scores);
+      const maxIndex = scores.indexOf(max);
+      const maxCategory = CONTENT_CATEGORIES[maxIndex] || `Category ${maxIndex + 1}`;
+      
+      console.log(`    📈 Summary: Avg ${avg.toFixed(3)} | Max ${max.toFixed(3)} (${maxCategory}) | Min ${min.toFixed(3)}`);
+      console.log('');
+    } else {
+        console.log('    ⚠️ No content preferences output found');
     }
 
     // Personality traits
     if (response.InferenceResult.traits?.personality_traits) {
-      console.log('');
-      logPersonalityTraits(response.InferenceResult.traits.personality_traits);
-    }
+      console.log('    🧠 Personality Analysis (Scale: 0 - 100)');
+      
+      const traits = response.InferenceResult.traits.personality_traits;
+      const traitsTableData = [];
 
+      // Add Positive Traits
+      if (traits.positive_traits) {
+        Object.entries(traits.positive_traits).forEach(([trait, score]) => {
+          const indicator = getScoreIndicator(score, true);
+          const traitName = trait.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          traitsTableData.push({
+            Type: 'Strength ✨',
+            Trait: traitName,
+            Score: score.toFixed(1),
+            Level: `${indicator.emoji} ${indicator.level}`
+          });
+        });
+      }
+
+      // Add Traits to Improve
+      if (traits.traits_to_improve) {
+        Object.entries(traits.traits_to_improve).forEach(([trait, score]) => {
+          const indicator = getScoreIndicator(score, true);
+          const traitName = trait.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          // For improvement areas, lower score often means higher priority to fix, but here we just show level
+          // Adjust logic if "Level" column needs to say "Priority"
+          const priority = score < 40 ? 'High Priority' : score < 60 ? 'Medium Priority' : 'Low Priority';
+          
+          traitsTableData.push({
+            Type: 'Growth Area 🎯',
+            Trait: traitName,
+            Score: score.toFixed(1),
+            Level: `${indicator.emoji} ${priority}`
+          });
+        });
+      }
+
+      if (traitsTableData.length > 0) {
+        console.table(traitsTableData);
+      } else {
+        console.log('    ⚠️ No personality traits data found');
+      }
+      console.log('');
+    }
+    
+    console.groupEnd();
     console.log('');
   }
 

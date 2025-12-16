@@ -176,29 +176,83 @@ const ModalPageLayout = ({
     window.innerWidth <= 768 && 
     !isCapacitorNative;
 
-  // Use visualViewport to avoid iOS "vh" causing phantom scroll and clipped content.
-  const [mobileModalHeightPx, setMobileModalHeightPx] = useState(() => {
+  // Track viewport height using ResizeObserver on visualViewport if available
+  // This is the most reliable way to detect keyboard opening on iOS/Android
+  const [visualHeight, setVisualHeight] = useState(() => {
     if (typeof window === 'undefined') return null;
-    if (!isMobileBrowser) return null;
-    const h = window.visualViewport?.height || window.innerHeight;
-    return Math.round(h * 0.85);
+    return window.visualViewport?.height || window.innerHeight;
   });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!isMobileBrowser) return;
-    const compute = () => {
+
+    const handleResize = () => {
       const h = window.visualViewport?.height || window.innerHeight;
+      setVisualHeight(h);
+    };
+
+    // Listen to both visualViewport (keyboard) and window resize
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
+    }
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('scroll', handleResize);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isMobileBrowser]);
+
+  // Use visualViewport to avoid iOS "vh" causing phantom scroll and clipped content.
+  const [mobileModalHeightPx, setMobileModalHeightPx] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    if (!isMobileBrowser) return null;
+    const h = window.innerHeight; // ALWAYS use full window innerHeight as base
+    return Math.round(h * 0.85);
+  });
+
+  // CRITICAL FIX: Only calculate height ONCE on mount (or significant orientation change).
+  // Do NOT update it when keyboard opens (which shrinks visualViewport height).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isMobileBrowser) return;
+    
+    const compute = () => {
+      // Use window.innerHeight (layout viewport) which is stable on Android
+      // On iOS, it might change, so we might need screen.height check?
+      // Generally, window.innerHeight is safer for "full screen" modals than visualViewport
+      const h = window.innerHeight; 
+      // Only update if difference is significant (orientation change), not just keyboard (20-40% diff)
+      // Keyboard usually takes 30-40% of screen.
       setMobileModalHeightPx(Math.round(h * 0.85));
     };
+    
     compute();
-    window.addEventListener('resize', compute);
-    window.visualViewport?.addEventListener?.('resize', compute);
-    window.visualViewport?.addEventListener?.('scroll', compute);
+    
+    // Only re-compute on actual orientation change or massive resize,
+    // explicitly NOT on visualViewport resize (keyboard).
+    const onWindowResize = () => {
+       const newH = window.innerHeight;
+       // If height changed by more than 150px, it might be orientation or keyboard.
+       // But we want to IGNORE keyboard shrinking.
+       // Actually, on Android window.innerHeight often shrinks with keyboard.
+       // On iOS it does not.
+       // To be safe: use screen.height as reference? 
+       // Better strategy: Fix the height to '85vh' in CSS (which ignores keyboard on most modern browsers)
+       // OR cache the initial height.
+       // Let's stick to initial height and only update if width changes (orientation).
+    };
+    
+    // Listen for orientation changes specifically
+    window.addEventListener('orientationchange', compute);
+    
     return () => {
-      window.removeEventListener('resize', compute);
-      window.visualViewport?.removeEventListener?.('resize', compute);
-      window.visualViewport?.removeEventListener?.('scroll', compute);
+      window.removeEventListener('orientationchange', compute);
     };
   }, [isMobileBrowser]);
     
@@ -249,8 +303,12 @@ const ModalPageLayout = ({
     borderBottomLeftRadius: (isCapacitorNative || isMobileBrowser) ? '0px' : '24px',
     borderBottomRightRadius: (isCapacitorNative || isMobileBrowser) ? '0px' : '24px',
     // Force height on mobile browser with !important via inline style
-    height: isMobileBrowser ? (mobileModalHeightPx ? `${mobileModalHeightPx}px` : '85vh') : (isCapacitorNative ? '100vh' : 'auto'),
-    maxHeight: isMobileBrowser ? (mobileModalHeightPx ? `${mobileModalHeightPx}px` : '85vh') : (isCapacitorNative ? '100vh' : '90vh'),
+    // FIX: Use 85vh (viewport units) instead of calculated pixels.
+    // Modern mobile browsers (Chrome/Safari) treat 'vh' as the "largest possible viewport"
+    // which effectively ignores the address bar retraction and often the keyboard resizing.
+    // If we use pixels derived from visualViewport, it shrinks with the keyboard.
+    height: isMobileBrowser ? '85vh' : (isCapacitorNative ? '100vh' : 'auto'),
+    maxHeight: isMobileBrowser ? '85vh' : (isCapacitorNative ? '100vh' : '90vh'),
     minHeight: (isCapacitorNative || isMobileBrowser) ? 'auto' : '600px',
     width: '100%',
     maxWidth: isMobileBrowser ? '100%' : '500px',

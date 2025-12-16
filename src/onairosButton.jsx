@@ -656,7 +656,9 @@ export function OnairosButton({
     const accountStatus = authData.accountStatus;
     let isNewUser;
     
-    if (accountStatus) {
+    // Fix: Only use accountStatus.exists if it's explicitly defined boolean
+    // This prevents "undefined" from forcing !undefined -> true (new user)
+    if (accountStatus && typeof accountStatus.exists === 'boolean') {
       // Use the new accountStatus.exists field as the source of truth
       isNewUser = !accountStatus.exists;
       console.log('✅ Using accountStatus.exists for flow determination:', {
@@ -669,13 +671,19 @@ export function OnairosButton({
         canUseInference: accountStatus.canUseInference
       });
     } else {
-      // Fallback to legacy field checking if accountStatus not available
+      // Fallback to legacy field checking if accountStatus not available or incomplete
       isNewUser = authData.isNewUser === true || 
                   authData.existingUser === false || 
                   authData.flowType === 'onboarding' || 
                   authData.userState === 'new' ||
-                  !authData.accountInfo;
-      console.log('⚠️ Using legacy fields for flow determination (accountStatus not available)');
+                  (!authData.accountInfo && !authData.existingUser); // Only check accountInfo if we aren't explicitly told it's an existing user
+      
+      console.log('⚠️ Using legacy fields for flow determination (accountStatus not available/incomplete)', {
+        isNewUserLegacy: isNewUser,
+        authDataIsNewUser: authData.isNewUser,
+        authDataExistingUser: authData.existingUser,
+        authDataFlowType: authData.flowType
+      });
     }
     
     console.log('🔍 Flow determination:', {
@@ -772,9 +780,22 @@ export function OnairosButton({
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
     if (returnToDataRequestAfterOnboarding) {
       setReturnToDataRequestAfterOnboarding(false);
-      setCurrentFlow('dataRequest');
+      // Determine flow: if user added NEW connections and wants to re-train (implicit in wrapped/non-wrapped flow?),
+      // or just wants to go back to data request.
+      // User requested: "so i cna redo training" -> send to trainingScreen.
+      // But if wrapped, training is skipped.
+      const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
+      if (isWrappedApp) {
+        // Wrapped: back to DataRequest (training skipped anyway)
+        setCurrentFlow('dataRequest');
+      } else {
+        // Non-wrapped: User likely wants to re-train with new data
+        setCurrentFlow('trainingScreen');
+        // Reset training state so it runs again
+        setTrainingHasStarted(false);
+      }
     } else {
-    setCurrentFlow('pin');
+      setCurrentFlow('pin');
     }
   };
 
@@ -920,8 +941,11 @@ export function OnairosButton({
             setCurrentFlow('wrappedLoading');
             console.log('📊 Showing wrapped loading screen for wrapped app');
           } else {
-            setCurrentFlow('loading');
-            console.log('📊 Showing simple loading screen for non-wrapped app');
+            // Non-wrapped app: DO NOT show loading screen here. 
+            // The user already accepted permissions, and for non-wrapped apps, 
+            // we should just fetch in background and close the modal when done.
+            // setCurrentFlow('loading'); // <-- REMOVED
+            console.log('📊 Non-wrapped app: fetching data in background, keeping current view until complete');
           }
           
           // Emit custom event for host app
@@ -1081,6 +1105,19 @@ export function OnairosButton({
                       note: 'Normalized traits-only response into InferenceResult for logging'
                     }
                   };
+                }
+
+                // Generic fallback normalization for unknown shapes that might contain personality data
+                if (apiResponse?.personalityDict || apiResponse?.personality_traits) {
+                    return {
+                        InferenceResult: {
+                            output: apiResponse.output || [],
+                            traits: { 
+                                personality_traits: apiResponse.personality_traits || apiResponse.personalityDict
+                            }
+                        },
+                        llmData: apiResponse.llmData
+                    };
                 }
 
                 return apiResponse;
@@ -1485,6 +1522,7 @@ export function OnairosButton({
         return (
           <UniversalOnboarding 
             {...commonProps}
+            initialConnectedAccounts={userData?.connectedAccounts}
             onComplete={handleOnboardingComplete}
             onBack={() => {
               if (returnToDataRequestAfterOnboarding) {

@@ -31,18 +31,51 @@ const fadeSlideInKeyframes = `
 }
 `;
 
-export default function UniversalOnboarding({ onComplete, onBack, appIcon, appName, username, testMode, priorityPlatform, rawMemoriesOnly, rawMemoriesConfig, isMobile: isMobileProp = false }) {
+export default function UniversalOnboarding({ onComplete, onBack, appIcon, appName, username, testMode, priorityPlatform, rawMemoriesOnly, rawMemoriesConfig, isMobile: isMobileProp = false, initialConnectedAccounts = [] }) {
   const lottieRef = useRef(null);
   const lastFrameRef = useRef(0);
   const rafRef = useRef(null);
   const initialLoadDone = useRef(false);
 
-  const [connectedAccounts, setConnectedAccounts] = useState({});
+  // Normalize platform names for initial state
+  const getInitialState = () => {
+    // If props provided, use them as source of truth
+    if (initialConnectedAccounts && Array.isArray(initialConnectedAccounts) && initialConnectedAccounts.length > 0) {
+      return initialConnectedAccounts.reduce((acc, p) => ({ 
+        ...acc, 
+        [p]: true 
+      }), {});
+    }
+    // Otherwise fallback to empty (will check localStorage in useEffect)
+    return {};
+  };
+
+  const [connectedAccounts, setConnectedAccounts] = useState(getInitialState);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState(null);
   const [selected, setSelected] = useState('Instagram');
   const [currentPage, setCurrentPage] = useState(1);
   const [showChatGPTModal, setShowChatGPTModal] = useState(false);
+
+  // Sync with initialConnectedAccounts prop changes (e.g. navigation back/forth)
+  useEffect(() => {
+    if (initialConnectedAccounts && Array.isArray(initialConnectedAccounts)) {
+      setConnectedAccounts((prev) => {
+        // Create map from props
+        const propState = initialConnectedAccounts.reduce((acc, p) => ({ ...acc, [p]: true }), {});
+        // Merge with current state (preserving local toggles if any, but ensuring props are respected)
+        // If the user just navigated back, propState is likely the truth.
+        // We prioritize propState for presence, but if something is in prev but NOT in props,
+        // it implies it was removed elsewhere OR we have local changes?
+        // Actually, if we trust the parent, we should probably sync.
+        // But to be safe and avoid overwriting in-progress connections:
+        const merged = { ...prev, ...propState };
+        // Clean up any that are explicitly NOT in props? 
+        // No, because user might have just toggled something locally.
+        return merged;
+      });
+    }
+  }, [initialConnectedAccounts]);
 
   // swipe state
   const touchStartX = useRef(0);
@@ -182,8 +215,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     { name: 'Reddit', connector: 'reddit', icon: Brand.Reddit },
   ];
 
-  // Check if this is onairos-wrapped
-  const isWrappedApp = typeof appName === 'string' && appName.toLowerCase().includes('onairos-wrapped');
+    const isWrappedApp = typeof appName === 'string' && appName.toLowerCase().includes('onairos-wrapped');
   
   const allPlatforms = isWrappedApp ? wrappedPlatforms : allPlatformsDefault;
 
@@ -256,6 +288,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     if (currentPage !== 1) setCurrentPage(1);
     const allowed = new Set(wrappedPlatforms.map((p) => p.name));
     if (!allowed.has(selected)) {
+      // For wrapped apps, set a valid default selection if current one is invalid
+      // Do NOT set connectedAccounts state here, just the UI selection
       setSelected('YouTube');
     }
   }, [isWrappedApp, currentPage, selected]);
@@ -373,6 +407,9 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         setConnectedAccounts(accountsObj);
       } else {
         console.log('⚠️ No valid connectedAccounts in localStorage');
+        // CRITICAL FIX: Ensure no auto-toggles for new users.
+        // If localStorage is empty, we default to empty state.
+        setConnectedAccounts({});
       }
     } catch (error) {
       console.error('❌ Failed to load persisted connected accounts:', error);
@@ -623,10 +660,18 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       }
 
       // Desktop: open popup
+      // Note: User requested "popup iframes". Standard OAuth uses window.open (popup window).
+      // Iframes are typically blocked by providers (X-Frame-Options: DENY).
+      // We ensure it opens as a popup and we monitor it.
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
       const popup = window.open(
         oauthUrl,
         'onairos_oauth_popup', 
-        'width=500,height=600,scrollbars=yes,resizable=yes'
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
       );
 
       if (!popup || popup.closed || typeof popup.closed === 'undefined') {
@@ -640,13 +685,19 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       // Set up postMessage listener for cross-origin communication
       const messageHandler = (event) => {
         // Only accept messages from onairos.uk origin
-        if (event.origin !== 'https://api2.onairos.uk' && 
-            event.origin !== 'https://onairos.uk' &&
-            !event.origin.includes('onairos.uk')) {
+        // Allow localhost for dev testing as well
+        const allowedOrigins = ['https://api2.onairos.uk', 'https://onairos.uk'];
+        const isAllowed = allowedOrigins.includes(event.origin) || 
+                          event.origin.includes('onairos.uk') || 
+                          event.origin.includes('localhost') || 
+                          event.origin.includes('127.0.0.1');
+        
+        if (!isAllowed) {
+          console.log(`⚠️ Ignoring postMessage from unknown origin: ${event.origin}`);
           return;
         }
 
-        if (event.data && event.data.type === 'oauth-success' && event.data.platform === plat.connector) {
+        if (event.data && event.data.type === 'oauth-success' && (event.data.platform === plat.connector || event.data.platform === name)) {
           console.log(`✅ ${plat.connector} OAuth success received via postMessage:`, event.data);
           window.removeEventListener('message', messageHandler);
           clearInterval(pollInterval);
@@ -673,6 +724,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           try {
             if (popup && !popup.closed) {
               popup.close();
+              console.log('🚪 Closed popup via postMessage handler');
             }
           } catch (e) {
             // Ignore errors closing popup
@@ -683,6 +735,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       window.addEventListener('message', messageHandler);
 
       // Poll localStorage for OAuth completion (oauth-callback.html sets this)
+      // Note: Only works if same-origin or shared storage strategies are used.
+      // For cross-origin (app on onairos.uk vs api2.onairos.uk), this relies on postMessage or redirect.
       const localStorageKey = `onairos_${plat.connector}_success`;
       const timestampKey = `onairos_${plat.connector}_timestamp`;
       let pollCount = 0;
@@ -738,6 +792,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
               try {
                 if (!popup.closed) {
                   popup.close();
+                  console.log('🚪 Closed popup via localStorage polling');
                 }
               } catch (e) {
                 // Ignore errors closing popup
@@ -1015,7 +1070,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
         {/* Pagination dots - hidden for wrapped app */}
         {!isWrappedApp && (
-        <div className="relative flex items-center justify-center gap-3 select-none flex-shrink-0" style={{ marginTop: isMobile ? 12 : 24, marginBottom: isMobile ? 20 : 20, zIndex: 25 }}>
+        <div className="relative flex items-center justify-center gap-3 select-none flex-shrink-0" style={{ marginTop: isMobile ? 12 : 16, marginBottom: isMobile ? 20 : 16, zIndex: 25 }}>
           {[1,2,3].map(n => (
             <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }}>
               <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-125' : 'bg-gray-300'} transition-transform`} style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }} />
@@ -1025,7 +1080,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         )}
 
         {/* info sheet — positioned using flex, MOBILE ONLY: LOWER */}
-        <div className="px-6 flex-shrink-0" style={{ marginBottom: isMobile ? 24 : 28, zIndex: 20 }}>
+        <div className="px-6 flex-shrink-0" style={{ marginBottom: isMobile ? 24 : 12, zIndex: 20 }}>
           <div
             className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5"
             style={{ 
@@ -1133,8 +1188,14 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                   }
                   console.log('🔥 UniversalOnboarding: Continue clicked');
                   console.log('🔍 Current connectedAccounts state:', connectedAccounts);
-                  console.log('✅ Sending to onComplete:', { connectedAccounts: connected, totalConnections: connected.length });
-                  onComplete?.({ connectedAccounts: connected, totalConnections: connected.length });
+                  // Ensure we pass the latest canonical names (capitalized) to parent
+                  const connectedList = Object.entries(connectedAccounts)
+                    .filter(([, v]) => !!v)
+                    .map(([k]) => canonicalizePlatformName(k))
+                    .filter(Boolean);
+                  
+                  console.log('✅ Sending to onComplete:', { connectedAccounts: connectedList, totalConnections: connectedList.length });
+                  onComplete?.({ connectedAccounts: connectedList, totalConnections: connectedList.length });
                 }}
               >
                 Continue
