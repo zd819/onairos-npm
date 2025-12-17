@@ -418,7 +418,18 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
 
             if (accountCheckResponse.ok) {
               const accountData = await accountCheckResponse.json();
-              if (accountData?.AccountInfo) {
+              // Explicit "no account" response -> force onboarding for truly new users
+              const noAccount =
+                !accountData?.AccountInfo ||
+                accountData?.AccountInfo === 'No Account Found' ||
+                (typeof accountData?.accountStatus?.exists === 'boolean' && accountData.accountStatus.exists === false);
+
+              if (noAccount) {
+                accountInfo = null;
+                accountStatus = accountData?.accountStatus || { exists: false, connectedPlatforms: [] };
+                existingUser = false;
+                isNewUser = true;
+              } else if (accountData?.AccountInfo) {
                 accountInfo = accountInfo || accountData.AccountInfo;
               }
               if (accountData?.accountStatus) {

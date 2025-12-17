@@ -62,6 +62,7 @@ const Icon = ({ type }) => {
 -------------------------- */
 const DataTypeToggle = ({ dataType, enabled, onToggle, isNative }) => {
   const handle = () => {
+    // Required items (like "basic") are always on and can't be toggled off
     if (dataType.required) return;
     onToggle(dataType.id, !enabled);
   };
@@ -69,13 +70,14 @@ const DataTypeToggle = ({ dataType, enabled, onToggle, isNative }) => {
   return (
     <button
       onClick={handle}
-      className="
+      className={`
         w-full flex items-center justify-between
         py-2 px-2
         bg-white/40 backdrop-blur-sm
-        hover:bg-white/70
+        ${dataType.required ? 'cursor-not-allowed opacity-75' : 'hover:bg-white/70 cursor-pointer'}
         transition rounded-xl shadow-sm
-      "
+      `}
+      title={dataType.required ? 'Required - cannot be disabled' : ''}
     >
       <div className="flex items-center gap-2.5">
         <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-100">
@@ -83,6 +85,7 @@ const DataTypeToggle = ({ dataType, enabled, onToggle, isNative }) => {
         </div>
         <span className={`${isNative ? 'text-[14px]' : 'text-[13px]'} text-gray-900 font-medium`} style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
           {dataType.name}
+          {dataType.required && <span className="ml-1.5 text-[11px] text-gray-500">(Required)</span>}
         </span>
       </div>
 
@@ -157,8 +160,14 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
     return map[lower] || (key ? key.charAt(0).toUpperCase() + key.slice(1) : '');
   };
 
-  const toggle = (id, val) =>
+  const toggle = (id, val) => {
+    // Ensure "basic" is always true (required)
+    const option = options.find(opt => opt.id === id);
+    if (option?.required) {
+      return; // Don't allow toggling off required options
+    }
     setSelected((p) => ({ ...p, [id]: val }));
+  };
 
   const selectedCount = Object.values(selected).filter(Boolean).length;
 

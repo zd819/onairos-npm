@@ -14,6 +14,7 @@ const chatgptIcon = 'https://anushkasirv.sirv.com/openai.png';
 const claudeIcon = 'https://anushkasirv.sirv.com/claude-color.png';
 const geminiIcon = 'https://anushkasirv.sirv.com/gemini-color.png';
 const grokIcon = 'https://anushkasirv.sirv.com/grok.png';
+const pinterestIcon = 'https://upload.wikimedia.org/wikipedia/commons/0/08/Pinterest-logo.png';
 
 const sdkConfig = {
   apiKey: process.env.REACT_APP_ONAIROS_API_KEY || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey',
@@ -169,6 +170,9 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     LinkedIn: (
       <img src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png" alt="LinkedIn" width="100%" height="100%" />
       ),
+    Pinterest: (
+      <img src={pinterestIcon} alt="Pinterest" width="100%" height="100%" />
+      ),
     Twitter: (
       <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
         <path fill="#1DA1F2" d="M23.643 4.937c-.835.37-1.732.62-2.675.733.962-.576 1.7-1.49 2.048-2.578-.9.534-1.897.922-2.958 1.13-.85-.904-2.06-1.47-3.4-1.47-2.572 0-4.658 2.086-4.658 4.66 0 .364.042.718.12 1.06-3.873-.195-7.304-2.05-9.602-4.868-.4.69-.63 1.49-.63 2.342 0 1.616.823 3.043 2.072 3.878-.764-.025-1.482-.234-2.11-.583v.06c0 2.257 1.605 4.14 3.737 4.568-.392.106-.803.162-1.227.162-.3 0-.593-.028-.877-.082.593 1.85 2.313 3.198 4.352 3.234-1.595 1.25-3.604 1.995-5.786 1.995-.376 0-.747-.022-1.112-.065 2.062 1.323 4.51 2.093 7.14 2.093 8.57 0 13.255-7.098 13.255-13.254 0-.2-.005-.402-.014-.602.91-.658 1.7-1.477 2.323-2.41z"/>
@@ -193,6 +197,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     Reddit: <>We examine your <strong className="font-semibold">search history</strong> and <strong className="font-semibold">discussions</strong> to understand your interests.</>,
     Instagram: <>We analyze your <strong className="font-semibold">photos</strong> and <strong className="font-semibold">interactions</strong> to learn visual preferences.</>,
     LinkedIn: <>We study your <strong className="font-semibold">professional graph</strong> and <strong className="font-semibold">content</strong> to understand career interests.</>,
+    Pinterest: <>We analyze your <strong className="font-semibold">boards</strong> and <strong className="font-semibold">pins</strong> to understand your creative interests and style.</>,
   };
 
   // Full platform list for all apps
@@ -214,7 +219,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   // Restricted platform list for onairos-wrapped only
   const wrappedPlatforms = [
     { name: 'YouTube', connector: 'youtube', icon: Brand.YouTube },
-    { name: 'LinkedIn', connector: 'linkedin', icon: Brand.LinkedIn },
+    { name: 'Pinterest', connector: 'pinterest', icon: Brand.Pinterest },
     { name: 'Reddit', connector: 'reddit', icon: Brand.Reddit },
   ];
 
@@ -951,12 +956,46 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     if (isConnecting && connectingPlatform !== name) return;
     const on = !!connectedAccounts[name];
     if (on) {
-      // Toggle OFF (persistence happens automatically via useEffect)
+      // Toggle OFF - disconnect from backend AND local state
       setConnectedAccounts((currentState) => {
         const updated = { ...currentState, [name]: false };
         console.log(`🔴 Disconnected ${name}`);
         return updated;
       });
+      
+      // Call backend /revoke to actually remove the connection from database
+      // This ensures wrapped dashboard signature changes and forces regeneration
+      try {
+        const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
+        const userToken = localStorage.getItem('onairos_user_token');
+        const savedUser = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+        const userIdentifier = username || savedUser.username || savedUser.email || '';
+        
+        if (!userIdentifier) {
+          console.warn(`⚠️ Cannot revoke ${name} - no user identifier found`);
+          return;
+        }
+        
+        console.log(`🔴 Calling backend /revoke for ${name}...`);
+        await fetch(`${baseUrl}/revoke`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(userToken && { 'Authorization': `Bearer ${userToken}` })
+          },
+          body: JSON.stringify({
+            Info: {
+              connection: name,
+              username: userIdentifier
+            }
+          })
+        });
+        console.log(`✅ Backend revoke successful for ${name}`);
+      } catch (revokeError) {
+        console.warn(`⚠️ Backend revoke failed for ${name}:`, revokeError);
+        // Don't block UI - disconnection still works locally
+      }
+      
       return;
     }
     else await connectToPlatform(name);

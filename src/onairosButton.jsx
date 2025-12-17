@@ -736,50 +736,58 @@ export function OnairosButton({
       console.warn('⚠️ [OnairosButton] Failed to parse/save email auth token');
     }
     
-    // NEW: Use accountStatus if available (more reliable than legacy fields)
+    // SDK-ONLY USER DETECTION: Determine new vs existing based purely on SDK-side logic
     const accountStatus = authData.accountStatus;
     let isNewUser;
     
-    // Fix: Only use accountStatus.exists if it's explicitly defined boolean
-    // This prevents "undefined" from forcing !undefined -> true (new user)
-    if (accountStatus && typeof accountStatus.exists === 'boolean') {
-      // Use the new accountStatus.exists field as the source of truth
-      isNewUser = !accountStatus.exists;
-      console.log('✅ Using accountStatus.exists for flow determination:', {
-        accountExists: accountStatus.exists,
-        hasTrainedModel: accountStatus.hasTrainedModel,
-        hasPersonalityTraits: accountStatus.hasPersonalityTraits,
-        connectedPlatforms: accountStatus.connectedPlatforms,
-        needsDataConnection: accountStatus.needsDataConnection,
-        needsTraining: accountStatus.needsTraining,
-        canUseInference: accountStatus.canUseInference
-      });
+    // Primary indicator: Backend explicit flags
+    const backendSaysNewUser =
+      authData.isNewUser === true ||
+      authData.userCreated === true ||
+      authData.existingUser === false ||
+      authData.flowType === 'onboarding' ||
+      authData.userState === 'new';
+    
+    // Secondary indicator: Connected platforms (most reliable for "returning user")
+    const connectedPlatforms = accountStatus?.connectedPlatforms || [];
+    const hasConnectedPlatforms = Array.isArray(connectedPlatforms) && connectedPlatforms.length > 0;
+    
+    // Tertiary indicator: Has trained model or personality data
+    const hasTrainedModel = accountStatus?.hasTrainedModel === true;
+    const hasPersonalityTraits = accountStatus?.hasPersonalityTraits === true;
+    const hasExistingData = hasTrainedModel || hasPersonalityTraits;
+    
+    // SDK-side decision logic:
+    // 1. If backend explicitly says new user → new user (go to onboarding)
+    // 2. If user has connected platforms → existing user (skip to dataRequest)
+    // 3. If user has trained model/traits → existing user (skip to dataRequest)
+    // 4. DEFAULT: No platforms + no trained data → new user (go to onboarding first)
+    //    This ensures brand new signups always connect platforms before requesting permissions
+    if (backendSaysNewUser) {
+      isNewUser = true;
+      console.log('✅ SDK: New user (backend explicit flag)');
+    } else if (hasConnectedPlatforms) {
+      isNewUser = false;
+      console.log('✅ SDK: Existing user (has connected platforms):', connectedPlatforms);
+    } else if (hasExistingData) {
+      isNewUser = false;
+      console.log('✅ SDK: Existing user (has trained model/traits)');
     } else {
-      // Fallback to legacy field checking if accountStatus not available or incomplete
-      isNewUser = authData.isNewUser === true || 
-                  authData.existingUser === false || 
-                  authData.flowType === 'onboarding' || 
-                  authData.userState === 'new' ||
-                  (!authData.accountInfo && !authData.existingUser); // Only check accountInfo if we aren't explicitly told it's an existing user
-      
-      console.log('⚠️ Using legacy fields for flow determination (accountStatus not available/incomplete)', {
-        isNewUserLegacy: isNewUser,
-        authDataIsNewUser: authData.isNewUser,
-        authDataExistingUser: authData.existingUser,
-        authDataFlowType: authData.flowType
-      });
+      // Default: no platforms + no trained data → new user needs onboarding
+      isNewUser = true;
+      console.log('✅ SDK: New user (no platforms, no trained data → onboarding first)');
     }
     
-    console.log('🔍 Flow determination:', {
-      finalDecision: isNewUser ? 'NEW USER → onboarding (data connectors)' : 'EXISTING USER → dataRequest (data permissions)',
-      reasoning: {
-        usingAccountStatus: !!accountStatus,
-        accountExists: accountStatus?.exists,
-        isNewUser: authData.isNewUser,
-        existingUserFalse: authData.existingUser === false,
-        flowTypeOnboarding: authData.flowType === 'onboarding',
-        noAccountInfo: !authData.accountInfo
-      }
+    console.log('🔍 SDK Flow determination:', {
+      decision: isNewUser ? 'NEW USER → onboarding (connect platforms)' : 'EXISTING USER → dataRequest (permissions)',
+      backendSaysNewUser,
+      hasConnectedPlatforms,
+      connectedPlatforms,
+      hasExistingData,
+      hasTrainedModel,
+      hasPersonalityTraits,
+      accountStatusExists: accountStatus?.exists,
+      authDataExistingUser: authData.existingUser
     });
     
     const newUserData = {
@@ -1092,7 +1100,7 @@ export function OnairosButton({
         console.log('🔗 API URL received:', urlData.apiUrl);
         console.log('🎯 webpageName sent as appId:', webpageName);
 
-          if (urlData.apiUrl && urlData.token) {
+        if (urlData.apiUrl && urlData.token) {
           // Treat as "wrapped" when either:
           // - appId/name indicates wrapped, OR
           // - backend returns the special wrapped dashboard endpoint (traits-only)
@@ -1141,23 +1149,17 @@ export function OnairosButton({
              includeLlmData: requestResult.approved.includes('rawMemories')
           };
 
-          // Wrapped: keep the traits-only dashboard generation behavior
+          // Wrapped: use backend policy (cached vs fresh) — DO NOT forceFresh by default.
+          // Backend will return:
+          // - cached dashboard instantly when available and connections unchanged
+          // - processing + poll until a freshly-generated dashboard is ready otherwise
           if (isWrappedApp) {
              console.log('🎁 WRAPPED APP DETECTED - Using traits-only endpoint from backend:', fetchUrl);
-             console.log('🎁 This should call the wrapped dashboard generation');
-
-             // Wrapped freshness: ALWAYS request a fresh-per-request variant (even if the same YouTube account is reused).
-             // This avoids "cached-looking" dashboards while keeping the core metrics stable.
+             console.log('🎁 Wrapped policy: backend decides cached vs fresh (no fallback dashboards)');
              fetchBody = {
                ...fetchBody,
-               forceFresh: true,
+               // Keep cacheBust only as a cache-buster hint for proxies; backend should not treat this as "force fresh"
                cacheBust: Date.now(),
-               // Explicitly tell backend this is a retry/refresh if we've seen this email before
-               // FIX: Always set retry to false to force full regeneration, ignoring previous attempts
-               retry: false, // localStorage.getItem('onairos_last_wrapped_email') === userData?.email,
-               // Additional flags for backend variations
-               force_refresh: true,
-               refresh: true
              };
              
              // Append cachebuster to URL to prevent any edge/proxy caching
@@ -1170,11 +1172,12 @@ export function OnairosButton({
              try {
                if (accountIdentifier) localStorage.setItem('onairos_last_wrapped_email', accountIdentifier);
              } catch {}
-             console.log('🧼 Wrapped forceFresh enabled (always for wrapped):', { 
+             console.log('🎁 Wrapped request (backend decides cached vs fresh):', { 
                email: accountIdentifier,
                url: fetchUrl,
                body: fetchBody,
-               isRetry: fetchBody.retry
+               isRetry: fetchBody.retry,
+               note: 'Backend will compare connection signatures to decide'
              });
           } else {
             // Non-wrapped: do NOT re-run training here. Use apiUrl from getAPIurlMobile for traits/inference.
@@ -1324,9 +1327,8 @@ export function OnairosButton({
                   const pollUrl = new URL(fetchUrl);
                   pollUrl.searchParams.set('poll_cb', Date.now());
 
-                  // CRITICAL: Do NOT send forceFresh during polling, or we might restart the generation!
+                  // CRITICAL: Do NOT send forceFresh during polling (backend uses cached-vs-fresh policy).
                   const pollBody = { ...fetchBody };
-                  delete pollBody.forceFresh;
                   delete pollBody.retry; // Don't signal retry on polls
                   delete pollBody.force_refresh;
                   delete pollBody.refresh;
@@ -1354,6 +1356,44 @@ export function OnairosButton({
                     // Check if we have the actual dashboard now
                     if (pollData.slides) {
                       console.log('✅ Dashboard ready! Received slides.');
+                      
+                      // DETAILED DASHBOARD INSPECTION
+                      console.log('🔍 Dashboard metadata:', {
+                        version: pollData.version,
+                        user_id: pollData.user_id,
+                        generated_at: pollData.generated_at,
+                        has_meta: !!pollData.meta,
+                        is_fallback: pollData.meta?.is_fallback,
+                        fallback_reason: pollData.meta?.fallback_reason,
+                        cache: pollData.meta?.cache,
+                        signature: pollData.meta?.signature
+                      });
+                      
+                      // Check red_pill_forensic roasts to detect generic content (for logging only)
+                      const roasts = pollData.slides?.red_pill_forensic?.roasts || [];
+                      const knownGenericRoasts = [
+                        "You have 47 tabs open and you're emotionally attached to all of them.",
+                        "Your 'quick 5-minute task' has never taken 5 minutes. Ever.",
+                        "You've started more projects than you've finished."
+                      ];
+                      const hasGenericRoasts = roasts.some(roast => knownGenericRoasts.includes(roast));
+                      
+                      if (hasGenericRoasts) {
+                        console.log('⚠️ Note: Some generic roasts detected - may indicate limited data available');
+                        console.log('   Roasts:', roasts);
+                      }
+                      
+                      // Check if this is a fallback dashboard (backend explicitly marks these)
+                      if (pollData.meta?.is_fallback) {
+                        console.log('═'.repeat(80));
+                        console.log('🚨 FALLBACK DASHBOARD DETECTED (SDK)');
+                        console.log('═'.repeat(80));
+                        console.log('⚠️ REASON:', pollData.meta.fallback_reason || 'Unknown reason');
+                        console.log('⚠️ WARNING:', pollData.meta.warning || 'This dashboard contains generic content');
+                        console.log('⚠️ This is NOT personalized data based on your connected accounts');
+                        console.log('═'.repeat(80));
+                      }
+                      
                       apiResponse = pollData;
                       break;
                     } else if (pollData.status !== 'processing') {
