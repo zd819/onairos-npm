@@ -391,9 +391,55 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
           throw new Error(data.error || 'Verification failed');
         }
 
-        const isNewUser = data.isNewUser !== undefined ? data.isNewUser : true;
-        const existingUser = !isNewUser;
-        const accountInfo = data.user || data.accountInfo || null;
+        // Email-code verification responses are not always consistent about returning accountStatus,
+        // especially for existing users. To keep DataRequest connected apps accurate, we perform the
+        // same accountStatus lookup that Google OAuth uses.
+        let accountInfo = data.user || data.accountInfo || null;
+        let accountStatus = data.accountStatus || null;
+        let existingUser = false;
+        let isNewUser = data.isNewUser !== undefined ? data.isNewUser : true;
+
+        try {
+          const normalizedEmail = String(email || '').trim().toLowerCase();
+          if (normalizedEmail) {
+            console.log('🔍 (Email) Checking account status via /getAccountInfo/email for:', normalizedEmail);
+            const accountCheckResponse = await fetch(`${baseUrl}/getAccountInfo/email`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+              },
+              body: JSON.stringify({
+                Info: {
+                  identifier: normalizedEmail,
+                },
+              }),
+            });
+
+            if (accountCheckResponse.ok) {
+              const accountData = await accountCheckResponse.json();
+              if (accountData?.AccountInfo) {
+                accountInfo = accountInfo || accountData.AccountInfo;
+              }
+              if (accountData?.accountStatus) {
+                accountStatus = accountData.accountStatus;
+              }
+              if (typeof accountStatus?.exists === 'boolean') {
+                existingUser = accountStatus.exists;
+                isNewUser = !accountStatus.exists;
+              }
+            } else {
+              console.log('ℹ️ (Email) /getAccountInfo/email returned non-OK; continuing with verification response');
+            }
+          }
+        } catch (accountCheckError) {
+          console.warn('⚠️ (Email) Could not check account status; continuing with verification response:', accountCheckError);
+        }
+
+        // Fall back if accountStatus didn't provide an exists boolean
+        if (typeof accountStatus?.exists !== 'boolean') {
+          existingUser = !isNewUser;
+        }
 
         setStep('success');
         setTimeout(() => {
@@ -406,6 +452,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
             isNewUser: isNewUser,
             flowType: isNewUser ? 'onboarding' : 'dataRequest',
             accountInfo: accountInfo,
+            accountStatus: accountStatus,
             accountDetails: accountInfo || {
               email: email,
               createdAt: data.createdAt || new Date().toISOString(),

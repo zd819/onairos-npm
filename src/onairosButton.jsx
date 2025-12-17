@@ -1092,10 +1092,24 @@ export function OnairosButton({
         console.log('🔗 API URL received:', urlData.apiUrl);
         console.log('🎯 webpageName sent as appId:', webpageName);
 
-        if (urlData.apiUrl && urlData.token) {
-          // Only show wrapped loading page if app name contains "wrapped"
-          const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
-          console.log('🎁 Is wrapped app?', isWrappedApp, '(checking:', webpageName, ')');
+          if (urlData.apiUrl && urlData.token) {
+          // Treat as "wrapped" when either:
+          // - appId/name indicates wrapped, OR
+          // - backend returns the special wrapped dashboard endpoint (traits-only)
+          // This prevents host apps (e.g. remind.*) from being misclassified as non-wrapped and
+          // receiving only traits-only fallback data instead of a full wrapped dashboard.
+          const apiUrlLooksWrapped =
+            typeof urlData.apiUrl === 'string' &&
+            (urlData.apiUrl.includes('/traits-only') || urlData.apiUrl.includes('traits-only'));
+          const nameLooksWrapped =
+            typeof webpageName === 'string' &&
+            webpageName.toLowerCase().includes('wrapped');
+          const isWrappedApp = !!(nameLooksWrapped || apiUrlLooksWrapped);
+          console.log('🎁 Is wrapped app?', isWrappedApp, '(checking:', webpageName, ')', {
+            nameLooksWrapped,
+            apiUrlLooksWrapped,
+            apiUrl: urlData.apiUrl
+          });
           if (isWrappedApp) {
             setCurrentFlow('wrappedLoading');
             console.log('📊 Showing wrapped loading screen for wrapped app');
