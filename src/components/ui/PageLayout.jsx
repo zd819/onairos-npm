@@ -19,6 +19,11 @@ const PageLayout = ({
   ...props
 }) => {
   const isSmallScreen = typeof window !== 'undefined' && window.innerWidth <= 768;
+  // If the caller passes a Tailwind override like "!p-0", we must respect it in inline styles.
+  // Inline styles override classes, so we mirror the intent here.
+  const disableContentPadding =
+    typeof contentClassName === 'string' &&
+    (contentClassName.includes('!p-0') || contentClassName.includes('p-0'));
 
   const layoutStyle = {
     backgroundColor: COLORS.background,
@@ -41,7 +46,7 @@ const PageLayout = ({
 
   const contentStyle = {
     flex: 1,
-    padding: isSmallScreen ? '16px 16px 18px' : 'clamp(16px, 4vw, 32px)',
+    padding: disableContentPadding ? '0' : (isSmallScreen ? '16px 16px 18px' : 'clamp(16px, 4vw, 32px)'),
     display: 'flex',
     flexDirection: 'column',
     overflow: 'auto',
@@ -302,13 +307,15 @@ const ModalPageLayout = ({
     borderTopRightRadius: '24px',
     borderBottomLeftRadius: (isCapacitorNative || isMobileBrowser) ? '0px' : '24px',
     borderBottomRightRadius: (isCapacitorNative || isMobileBrowser) ? '0px' : '24px',
-    // Force height on mobile browser with !important via inline style
-    // FIX: Use 85vh (viewport units) instead of calculated pixels.
-    // Modern mobile browsers (Chrome/Safari) treat 'vh' as the "largest possible viewport"
-    // which effectively ignores the address bar retraction and often the keyboard resizing.
-    // If we use pixels derived from visualViewport, it shrinks with the keyboard.
-    height: isMobileBrowser ? '85vh' : (isCapacitorNative ? '100vh' : 'auto'),
-    maxHeight: isMobileBrowser ? '85vh' : (isCapacitorNative ? '100vh' : '90vh'),
+    // Mobile browser: keep modal height STABLE while the keyboard opens.
+    // Some browsers shrink `vh` when the keyboard appears. Instead we capture a pixel height on mount
+    // (and only recompute on orientation changes) so the modal itself doesn't jump; content can scroll.
+    height: isMobileBrowser
+      ? (mobileModalHeightPx ? `${mobileModalHeightPx}px` : '85vh')
+      : (isCapacitorNative ? '100vh' : 'auto'),
+    maxHeight: isMobileBrowser
+      ? (mobileModalHeightPx ? `${mobileModalHeightPx}px` : '85vh')
+      : (isCapacitorNative ? '100vh' : '90vh'),
     minHeight: (isCapacitorNative || isMobileBrowser) ? 'auto' : '600px',
     width: '100%',
     maxWidth: isMobileBrowser ? '100%' : '500px',
@@ -413,10 +420,14 @@ const ModalPageLayout = ({
         data-modal-height={modalStyles.height}
       >
         <PageLayout
+          {...pageLayoutProps}
           showHeader={true}
           showCloseButton={true}
           onClose={onClose}
-          {...pageLayoutProps}
+          style={{
+            ...(pageLayoutProps.style || {}),
+            ...((!isMobileBrowser && !isCapacitorNative) ? { flex: 1, height: '100%' } : {}),
+          }}
         >
           {children}
         </PageLayout>

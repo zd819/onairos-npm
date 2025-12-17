@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import personaImg from "../assets/persona.png";
+// import personaImg from "../assets/persona.png";
+// Use remote URL to avoid 403 Forbidden on local asset during dev/prod mismatch
+const personaImg = "https://anushkasirv.sirv.com/persona.jpg";
 
 /* -------------------------
    ICON COMPONENTS
@@ -211,12 +213,15 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
     return [];
   };
 
-  // Refresh platforms list on mount and when connectedAccounts changes
+  // Refresh platforms list on mount and when connectedPlatforms changes
   useEffect(() => {
     const refreshPlatforms = () => {
-      const newPlatforms = getConnected();
-      console.log('🔄 DataRequest refreshing platforms:', newPlatforms);
-      setPlatforms(newPlatforms);
+      // Small delay to allow localStorage to update if coming from another component
+      setTimeout(() => {
+        const newPlatforms = getConnected();
+        console.log('🔄 DataRequest refreshing platforms:', newPlatforms);
+        setPlatforms(newPlatforms);
+      }, 50);
     };
 
     // Initial load
@@ -227,10 +232,21 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
       console.log('📡 DataRequest received connectedAccountsUpdate event');
       refreshPlatforms();
     };
+    
+    // Listen for storage events (cross-tab/window updates)
+    const handleStorageChange = (e) => {
+      if (e.key === 'onairosUser') {
+        console.log('💾 DataRequest detected storage change');
+        refreshPlatforms();
+      }
+    };
+    
     window.addEventListener('onairos-connected-accounts-update', handleConnectedAccountsUpdate);
+    window.addEventListener('storage', handleStorageChange);
 
     return () => {
       window.removeEventListener('onairos-connected-accounts-update', handleConnectedAccountsUpdate);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, [connectedPlatforms]); // Re-run if connectedPlatforms prop changes
 
@@ -298,7 +314,10 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
                 src={personaImg}
                 alt="Persona"
                 className={`${isCapacitorNative ? 'w-8 h-8' : 'w-6 h-6'} object-contain rounded-xl`}
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                onError={(e) => { 
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement.innerHTML = '<span class="text-xl">🎁</span>';
+                }}
               />
             ) : (
               <span className={`${isCapacitorNative ? 'text-xl' : 'text-lg'} font-serif font-bold`} style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>J</span>

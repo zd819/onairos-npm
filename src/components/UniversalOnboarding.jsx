@@ -96,7 +96,9 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const INFO_SHEET_MAX_H = isMobile ? (vh * 0.18) : (vh * 0.2);
+  // Cap the info card height so the bottom stack (icons + card + Continue)
+  // can stay anchored to the bottom without introducing scrollbars.
+  const INFO_SHEET_MAX_H = isMobile ? (vh * 0.18) : Math.min(200, Math.round(vh * 0.22));
 
   const FOOTER_H = 88;
 
@@ -105,12 +107,13 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   // Desktop adjustments: Reduce persona size and top position to fit modal without scroll
   // We allow overlap on desktop if needed
   const personaSide = isMobile 
-    ? (isSmallMobile ? Math.min(vh * 0.46, 420) : Math.min(vh * 0.52, 480))
+    ? (isSmallMobile ? Math.min(vh * 0.42, 380) : Math.min(vh * 0.45, 420))
     : Math.min(vh * 0.45, 420); // Desktop: allow larger size, will position absolutely
   
+  // Adjusted to prevent text overlap
   const PERSONA_TOP = isMobile 
-    ? (isSmallMobile ? 28 : 44) 
-    : 40; // Desktop: Higher up
+    ? (isSmallMobile ? 70 : 90) 
+    : 80; // Desktop: raised up higher to sit behind header/text (z-index 0)
 
   // MOBILE ONLY: icon layout - PUSH ICONS DOWN significantly
   // Desktop: Adjust spacing to fit
@@ -128,7 +131,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
   const ICONS_H = isMobile 
     ? (isSmallMobile ? 70 : 80)
-    : 76; // Desktop: tighter height
+    : 64; // Desktop: tighter height to avoid overflow/scroll
   const ICONS_TOP_OFFSET = isMobile 
     ? Math.max(200, Math.min(280, Math.round(vh * 0.32)))
     : 200; // Desktop: unused but kept for ref
@@ -486,7 +489,28 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         return true;
       }
       
-      const username = localStorage.getItem('username') || (JSON.parse(localStorage.getItem('onairosUser') || '{}')?.email) || 'user@example.com';
+      // IMPORTANT: Backend connectors (notably Reddit) validate the Onairos account by username/email.
+      // If we accidentally send the fallback 'user@example.com', the backend will respond with
+      // `oauth-callback.html?success=false&error=Account%20Doesn%27t%20Exist` even when the user exists.
+      //
+      // Prefer the prop `username` passed from `onairosButton.jsx` (derived from the verified session),
+      // then fall back to stored values. Avoid hardcoded placeholder emails.
+      const resolvedUsername =
+        (typeof username === 'string' && username.trim().length > 0 ? username.trim() : '') ||
+        (typeof localStorage !== 'undefined' ? (localStorage.getItem('username') || '') : '') ||
+        (() => {
+          try {
+            const u = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+            return u?.email || u?.username || '';
+          } catch {
+            return '';
+          }
+        })();
+
+      if (!resolvedUsername) {
+        console.warn('⚠️ No username/email available for OAuth authorize payload; aborting connect to avoid backend Account Does Not Exist.');
+        throw new Error('missing username');
+      }
 
       // Determine return URL based on platform
       // For Desktop/Web: Send empty string/null to prevent backend from generating a redirect URL
@@ -516,9 +540,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       console.log(`🔗 Authorizing ${plat.connector} with returnUrl:`, returnUrl || '(none/desktop)');
 
       // Build session payload for backend (SDK-aware)
-      const sessionPayload = {
-        username,
-      };
+      const sessionPayload = { username: resolvedUsername };
 
       // For mobile web flows, let backend know this is coming from the web SDK
       // and pass returnUrl inside session for connectors that use parseEnhancedSession (e.g. Reddit)
@@ -586,6 +608,40 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         throw new Error('no url');
       }
 
+      // Mobile-only: ensure the OAuth URL can always bring us back to the app even on failure.
+      // On mobile Safari/Chrome the OAuth flow often runs in a full tab (no window.opener) and
+      // window.close() is blocked. Our `public/oauth-callback.html` will redirect back if it can
+      // resolve `returnUrl` (query param) or decode it from `state`.
+      const withMobileReturnUrl = (rawUrl) => {
+        if (!rawUrl || typeof window === 'undefined') return rawUrl;
+        try {
+          const u = new URL(rawUrl);
+          const cleanReturnUrl = `${window.location.origin}${window.location.pathname}`;
+          // Put returnUrl directly on callback URL if we're already pointing at oauth-callback.html
+          if ((u.pathname || '').includes('oauth-callback.html') && !u.searchParams.get('returnUrl')) {
+            u.searchParams.set('returnUrl', cleanReturnUrl);
+          }
+          // Also embed returnUrl into OAuth state so the provider echoes it back to the callback.
+          // (Many backends don't propagate returnUrl on early errors; state keeps it round-trippable.)
+          if (!u.searchParams.get('state')) {
+            const statePayload = { returnUrl: cleanReturnUrl, platform: plat.connector, ts: Date.now() };
+            const encoded = btoa(JSON.stringify(statePayload));
+            u.searchParams.set('state', encoded);
+          }
+          return u.toString();
+        } catch (_) {
+          // Fallback for non-URL strings: best-effort append returnUrl when callback is already in the URL
+          try {
+            const cleanReturnUrl = `${window.location.origin}${window.location.pathname}`;
+            if (String(rawUrl).includes('oauth-callback.html') && !String(rawUrl).includes('returnUrl=')) {
+              const sep = String(rawUrl).includes('?') ? '&' : '?';
+              return `${rawUrl}${sep}returnUrl=${encodeURIComponent(cleanReturnUrl)}`;
+            }
+          } catch (_) {}
+          return rawUrl;
+        }
+      };
+
       // Always store a return URL/context before launching OAuth.
       // On iOS Safari, "popup" often becomes a new tab with no window.opener,
       // so oauth-callback must rely on localStorage to navigate back.
@@ -652,10 +708,10 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         localStorage.setItem('onairos_oauth_platform', plat.connector);
         console.log(`📌 Stored return URL for ${plat.connector}:`, returnUrl);
         
-        // Use same-page redirect on mobile
+        // Use same-page redirect on mobile (ensure oauthUrl carries returnUrl/state so callback can redirect back)
         setIsConnecting(false);
         setConnectingPlatform(null);
-        window.location.href = oauthUrl;
+        window.location.href = withMobileReturnUrl(oauthUrl);
         return true;
       }
 
@@ -729,6 +785,31 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           } catch (e) {
             // Ignore errors closing popup
           }
+        } else if (event.data && event.data.type === 'oauth-failure' && (event.data.platform === plat.connector || event.data.platform === name)) {
+            console.warn(`❌ ${plat.connector} OAuth failure received via postMessage:`, event.data);
+            window.removeEventListener('message', messageHandler);
+            clearInterval(pollInterval);
+            
+            // Revert state
+            setIsConnecting(false);
+            setConnectingPlatform(null);
+            setConnectedAccounts((s) => ({ ...s, [plat.name]: false }));
+            
+             // Clean up
+             try {
+                localStorage.removeItem(localStorageKey);
+                localStorage.removeItem(timestampKey);
+                localStorage.removeItem('onairos_oauth_context');
+                localStorage.removeItem('onairos_oauth_platform');
+                localStorage.removeItem('onairos_return_url');
+             } catch(e) {}
+
+             // Close popup
+             try {
+                if (popup && !popup.closed) {
+                   popup.close();
+                }
+             } catch(e) {}
         }
       };
 
@@ -759,6 +840,34 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           // Check localStorage for success signal
           const success = localStorage.getItem(localStorageKey);
           const timestamp = localStorage.getItem(timestampKey);
+          const errorSignal = localStorage.getItem(`onairos_${plat.connector}_error`);
+          
+          if (errorSignal) {
+             console.warn(`❌ ${plat.connector} error signal detected in localStorage`);
+             clearInterval(pollInterval);
+             window.removeEventListener('message', messageHandler);
+             
+             // Revert state
+             setIsConnecting(false);
+             setConnectingPlatform(null);
+             setConnectedAccounts((s) => ({ ...s, [plat.name]: false }));
+             
+             // Cleanup
+             try {
+                localStorage.removeItem(`onairos_${plat.connector}_error`);
+                localStorage.removeItem(localStorageKey);
+                localStorage.removeItem(timestampKey);
+                localStorage.removeItem('onairos_oauth_context');
+                localStorage.removeItem('onairos_oauth_platform');
+                localStorage.removeItem('onairos_return_url');
+             } catch(e) {}
+             
+             // Close popup
+             try {
+                if (!popup.closed) popup.close();
+             } catch(e) {}
+             return;
+          }
           
           if (success === 'true' && timestamp) {
             const timestampNum = parseInt(timestamp, 10);
@@ -889,6 +998,11 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
   return (
     <div className="w-full h-full relative" style={{ 
+      // CRITICAL: Ensure this screen stretches to the available modal height on desktop.
+      // Relying on `height: 100%` can fail when ancestors don't have an explicit height,
+      // which makes the CTA appear to "float" instead of sitting on the bottom.
+      flex: 1,
+      minHeight: 0,
       height: '100%',
       // Hide scrollbars for mobile browser only
       ...(isMobile && {
@@ -927,32 +1041,42 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       </div>
 
       {/* content above persona */}
-      <div className="relative z-10 h-full flex flex-col" style={{
-        // Hide scrollbars for mobile browser only
-        ...(isMobile && {
-          scrollbarWidth: 'none', /* Firefox */
-          msOverflowStyle: 'none', /* IE/Edge */
-        })
-      }}>
-        {/* header - MOBILE ONLY: smaller top padding to give persona space */}
+      <div
+        className="relative z-10 h-full flex flex-col"
+        style={{
+        minHeight: 0,
+        overflow: 'hidden',
+        }}
+      >
+        {/* header - MOVED TO TOP Z-INDEX to sit above persona if overlapped */}
         {/* Desktop: Reduced padding to fit everything */}
-        <div className="px-6 text-center flex-shrink-0" style={{ paddingTop: isMobile ? (isSmallMobile ? '2.5rem' : '3rem') : '2rem', paddingBottom: isMobile ? '0.5rem' : '0.25rem' }}>
+        <div
+          className="px-6 text-center flex-shrink-0 relative z-20"
+          style={{
+            paddingTop: isMobile ? (isSmallMobile ? '2.5rem' : '3rem') : '1.5rem',
+            paddingBottom: isMobile ? '0.5rem' : '0.25rem',
+          }}
+        >
           {/* Nudge header/subheader up slightly on mobile without affecting layout below (transform doesn't affect flow). */}
-          <div style={{ transform: isMobile ? 'translateY(-6px)' : 'translateY(-10px)' }}>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>Connect App Data</h1>
-            <p className="text-gray-600 text-base" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>More Connections, Better Personalization.</p>
+          <div style={{ transform: isMobile ? 'translateY(-6px)' : 'translateY(0px)' }}>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>
+              Connect App Data
+            </h1>
+            <p className="text-gray-600 text-base" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+              More Connections, Better Personalization.
+            </p>
           </div>
         </div>
 
         {/* Spacer - MOBILE ONLY: push icons/card WAY down so PERSONA SHINES */}
-        {/* Desktop: Increased spacer to push content lower on page */}
-        {isMobile && <div className="flex-1" style={{ minHeight: isSmallMobile ? 140 : 170 }} />}
-        {!isMobile && <div className="flex-1" style={{ minHeight: 100 }} />}
+        {/* Desktop: Push content to bottom of modal */}
+        {isMobile && <div className="flex-1" style={{ minHeight: isSmallMobile ? 80 : 100 }} />}
+        {!isMobile && <div className="flex-1" />}
 
         {/* icons band */}
         <div className="px-6 flex-shrink-0" style={{ height: ICONS_H }}>
           {/* Web-only: nudge icon band down slightly without affecting layout below */}
-          <div className="h-full flex items-center justify-center" style={{ transform: isMobile ? 'none' : 'translateY(8px)' }}>
+          <div className="h-full flex items-center justify-center" style={{ transform: isMobile ? 'none' : 'translateY(0px)' }}>
             <div
               className="grid w-full box-border relative"
               onTouchStart={onTouchStart}
@@ -1070,7 +1194,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
 
         {/* Pagination dots - hidden for wrapped app */}
         {!isWrappedApp && (
-        <div className="relative flex items-center justify-center gap-3 select-none flex-shrink-0" style={{ marginTop: isMobile ? 12 : 16, marginBottom: isMobile ? 20 : 16, zIndex: 25 }}>
+        <div className="relative flex items-center justify-center gap-3 select-none flex-shrink-0" style={{ marginTop: isMobile ? 12 : 10, marginBottom: isMobile ? 20 : 10, zIndex: 25 }}>
           {[1,2,3].map(n => (
             <button key={n} onClick={() => setCurrentPage(n)} aria-label={`page ${n}`} className="relative" style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }}>
               <span className={`block rounded-full ${currentPage === n ? 'bg-blue-600 scale-125' : 'bg-gray-300'} transition-transform`} style={{ width: isMobile ? 6 : 8, height: isMobile ? 6 : 8 }} />
@@ -1079,14 +1203,15 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         </div>
         )}
 
-        {/* info sheet — positioned using flex, MOBILE ONLY: LOWER */}
+        {/* info sheet — positioned using flex */}
         <div className="px-6 flex-shrink-0" style={{ marginBottom: isMobile ? 24 : 12, zIndex: 20 }}>
           <div
             className="mx-auto rounded-2xl bg-white shadow-sm border border-gray-200 px-4 py-2.5"
             style={{ 
               width: 'min(680px,92%)', 
-              maxHeight: isMobile ? INFO_SHEET_MAX_H : 'none',
-              overflow: isMobile ? 'hidden' : 'visible'
+              maxHeight: INFO_SHEET_MAX_H,
+              overflowY: 'auto',
+              overflowX: 'hidden'
             }}
           >
             <div className="flex items-center justify-between">
@@ -1121,16 +1246,11 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                 />
               </button>
             </div>
+            {/* Description text - Gray box removed, text kept */}
+            <div className={`mt-3 ${isMobile ? 'text-sm leading-6' : 'text-xs leading-5'} text-gray-700 px-1`}>
+               {descriptions[selected] || null}
+            </div>
             <div className="mt-3">
-              <div
-                className={`rounded-2xl bg-gray-50 text-gray-700 ${isMobile ? 'text-sm leading-6' : 'text-xs leading-5'} px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]`}
-                style={{ 
-                  maxHeight: isMobile ? Math.max(72, INFO_SHEET_MAX_H - 56) : 'none',
-                  overflowY: isMobile ? 'auto' : 'visible'
-                }}
-              >
-                {descriptions[selected] || null}
-              </div>
               {!isMobileBrowser && !isNativePlatform && selected === 'ChatGPT' && (
                 <div className="mt-3 flex justify-end">
                   <button
@@ -1161,8 +1281,19 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           </div>
         </div>
 
-        {/* footer — anchored at bottom using flex */}
-        <div className="px-6 flex-shrink-0" style={{ paddingBottom: isMobile ? 12 : 16, background: isMobile ? 'transparent' : 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))', zIndex: 30 }}>
+        {/* footer — anchored at bottom (CTA always pinned; content above scrolls) */}
+        <div
+          className="px-6 flex-shrink-0"
+          style={{
+            position: 'sticky',
+            bottom: 0,
+            marginTop: 'auto',
+            paddingBottom: isMobile ? 12 : 18,
+            paddingTop: 10,
+            background: isMobile ? 'transparent' : 'linear-gradient(to top, white 60%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0))',
+            zIndex: 30,
+          }}
+        >
           {(() => {
             const connected = Object.entries(connectedAccounts).filter(([, v]) => v).map(([k]) => k);
             const hasConnections = connected.length > 0;
@@ -1176,8 +1307,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                 }`}
                 style={{ 
                   fontFamily: 'Inter, system-ui, sans-serif',
-                  paddingTop: isSmallMobile ? 12 : 16, 
-                  paddingBottom: isSmallMobile ? 12 : 16, 
+                  paddingTop: isMobile ? (isSmallMobile ? 12 : 16) : 14,
+                  paddingBottom: isMobile ? (isSmallMobile ? 12 : 16) : 14,
                   color: hasConnections ? '#ffffff' : '#9CA3AF',
                   opacity: hasConnections ? 1 : 0.6
                 }}

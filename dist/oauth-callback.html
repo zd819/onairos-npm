@@ -84,6 +84,7 @@
         const error = urlParams.get('error');
         const platform = urlParams.get('platform');
         const returnUrlParam = urlParams.get('returnUrl');
+        const stateParam = urlParams.get('state');
         const details = urlParams.get('details');
         const email = urlParams.get('email'); // Extract email from URL params
 
@@ -98,7 +99,49 @@
         const isInPopup = window.opener !== null && !window.opener.closed;
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        console.log('🔄 OAuth callback received:', { success, error, platform, details, email, isInPopup, isMobile });
+        // Try to recover returnUrl from OAuth `state` (crucial for cross-origin flows where localStorage isn't shared)
+        const extractReturnUrlFromState = (rawState) => {
+            if (!rawState) return null;
+            const variants = [];
+            try { variants.push(rawState); } catch (_) {}
+            try { variants.push(decodeURIComponent(rawState)); } catch (_) {}
+            try { variants.push(atob(rawState)); } catch (_) {}
+            try { variants.push(decodeURIComponent(atob(rawState))); } catch (_) {}
+
+            for (const v of variants) {
+                if (!v) continue;
+                try {
+                    const obj = JSON.parse(v);
+                    const maybe =
+                        obj?.returnUrl ||
+                        obj?.redirectUrl ||
+                        obj?.callbackUrl ||
+                        obj?.return_url ||
+                        obj?.returnURL;
+                    if (typeof maybe === 'string' && maybe.length > 0) return maybe;
+                } catch (_) {
+                    // ignore parse failures
+                }
+            }
+            return null;
+        };
+
+        const stateReturnUrl = extractReturnUrlFromState(stateParam);
+        if (stateReturnUrl) {
+            try { localStorage.setItem('onairos_last_return_url', stateReturnUrl); } catch (_) {}
+        }
+
+        const resolveReturnUrl = () => {
+            return (
+                returnUrlParam ||
+                stateReturnUrl ||
+                localStorage.getItem('onairos_return_url') ||
+                localStorage.getItem('onairos_last_return_url') ||
+                ''
+            );
+        };
+
+        console.log('🔄 OAuth callback received:', { success, error, platform, details, email, isInPopup, isMobile, hasReturnUrl: !!resolveReturnUrl() });
 
         if (success === 'true' && platform) {
             // Success flow
@@ -163,7 +206,7 @@
                 }, 100);
             } else {
                 // Same-page redirect (mobile) - redirect back to stored return URL
-                const returnUrl = returnUrlParam || localStorage.getItem('onairos_return_url');
+                const returnUrl = resolveReturnUrl();
                 
                 // If we have a return URL, ALWAYS go back (mobile Safari often loses opener/context).
                 if (returnUrl) {
@@ -232,11 +275,53 @@
             }
             
             // Signal error to parent window
-            localStorage.setItem(`onairos_${platform}_error`, error || 'Unknown error');
-            localStorage.setItem(`onairos_${platform}_timestamp`, Date.now().toString());
+            const platformKey = platform || 'unknown';
+            localStorage.setItem(`onairos_${platformKey}_error`, error || 'Unknown error');
+            localStorage.setItem(`onairos_${platformKey}_timestamp`, Date.now().toString());
 
-            // If we have a return URL, redirect back even on error so the SDK can recover.
-            const returnUrl = returnUrlParam || localStorage.getItem('onairos_return_url');
+            // Try to notify parent via postMessage (works for popups on desktop web)
+            try {
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage({
+                        type: 'oauth-failure',
+                        platform: platformKey,
+                        error: error || 'Unknown error',
+                        success: false
+                    }, '*');
+                    console.log('📤 Sent onairos oauth-failure postMessage to parent window');
+                }
+            } catch (e) {
+                console.log('⚠️ Could not send postMessage (cross-origin or no opener):', e.message);
+            }
+
+            // Desktop popup: close immediately (same behavior as success).
+            // Redirecting here can strand a popup/tab on api2.onairos.uk even though the parent can recover.
+            if (isInPopup) {
+                // Try to close the Capacitor Browser automatically (native flows can surface errors too)
+                try {
+                    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+                        console.log('🚪 Attempting to close Capacitor Browser automatically (error)...');
+                        window.Capacitor.Plugins.Browser.close();
+                        console.log('✅ Called Browser.close()');
+                    }
+                } catch (e) {
+                    console.log('⚠️ Could not close Capacitor Browser:', e.message);
+                }
+
+                setTimeout(() => {
+                    console.log('🚪 Closing OAuth popup window (error)');
+                    try {
+                        window.close();
+                    } catch (e) {
+                        console.log('⚠️ Could not close popup:', e.message);
+                    }
+                }, 100);
+                return;
+            }
+
+            // Non-popup (mobile/new-tab): redirect back if we can resolve a return URL.
+            // On mobile, the OAuth callback is often a full tab (no window.opener) and cannot be closed by script.
+            const returnUrl = resolveReturnUrl();
             if (returnUrl) {
                 try {
                     let redirectUrl;
@@ -246,28 +331,30 @@
                         redirectUrl = new URL(window.location.origin);
                     }
                     redirectUrl.searchParams.set('onairos_oauth_success', 'false');
-                    redirectUrl.searchParams.set('onairos_oauth_platform', platform || '');
+                    redirectUrl.searchParams.set('onairos_oauth_platform', platformKey);
                     redirectUrl.searchParams.set('onairos_oauth_error', error || 'Unknown error');
                     console.log('📍 Redirecting back (error) to:', redirectUrl.toString());
-                    localStorage.removeItem('onairos_return_url');
-                    localStorage.removeItem('onairos_oauth_context');
-                    localStorage.removeItem('onairos_oauth_platform');
+                    try {
+                        localStorage.removeItem('onairos_return_url');
+                        localStorage.removeItem('onairos_oauth_context');
+                        localStorage.removeItem('onairos_oauth_platform');
+                    } catch (_) {}
                     window.location.replace(redirectUrl.toString());
                     return;
                 } catch (e) {
                     console.log('⚠️ Error redirect back failed:', e.message);
                 }
             }
-            
-            // Try to close on error (works better for popups than tabs)
+
+            // Last resort: try to close anyway; if blocked, at least leave the error UI visible.
             setTimeout(() => {
-                console.log('🚪 Attempting to close OAuth window (error)');
+                console.log('🚪 Attempting to close OAuth window (error; no returnUrl)');
                 try {
                     window.close();
                 } catch (e) {
                     console.log('⚠️ Could not close window:', e.message);
                 }
-            }, 2000);
+            }, 250);
             
         } else {
             // No clear success or error - treat as potential success
@@ -309,5 +396,4 @@
         });
     </script>
 </body>
-</html> 
 </html> 

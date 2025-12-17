@@ -250,6 +250,52 @@ export function OnairosButton({
              return; // Stop execution here
         }
         
+        if (hasError) {
+           console.log('❌ Deep link/OAuth error detected:', url);
+
+           // Close browser if open (Capacitor)
+           Browser.close().catch(() => {});
+
+           // Extract params from URL
+           let params;
+           try {
+             const qIdx = url.indexOf('?');
+             if (qIdx !== -1) params = new URLSearchParams(url.substring(qIdx + 1));
+             else params = new URL(url).searchParams;
+           } catch (e) {
+             params = new URLSearchParams(url.split('?')[1] || '');
+           }
+
+           const platform = params.get('platform') || params.get('onairos_oauth_platform') || 'unknown';
+           const errMsg = params.get('error') || params.get('onairos_oauth_error') || 'Unknown error';
+
+           // Persist error signal for components that poll localStorage (desktop popup flows)
+           try {
+             localStorage.setItem(`onairos_${platform}_error`, errMsg);
+             localStorage.setItem(`onairos_${platform}_timestamp`, Date.now().toString());
+           } catch (_) {}
+
+           // Session signal so UniversalOnboarding can react after a mobile redirect
+           try {
+             sessionStorage.setItem('onairos_oauth_return_success', 'false');
+             sessionStorage.setItem('onairos_oauth_return_platform', platform);
+             sessionStorage.setItem('onairos_oauth_return_error', errMsg);
+           } catch (_) {}
+
+           // Re-open the SDK modal on Universal Onboarding immediately
+           setOauthReturnDetected(true);
+           setShowOverlay(true);
+           setCurrentFlow('onboarding');
+
+           // Clean up URL if possible (on web)
+           if (window.history && window.history.replaceState && url.startsWith('http')) {
+             const cleanUrl = window.location.pathname;
+             window.history.replaceState({}, '', cleanUrl);
+           }
+
+           return;
+        }
+
         if (hasSuccess) {
            console.log('✅ Deep link/OAuth return detected:', url);
            
@@ -319,7 +365,7 @@ export function OnairosButton({
              if (email) localStorage.setItem('onairos_gmail_email', email);
            }
            
-           // Restore session if possible (only for Login flow really, but safe to update)
+           // Restore session
            if (email) {
              // MERGE with existing userData to preserve connectedAccounts
              const existingUserData = JSON.parse(localStorage.getItem('onairosUser') || '{}');
@@ -333,6 +379,20 @@ export function OnairosButton({
              console.log('📦 Merging OAuth return with existing userData:', { existing: existingUserData.connectedAccounts, merged: userData.connectedAccounts });
              localStorage.setItem('onairosUser', JSON.stringify(userData));
              setUserData(userData);
+           } else {
+             // CRITICAL: If no email in URL, attempt to restore from existing session
+             // This prevents losing the user identity during OAuth flows that don't return email
+             try {
+                const existingUser = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+                if (existingUser && (existingUser.email || existingUser.username)) {
+                    console.log('✅ Restored existing user session during OAuth return (no email in URL)');
+                    setUserData(existingUser);
+                } else {
+                    console.warn('⚠️ OAuth return without email and no existing session found');
+                }
+             } catch (e) {
+                 console.error('❌ Failed to restore session during OAuth return:', e);
+             }
            }
            
            // Open modal and go to onboarding immediately
@@ -402,6 +462,30 @@ export function OnairosButton({
   // Check for existing user session
   useEffect(() => {
     const checkExistingSession = () => {
+      // If we are in an OAuth return flow (URL params present), DO NOT restore session yet.
+      // Let checkOAuthReturn handle the state setup and flow direction (to 'onboarding').
+      // This prevents a race condition where checkExistingSession forces 'dataRequest' (due to onboardingComplete=true)
+      // before we've had a chance to show the "Connected!" state in UniversalOnboarding.
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('onairos_oauth_success') === 'true') {
+        console.log('🛑 checkExistingSession aborted - OAuth return detected in URL');
+        return;
+      }
+
+      // Also check for localStorage OAuth markers (for same-domain redirects that cleared URL)
+      // BUT exclude gmail auth flow (which should proceed normally)
+      if (localStorage.getItem('onairos_oauth_context') === 'platform-connector') {
+         // Check if we have a recent success signal
+         const platform = localStorage.getItem('onairos_oauth_platform');
+         if (platform) {
+            const success = localStorage.getItem(`onairos_${platform}_success`);
+            if (success === 'true') {
+               console.log('🛑 checkExistingSession aborted - Platform OAuth success marker found');
+               return;
+            }
+         }
+      }
+
       // In test mode, always start fresh to see the full flow
       if (testMode) {
         console.log('🧪 Test mode: Starting fresh flow, clearing any cached user data');
@@ -770,11 +854,21 @@ export function OnairosButton({
   const handleOnboardingComplete = (onboardingData) => {
     console.log('🎯 Onboarding completed:', onboardingData);
     console.log('🔍 Connected accounts from onboarding:', onboardingData.connectedAccounts);
+    
+    // DEFENSIVE: Ensure we don't overwrite session with null if state was lost
+    const currentData = userData || JSON.parse(localStorage.getItem('onairosUser') || '{}');
+    
     const updatedUserData = {
-      ...userData,
+      ...currentData,
       onboardingComplete: true,
       connectedAccounts: onboardingData.connectedAccounts || []
     };
+    
+    // Recover email if missing from currentData but present in onboardingData (unlikely but safe)
+    if (!updatedUserData.email && onboardingData.email) {
+        updatedUserData.email = onboardingData.email;
+    }
+    
     console.log('💾 Saving userData with connectedAccounts:', updatedUserData.connectedAccounts);
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
@@ -795,14 +889,34 @@ export function OnairosButton({
         setTrainingHasStarted(false);
       }
     } else {
-      setCurrentFlow('pin');
+      // Check if user already has a PIN. If so, skip PIN setup.
+      if (updatedUserData.pinCreated) {
+        console.log('🔐 User already has a PIN, skipping setup.');
+        
+        // Decide next step based on wrapped/non-wrapped logic
+        const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
+        if (isWrappedApp) {
+          console.log('🎁 Wrapped app - skipping training screen, going to data request');
+          setCurrentFlow('dataRequest');
+        } else {
+          console.log('🎓 Non-wrapped app - showing training screen');
+          setTrainingHasStarted(false);
+          setCurrentFlow('trainingScreen');
+        }
+      } else {
+        setCurrentFlow('pin');
+      }
     }
   };
 
   const handlePinSetupComplete = async (pinData) => {
     console.log('PIN setup completed:', pinData);
+    
+    // DEFENSIVE: Ensure we don't overwrite session with null if state was lost
+    const currentData = userData || JSON.parse(localStorage.getItem('onairosUser') || '{}');
+    
     const updatedUserData = {
-      ...userData,
+      ...currentData,
       ...pinData,
       pinCreated: true
     };
@@ -853,8 +967,12 @@ export function OnairosButton({
 
   const handleTrainingComplete = (trainingResult) => {
     console.log('🎓 Training completed:', trainingResult);
+    
+    // DEFENSIVE: Ensure we don't overwrite session with null if state was lost
+    const currentData = userData || JSON.parse(localStorage.getItem('onairosUser') || '{}');
+    
     const updatedUserData = {
-      ...userData,
+      ...currentData,
       // Persist a stable flag name used across SDK helpers/formatters
       trainingComplete: !(trainingResult?.fallback || trainingResult?.error),
       trainingCompleted: true,
@@ -869,8 +987,12 @@ export function OnairosButton({
 
   const handleTrainingScreenComplete = (trainingResult) => {
     console.log('🎓 Training screen completed:', trainingResult);
+    
+    // DEFENSIVE: Ensure we don't overwrite session with null if state was lost
+    const currentData = userData || JSON.parse(localStorage.getItem('onairosUser') || '{}');
+    
     const updatedUserData = {
-      ...userData,
+      ...currentData,
       trainingComplete: !(trainingResult?.fallback || trainingResult?.error),
       trainingCompleted: true,
       ...trainingResult
@@ -895,13 +1017,46 @@ export function OnairosButton({
       console.log('📋 Data approval recorded:', requestResult.approved);
     }
     
+    // Resolve user identifier robustly
+    let accountIdentifier = userData?.email || userData?.username;
+    
+    // Fallback: check localStorage if state is missing email
+    if (!accountIdentifier) {
+        try {
+            const savedUser = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+            accountIdentifier = savedUser.email || savedUser.username;
+            if (accountIdentifier) {
+                 console.log('✅ Recovered user identifier from localStorage:', accountIdentifier);
+            }
+        } catch (e) {
+            console.warn('⚠️ Failed to recover user identifier from localStorage:', e);
+        }
+    }
+
+    // DEFENSIVE: Ensure we don't overwrite session with null if state was lost
+    const currentData = userData || JSON.parse(localStorage.getItem('onairosUser') || '{}');
+    
     // Update user data with request result
     const updatedUserData = {
-      ...userData,
+      ...currentData,
       lastDataRequest: requestResult
     };
+    
+    // Ensure email is set in updatedUserData if we recovered it
+    if (accountIdentifier && !updatedUserData.email) {
+        updatedUserData.email = accountIdentifier;
+        console.log('🔧 Backfilled email into updatedUserData');
+    }
+
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
+
+    // For wrapped apps, we need to manually trigger the "wrappedLoading" flow immediately
+    // BEFORE running the fetch logic, so the UI updates instantly.
+    if (isWrappedApp) {
+       console.log('🎁 Wrapped app: Immediate switch to wrappedLoading screen');
+       setCurrentFlow('wrappedLoading');
+    }
 
     // Handle data fetching if autoFetch is enabled
     // Non-wrapped apps still need this call to produce InferenceResult (output + traits) for host apps.
@@ -911,6 +1066,10 @@ export function OnairosButton({
       console.log(`🚀 Auto-fetching data from Onairos API (${isWrappedApp ? 'wrapped' : 'non-wrapped'})...`);
       
       try {
+        if (!accountIdentifier) {
+            throw new Error('User identifier (email) is missing - cannot fetch data');
+        }
+
         // 1. Get the API URL from the backend
         const urlResponse = await fetch('https://api2.onairos.uk/getAPIurlMobile', {
           method: 'POST',
@@ -920,7 +1079,7 @@ export function OnairosButton({
           body: JSON.stringify({
             Info: {
               appId: webpageName,
-              account: userData?.email || userData?.username,
+              account: accountIdentifier,
               confirmations: requestResult.approved.map(id => ({ data: id === 'personality' ? 'Large' : id === 'basic' ? 'Basic' : id })),
               EncryptedUserPin: userData?.EncryptedUserPin || 'pending_pin_integration',
               storage: 's3',
@@ -964,7 +1123,7 @@ export function OnairosButton({
           
           let fetchUrl = urlData.apiUrl;
           let fetchBody = {
-             email: userData?.email,
+             email: accountIdentifier,
              includeLlmData: requestResult.approved.includes('rawMemories')
           };
 
@@ -995,11 +1154,10 @@ export function OnairosButton({
              }
 
              try {
-               const currentEmail = userData?.email;
-               if (currentEmail) localStorage.setItem('onairos_last_wrapped_email', currentEmail);
+               if (accountIdentifier) localStorage.setItem('onairos_last_wrapped_email', accountIdentifier);
              } catch {}
              console.log('🧼 Wrapped forceFresh enabled (always for wrapped):', { 
-               email: userData?.email,
+               email: accountIdentifier,
                url: fetchUrl,
                body: fetchBody,
                isRetry: fetchBody.retry
@@ -1007,7 +1165,7 @@ export function OnairosButton({
           } else {
             // Non-wrapped: do NOT re-run training here. Use apiUrl from getAPIurlMobile for traits/inference.
             fetchBody = {
-              email: userData?.email,
+              email: accountIdentifier,
               includeLlmData: requestResult.approved.includes('rawMemories')
             };
             console.log('✅ Non-wrapped: Using apiUrl from getAPIurlMobile for traits/inference:', fetchUrl);
@@ -1158,6 +1316,13 @@ export function OnairosButton({
                   delete pollBody.retry; // Don't signal retry on polls
                   delete pollBody.force_refresh;
                   delete pollBody.refresh;
+                  
+                  // CRITICAL FIX: Pass the nonce back so backend checks THIS specific job
+                  // Otherwise it might return old cached data while the new job runs
+                  if (apiResponse.nonce) {
+                    pollBody.nonce = apiResponse.nonce;
+                    pollUrl.searchParams.set('nonce', apiResponse.nonce);
+                  }
 
                   const pollResponse = await fetch(pollUrl.toString(), {
                     method: method,
@@ -1307,9 +1472,17 @@ export function OnairosButton({
       }
     }
 
-    // Format response if requested and API response is present
+    // Format response if requested and API response is present.
+    // IMPORTANT: Do NOT format wrapped dashboard payloads (slides/dashboard),
+    // because the formatter is designed for traits/personality shapes and can
+    // strip/reshape the response, causing host apps to incorrectly fall back to mocks.
     let formattedResult = finalResult;
-    if (formatResponse && finalResult?.apiResponse) {
+    const hasWrappedDashboardPayload =
+      !!finalResult?.apiResponse?.slides ||
+      !!finalResult?.apiResponse?.dashboard ||
+      !!finalResult?.apiResponse?.data?.dashboard;
+
+    if (formatResponse && finalResult?.apiResponse && !hasWrappedDashboardPayload) {
       try {
         formattedResult = {
           ...finalResult,
@@ -1320,6 +1493,8 @@ export function OnairosButton({
         console.warn('🔥 Error formatting response:', error);
         // Continue with original result if formatting fails
       }
+    } else if (formatResponse && hasWrappedDashboardPayload) {
+      console.log('🎁 Wrapped dashboard detected - skipping response formatting to preserve slides');
     }
 
     // Ensure token is included from userData if not already in finalResult
@@ -1400,14 +1575,28 @@ export function OnairosButton({
       console.log('🔥 No onComplete callback provided');
     }
 
-    // WRAPPED APPS: Set up listener for app to signal when dashboard is ready
-    // This is event-driven - overlay stays until dashboard signals it's ready
-    // isWrappedApp already declared above
-    
+    // WRAPPED APPS:
+    // If the dashboard data is READY (slides/dashboard present), close the overlay automatically.
+    // Only wait for an explicit ready signal when the backend is still processing.
     if (isWrappedApp) {
-      console.log('🎁 Wrapped app - waiting for dashboard ready signal');
+      const hasWrappedDashboardNow =
+        !!enhancedResult?.apiResponse?.slides ||
+        !!enhancedResult?.apiResponse?.dashboard ||
+        !!enhancedResult?.apiResponse?.data?.dashboard;
+      const stillProcessingNow =
+        enhancedResult?.isTimeout === true ||
+        enhancedResult?.apiResponse?.status === 'processing' ||
+        !hasWrappedDashboardNow;
+
+      if (!stillProcessingNow) {
+        console.log('🎁 Wrapped dashboard ready (slides present) - auto-closing SDK overlay');
+        handleCloseOverlay();
+        return;
+      }
+
+      console.log('🎁 Wrapped app - still processing, waiting for dashboard ready signal');
       console.log('🔊 Setting up onairos-dashboard-ready event listener');
-      
+
       // Listen for custom event from the wrapped app indicating dashboard is ready
       const handleDashboardReady = (event) => {
         console.log('✅✅✅ Dashboard ready signal received - closing SDK overlay');
@@ -1415,13 +1604,9 @@ export function OnairosButton({
         handleCloseOverlay();
         window.removeEventListener('onairos-dashboard-ready', handleDashboardReady);
       };
-      
+
       window.addEventListener('onairos-dashboard-ready', handleDashboardReady);
       console.log('👂 Event listener attached, waiting for signal...');
-      
-      // Keep overlay open indefinitely until we get the ready signal
-      // No fallback timeout - if the app doesn't signal, the overlay stays
-      // This ensures we never show a flash of the portal page
     } else {
       // For non-wrapped apps, just close the modal - training already happened in TrainingScreen
       console.log('✅ Non-wrapped app: Training complete, closing overlay');
@@ -1738,6 +1923,7 @@ export function OnairosButton({
               visible={showOverlay}
               onClose={handleCloseOverlay}
               showBackButton={currentFlow === 'training' || currentFlow === 'onboarding' || currentFlow === 'pin' || currentFlow === 'dataRequest'}
+              modalStyle={currentFlow === 'onboarding' ? { height: '90vh', maxHeight: '90vh' } : {}}
               onBack={() => {
                 if (currentFlow === 'email') setCurrentFlow('welcome');
                 if (currentFlow === 'onboarding') {
@@ -1770,7 +1956,12 @@ export function OnairosButton({
               contentClassName={currentFlow !== 'welcome' ? "!p-0" : ""}
               modalClassName={`onairos-modal ${(webpageName || '').toLowerCase().includes('wrapped') ? 'onairos-wrapped-fonts' : ''}`}
             >
-              <div className="onairos-modal-shell">
+              {/* 
+                Desktop: Make the shell a flex column (onboarding only) so UniversalOnboarding can flex to fill
+                the modal height. Without this, the CTA can't be pinned to the bottom and appears to "float"
+                with empty space below (since flex: 1 doesn't apply unless the parent is a flex container).
+              */}
+              <div className={currentFlow === 'onboarding' ? "onairos-modal-shell flex-1 min-h-0 flex flex-col" : "onairos-modal-shell"}>
                 {renderContent()}
               </div>
             </ModalPageLayout>
