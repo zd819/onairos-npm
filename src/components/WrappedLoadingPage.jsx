@@ -2,12 +2,18 @@ import React, { useEffect, useState } from 'react';
 import Lottie from 'lottie-react';
 
 export default function WrappedLoadingPage({ appName }) {
+  // CRITICAL: Do not render anything for non-wrapped apps
+  // This component should NEVER be called for non-wrapped apps
+  const isWrappedApp = appName && appName.toLowerCase().includes('wrapped');
+  
+  if (!isWrappedApp) {
+    console.warn('⚠️ WrappedLoadingPage should not be rendered for non-wrapped app:', appName);
+    return null;
+  }
+  
   const [animationData, setAnimationData] = useState(null);
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
-  
-  // Only show "Updating your digital brain for 2025..." if app name contains "wrapped"
-  const isWrappedApp = appName && appName.toLowerCase().includes('wrapped');
 
   // Whimsical rotating messages
   const messages = [

@@ -24,28 +24,11 @@ export function formatUserDataForDisplay(result) {
       dataTypesRequested: Array.isArray(result.approvedData) ? result.approvedData : (result.approved || [])
     },
     
-    // User authentication and profile data
-    userProfile: {
-      email: result.userData?.email || 'Not provided',
-      userType: result.userData?.userType || 'Unknown',
-      onboardingComplete: result.userData?.onboardingComplete || false,
-      pinCreated: result.userData?.pinCreated || false,
-      trainingComplete: result.userData?.trainingComplete || result.userData?.trainingCompleted || false,
-      modelReady: !!(result.apiResponse?.InferenceResult?.traits || result.apiResponse?.traits) // Model is ready if we have traits
-    },
-    
     // Connected platforms/accounts
     connectedAccounts: formatConnectedAccounts(result.userData?.connectedAccounts || []),
     
     // API response data (personality, preferences, etc.)
-    aiData: formatAIResponseData(result.apiResponse),
-    
-    // Success status and any errors
-    status: {
-      success: result.success !== false, // Default to true if undefined, unless explicitly false
-      hasApiResponse: !!result.apiResponse,
-      hasErrors: !!result.error || !!result.apiError
-    }
+    aiData: formatAIResponseData(result.apiResponse)
   };
 
   // Add the formatted summary to the result
@@ -123,59 +106,38 @@ function formatAIResponseData(apiResponse) {
     aiData.dataTypes.push({
       type: 'wrapped_dashboard',
       available: true,
-      data: apiResponse.data?.dashboard || apiResponse.dashboard || apiResponse,
-      summary: 'Onairos Wrapped / Neural Recall Dashboard'
+      summary: 'Onairos Wrapped / Neural Recall Dashboard available'
     });
     
     // Add apps if available
     if (apiResponse.data?.apps || apiResponse.apps) {
+      const appsCount = (apiResponse.data?.apps || apiResponse.apps).length;
       aiData.dataTypes.push({
         type: 'connected_apps',
         available: true,
-        data: apiResponse.data?.apps || apiResponse.apps,
-        summary: `Connected apps list (${(apiResponse.data?.apps || apiResponse.apps).length})`
+        summary: `Connected apps list available (${appsCount} apps)`
       });
     }
   }
 
-  // Check for personality data
+  // Check for personality data - simplified to avoid confusion
   if (apiResponse.InferenceResult?.traits || apiResponse.personalityDict || apiResponse.traits) {
     const personalityData = {
       type: 'personality',
       available: true
     };
 
-    // If we have dictionary format, use it for better readability
+    // Determine summary without including full data (reduces log clutter)
     if (apiResponse.personalityDict) {
-      personalityData.data = apiResponse.personalityDict;
-      personalityData.summary = `Personality analysis with ${Object.keys(apiResponse.personalityDict).length} traits`;
+      personalityData.summary = `Personality analysis available (${Object.keys(apiResponse.personalityDict).length} traits)`;
     } else if (apiResponse.InferenceResult?.traits) {
-      personalityData.data = apiResponse.InferenceResult.traits;
-      personalityData.summary = `Personality scores array with ${apiResponse.InferenceResult.traits.length} values`;
+      personalityData.summary = `Personality scores available (${Array.isArray(apiResponse.InferenceResult.traits) ? apiResponse.InferenceResult.traits.length : 'unknown count'} values)`;
     } else if (apiResponse.traits) {
-      personalityData.data = apiResponse.traits;
-      personalityData.summary = `Personality traits with ${Array.isArray(apiResponse.traits) ? apiResponse.traits.length : Object.keys(apiResponse.traits).length} items`;
+      const count = Array.isArray(apiResponse.traits) ? apiResponse.traits.length : Object.keys(apiResponse.traits).length;
+      personalityData.summary = `Personality traits available (${count} items)`;
     }
 
     aiData.dataTypes.push(personalityData);
-  }
-
-  // Check for preferences/traits data
-  if (apiResponse.traitResult || apiResponse.traitDict) {
-    const preferencesData = {
-      type: 'preferences',
-      available: true
-    };
-
-    if (apiResponse.traitDict) {
-      preferencesData.data = apiResponse.traitDict;
-      preferencesData.summary = `Preferences analysis with ${Object.keys(apiResponse.traitDict).length} categories`;
-    } else if (apiResponse.traitResult) {
-      preferencesData.data = apiResponse.traitResult;
-      preferencesData.summary = `Trait results with ${Array.isArray(apiResponse.traitResult) ? apiResponse.traitResult.length : Object.keys(apiResponse.traitResult).length} items`;
-    }
-
-    aiData.dataTypes.push(preferencesData);
   }
 
   // Check for basic info/output
@@ -183,8 +145,7 @@ function formatAIResponseData(apiResponse) {
     aiData.dataTypes.push({
       type: 'basic_info',
       available: true,
-      data: apiResponse.InferenceResult?.output || apiResponse.output,
-      summary: 'Basic user information and insights'
+      summary: 'Basic user information and insights available'
     });
   }
 
@@ -215,15 +176,6 @@ function createPrettyPrintVersion(userDataSummary) {
   lines.push(`   Data Types: ${Array.isArray(userDataSummary.requestInfo.dataTypesRequested) && userDataSummary.requestInfo.dataTypesRequested.length > 0 ? userDataSummary.requestInfo.dataTypesRequested.join(', ') : 'None'}`);
   lines.push(`   Timestamp: ${new Date(userDataSummary.requestInfo.timestamp).toLocaleString()}`);
   
-  // User Profile
-  lines.push('\n👤 USER PROFILE:');
-  lines.push(`   Email: ${userDataSummary.userProfile.email}`);
-  lines.push(`   Type: ${userDataSummary.userProfile.userType}`);
-  lines.push(`   Onboarding: ${userDataSummary.userProfile.onboardingComplete ? '✅' : '❌'}`);
-  lines.push(`   PIN Setup: ${userDataSummary.userProfile.pinCreated ? '✅' : '❌'}`);
-  lines.push(`   Training: ${userDataSummary.userProfile.trainingComplete ? '✅' : '❌'}`);
-  lines.push(`   Model Ready: ${userDataSummary.userProfile.modelReady ? '✅' : '❌'}`);
-  
   // Connected Accounts
   lines.push('\n🔗 CONNECTED ACCOUNTS:');
   lines.push(`   ${userDataSummary.connectedAccounts.summary}`);
@@ -242,12 +194,6 @@ function createPrettyPrintVersion(userDataSummary) {
     });
   }
   
-  // Status
-  lines.push('\n✅ STATUS:');
-  lines.push(`   Success: ${userDataSummary.status.success ? '✅' : '❌'}`);
-  lines.push(`   API Response: ${userDataSummary.status.hasApiResponse ? '✅' : '❌'}`);
-  lines.push(`   Errors: ${userDataSummary.status.hasErrors ? '❌ Yes' : '✅ None'}`);
-  
   lines.push('\n' + '=' .repeat(50));
   
   return lines.join('\n');
@@ -262,8 +208,10 @@ export function logFormattedUserData(result) {
   
   console.log('\n' + formatted.prettyPrint + '\n');
   
-  // Also log the structured data for programmatic access
-  console.log('📊 Structured User Data Summary:', formatted.userDataSummary);
+  // Removed for distribution: detailed structured data logging
+  // This was causing confusing nested aiData/traits output in console
+  // Uncomment for debugging if needed:
+  // console.log('📊 Structured User Data Summary:', formatted.userDataSummary);
   
   return formatted;
 }

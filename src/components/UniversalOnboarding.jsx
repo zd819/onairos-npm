@@ -59,24 +59,8 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   const [showChatGPTModal, setShowChatGPTModal] = useState(false);
 
   // Sync with initialConnectedAccounts prop changes (e.g. navigation back/forth)
-  useEffect(() => {
-    if (initialConnectedAccounts && Array.isArray(initialConnectedAccounts)) {
-      setConnectedAccounts((prev) => {
-        // Create map from props
-        const propState = initialConnectedAccounts.reduce((acc, p) => ({ ...acc, [p]: true }), {});
-        // Merge with current state (preserving local toggles if any, but ensuring props are respected)
-        // If the user just navigated back, propState is likely the truth.
-        // We prioritize propState for presence, but if something is in prev but NOT in props,
-        // it implies it was removed elsewhere OR we have local changes?
-        // Actually, if we trust the parent, we should probably sync.
-        // But to be safe and avoid overwriting in-progress connections:
-        const merged = { ...prev, ...propState };
-        // Clean up any that are explicitly NOT in props? 
-        // No, because user might have just toggled something locally.
-        return merged;
-      });
-    }
-  }, [initialConnectedAccounts]);
+  // This useEffect must be AFTER the platform definitions so it can canonicalize names
+  // It's defined here but will run after component setup
 
   // swipe state
   const touchStartX = useRef(0);
@@ -246,6 +230,28 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       window.dispatchEvent(new CustomEvent('onairos-connected-accounts-update'));
     }
   };
+
+  // Sync with initialConnectedAccounts prop changes (e.g. navigation back/forth)
+  // This MUST be after canonicalizePlatformName is defined
+  useEffect(() => {
+    if (initialConnectedAccounts && Array.isArray(initialConnectedAccounts) && initialConnectedAccounts.length > 0) {
+      setConnectedAccounts((prev) => {
+        // Create map from props - MUST canonicalize platform names to match local state format
+        const propState = initialConnectedAccounts.reduce((acc, p) => {
+          const canonical = canonicalizePlatformName(p);
+          if (canonical) {
+            acc[canonical] = true;
+          }
+          return acc;
+        }, {});
+        console.log('🔄 Syncing connected accounts from props:', propState);
+        // Merge with current state (preserving local toggles if any, but ensuring props are respected)
+        // If the user just navigated back, propState is the source of truth for already-connected accounts
+        const merged = { ...prev, ...propState };
+        return merged;
+      });
+    }
+  }, [initialConnectedAccounts]);
 
   // Debug: Log connectedAccounts state changes
   useEffect(() => {

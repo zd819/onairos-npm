@@ -528,9 +528,17 @@ export function OnairosButton({
             }
           }
           
+          // Add session timestamp for smart caching
+          if (!user.lastSessionTime) {
+            user.lastSessionTime = new Date().toISOString();
+            localStorage.setItem('onairosUser', JSON.stringify(user));
+          }
+          
           setUserData(user);
-          // If user has completed onboarding and PIN setup, go directly to data request
+          // SMART CACHING: If user has completed onboarding and PIN setup, go directly to data request
+          // This provides seamless re-authentication for returning users
           if (user.onboardingComplete && user.pinCreated) {
+            console.log(`✨ Welcome back ${user.email || 'user'}! Auto-navigating to data request...`);
             setCurrentFlow('dataRequest');
           } else if (user.verified && !user.onboardingComplete) {
             setCurrentFlow('onboarding');
@@ -692,6 +700,38 @@ export function OnairosButton({
     setCurrentFlow('welcome');
     try { localStorage.removeItem('onairosUser'); } catch {}
     setUserData(null);
+  };
+
+  const handleLogout = () => {
+    console.log('🚪 User logout initiated');
+    // Clear all user data and tokens
+    try {
+      localStorage.removeItem('onairosUser');
+      localStorage.removeItem('onairos_user_token');
+      localStorage.removeItem('onairos_gmail_success');
+      localStorage.removeItem('onairos_gmail_timestamp');
+      localStorage.removeItem('onairos_gmail_email');
+      localStorage.removeItem('onairos_oauth_email');
+      localStorage.removeItem('onairos_return_url');
+      localStorage.removeItem('onairos_oauth_context');
+      localStorage.removeItem('onairos_post_oauth_flow');
+      sessionStorage.clear();
+    } catch (e) {
+      console.warn('⚠️ Error clearing storage during logout:', e);
+    }
+    
+    // Reset component state
+    setUserData(null);
+    setError(null);
+    setCurrentFlow('welcome');
+    setOauthReturnDetected(false);
+    setReturnToDataRequestAfterOnboarding(false);
+    setTrainingHasStarted(false);
+    
+    // Close the overlay
+    setShowOverlay(false);
+    
+    console.log('✅ Logout complete - user session cleared');
   };
 
   // Handle clicks on the backdrop to close modal
@@ -1059,12 +1099,8 @@ export function OnairosButton({
     setUserData(updatedUserData);
     localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
 
-    // For wrapped apps, we need to manually trigger the "wrappedLoading" flow immediately
-    // BEFORE running the fetch logic, so the UI updates instantly.
-    if (isWrappedApp) {
-       console.log('🎁 Wrapped app: Immediate switch to wrappedLoading screen');
-       setCurrentFlow('wrappedLoading');
-    }
+    // For wrapped apps: Don't immediately show loading - wait to see if data is cached
+    // The loading screen will be shown only if fetch takes >1s (indicating fresh generation)
 
     // Handle data fetching if autoFetch is enabled
     // Non-wrapped apps still need this call to produce InferenceResult (output + traits) for host apps.
@@ -1118,9 +1154,14 @@ export function OnairosButton({
             apiUrlLooksWrapped,
             apiUrl: urlData.apiUrl
           });
+          
+          // Track fetch start time to detect cached responses
+          const fetchStartTime = Date.now();
+          let shouldShowWrappedLoading = isWrappedApp;
+          
           if (isWrappedApp) {
-            setCurrentFlow('wrappedLoading');
-            console.log('📊 Showing wrapped loading screen for wrapped app');
+            // Don't show loading screen yet - we'll check if response is fast (cached)
+            console.log('📊 Wrapped app detected - checking if data is cached...');
           } else {
             // Non-wrapped app: DO NOT show loading screen here. 
             // The user already accepted permissions, and for non-wrapped apps, 
@@ -1245,13 +1286,29 @@ export function OnairosButton({
             // CRITICAL: Wait for JSON parsing to complete
             apiResponse = await dataResponse.json();
             
+            // Check if this was a fast response (cached data)
+            const fetchDuration = Date.now() - fetchStartTime;
+            const isCachedResponse = fetchDuration < 1000; // Less than 1 second = likely cached
+            const hasActualDashboard = !!(apiResponse?.slides || apiResponse?.dashboard || apiResponse?.data?.dashboard);
+            
             console.log('🔍 Parsed API response:', {
               isWrappedApp,
               hasStatus: !!apiResponse.status,
               status: apiResponse.status,
               hasSlides: !!apiResponse.slides,
+              hasDashboard: hasActualDashboard,
+              fetchDuration: `${fetchDuration}ms`,
+              isCachedResponse,
               responseKeys: Object.keys(apiResponse)
             });
+            
+            // For wrapped apps: Only show loading screen if response is NOT cached
+            if (isWrappedApp && !isCachedResponse) {
+              setCurrentFlow('wrappedLoading');
+              console.log('📊 Showing wrapped loading screen (fresh generation in progress)');
+            } else if (isWrappedApp && isCachedResponse && hasActualDashboard) {
+              console.log('✨ Cached wrapped data detected - skipping loading screen');
+            }
 
             // ─────────────────────────────────────────────────────────────
             // Normalize + log API response in the exact SDK format expected
@@ -1574,7 +1631,10 @@ export function OnairosButton({
     const completeResult = {
       ...formattedResult,
       token: finalResult.token || formattedResult.token || updatedUserData.token, // Ensure token is at root level
-      userData: updatedUserData
+      userData: updatedUserData,
+      // Add appName and userHash for proper logging/formatting
+      appName: webpageName || formattedResult.appName || 'Unknown App',
+      userHash: updatedUserData?.email || updatedUserData?.username || accountIdentifier || formattedResult.userHash || 'Unknown User'
     };
 
     // Enhanced user data formatting for better display
@@ -1839,10 +1899,24 @@ export function OnairosButton({
             onConnectMoreApps={() => {
               // Go back to UniversalOnboarding but return here afterwards.
               // Connected apps are persisted in localStorage by UniversalOnboarding.
+              // IMPORTANT: Refresh userData from localStorage to ensure connected accounts are current
+              try {
+                const savedUser = JSON.parse(localStorage.getItem('onairosUser') || '{}');
+                if (savedUser && savedUser.connectedAccounts) {
+                  setUserData((prev) => ({
+                    ...(prev || {}),
+                    ...savedUser,
+                    connectedAccounts: savedUser.connectedAccounts
+                  }));
+                  console.log('🔄 Refreshed userData with connected accounts from localStorage:', savedUser.connectedAccounts);
+                }
+              } catch (e) {
+                console.warn('⚠️ Failed to refresh userData from localStorage:', e);
+              }
               setReturnToDataRequestAfterOnboarding(true);
               setCurrentFlow('onboarding');
             }}
-            userEmail={userData?.email || userData?.userName}
+            userEmail={userData?.email || userData?.username}
             requestData={requestData}
             appName={webpageName}
             autoFetch={autoFetch}
@@ -1852,9 +1926,16 @@ export function OnairosButton({
             rawMemoriesOnly={rawMemoriesOnly}
             rawMemoriesConfig={rawMemoriesConfig}
             showTime={time}
+            onLogout={handleLogout}
           />
         );
       case 'wrappedLoading':
+        // CRITICAL: Only render WrappedLoadingPage for wrapped apps
+        const isWrappedAppCheck = webpageName && webpageName.toLowerCase().includes('wrapped');
+        if (!isWrappedAppCheck) {
+          console.warn('⚠️ wrappedLoading case should not be reached for non-wrapped app');
+          return null;
+        }
         return (
           <div className="flex-1 min-h-0">
             <WrappedLoadingPage appName={webpageName} />

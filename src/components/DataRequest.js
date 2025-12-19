@@ -122,7 +122,7 @@ const options = [
   { id: "personality", name: "Personality Traits", icon: "Brain" },
 ];
 
-const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connectedPlatforms = [], showTime = false }) => {
+const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connectedPlatforms = [], showTime = false, userEmail = null, onLogout = null }) => {
   const [selected, setSelected] = useState({
     basic: true,
     rawMemories: false,
@@ -292,6 +292,33 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
 
   return (
     <div className="flex flex-col h-full max-h-full md:max-h-[90vh] bg-white/70 backdrop-blur-2xl rounded-3xl overflow-hidden">
+
+      {/* USER INFO HEADER */}
+      {userEmail && (
+        <div className="px-6 pt-2 pb-2 border-b border-gray-200/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span className="font-medium no-underline">{userEmail}</span>
+            </div>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors no-underline"
+                title="Logout"
+                style={{ textDecoration: 'none' }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="no-underline" style={{ textDecoration: 'none' }}>Logout</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* CONTENT */}
       <div className="flex-1 overflow-y-auto px-6 pt-3 md:pt-6 pb-2">
