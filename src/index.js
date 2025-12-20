@@ -4,12 +4,16 @@
 import './styles/tailwind.css';
 
 import { Onairos } from "./onairos.jsx";
+import { OnairosReconnectButton } from "./OnairosReconnectButton.jsx";
 
 // Export the original Onairos component
 export { Onairos };
 
 // Export the new Onairos SDK
 export { OnairosClient };
+
+// Export the Reconnect Button for managing data sources
+export { OnairosReconnectButton };
 
 // Export Capacitor/Mobile detection utilities
 export {
@@ -41,3 +45,15 @@ export {
   sendUserInfoToExtension,
   getUserInfoFromStorage
 } from './utils/extensionDetection.js';
+
+// Export platform disconnect and destruct utilities
+export {
+  disconnectPlatform,
+  disconnectMultiplePlatforms,
+  destructWrappedData,
+  updateLocalStorageAfterDisconnect,
+  updateLocalStorageAfterDestruct,
+  hasAuthToken,
+  getSupportedPlatforms,
+  isPlatformSupported
+} from './utils/platformDisconnect.js';
