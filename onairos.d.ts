@@ -157,23 +157,6 @@ declare module 'onairos' {
       total: number;
     }
 
-    /**
-     * Response from destructWrappedData
-     */
-    export interface DestructWrappedDataResponse {
-      success: boolean;
-      message: string;
-      error?: string;
-      details?: {
-        wrappedDashboardCleared?: boolean;
-        wrappedTraitsCleared?: boolean;
-        pendingJobsDeleted?: number;
-        userNumberReset?: boolean;
-        wrappedUserNumber?: number;
-        wrappedFirstUsedAt?: string;
-      };
-      data?: any;
-    }
 
     /**
      * Disconnect a platform from user's account
@@ -222,39 +205,12 @@ declare module 'onairos' {
     ): Promise<DisconnectMultiplePlatformsResponse>;
 
     /**
-     * Permanently delete all Wrapped dashboard data for the authenticated user
-     * Requires authentication token in localStorage
-     * 
-     * @param resetNumber - Whether to also reset wrappedUserNumber (admin only, default: false)
-     * @returns Promise resolving to destruct response
-     * 
-     * @example
-     * ```typescript
-     * import { destructWrappedData } from 'onairos';
-     * 
-     * const result = await destructWrappedData();
-     * if (result.success) {
-     *   console.log('Wrapped data deleted:', result.details);
-     * }
-     * ```
-     */
-    export function destructWrappedData(
-      resetNumber?: boolean
-    ): Promise<DestructWrappedDataResponse>;
-
-    /**
      * Update localStorage after disconnecting a platform
      * Removes the platform from connectedAccounts array
      * 
      * @param platform - Platform name that was disconnected
      */
     export function updateLocalStorageAfterDisconnect(platform: string): void;
-
-    /**
-     * Update localStorage after deleting wrapped data
-     * Clears wrapped-related fields from userData
-     */
-    export function updateLocalStorageAfterDestruct(): void;
 
     /**
      * Check if user has authentication token

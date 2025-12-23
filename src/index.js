@@ -46,14 +46,28 @@ export {
   getUserInfoFromStorage
 } from './utils/extensionDetection.js';
 
-// Export platform disconnect and destruct utilities
+// Export platform disconnect utilities
 export {
   disconnectPlatform,
   disconnectMultiplePlatforms,
-  destructWrappedData,
   updateLocalStorageAfterDisconnect,
-  updateLocalStorageAfterDestruct,
   hasAuthToken,
   getSupportedPlatforms,
   isPlatformSupported
 } from './utils/platformDisconnect.js';
+
+// Export session management utilities
+export {
+  checkValidSession,
+  createSession,
+  destroySession,
+  isSessionValid,
+  getSessionExpiry,
+  setSessionExpiry,
+  extendSession,
+  validateToken,
+  getStoredToken,
+  refreshSessionOnActivity,
+  getSessionDurations,
+  getSessionInfo
+} from './utils/sessionManager.js';

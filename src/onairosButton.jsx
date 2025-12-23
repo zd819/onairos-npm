@@ -15,6 +15,7 @@ import { logOnairosResponse } from './utils/apiResponseLogger.js';
 import { logFormattedUserData } from './utils/userDataFormatter.js';
 import { ModalPageLayout } from './components/ui/PageLayout.jsx';
 import { isMobileApp, isMobileBrowser } from './utils/capacitorDetection.js';
+import { checkValidSession, createSession, isSessionValid, extendSession, destroySession } from './utils/sessionManager.js';
 
 export function OnairosButton({
   requestData, 
@@ -459,7 +460,7 @@ export function OnairosButton({
     return () => window.removeEventListener('popstate', checkWindowUrl);
   }, [oauthReturnDetected]);
 
-  // Check for existing user session
+  // Check for existing user session with token validation
   useEffect(() => {
     const checkExistingSession = () => {
       // If we are in an OAuth return flow (URL params present), DO NOT restore session yet.
@@ -510,44 +511,57 @@ export function OnairosButton({
         return;
       }
       
-      const savedUser = localStorage.getItem('onairosUser');
-      if (savedUser) {
-        try {
-          const user = JSON.parse(savedUser);
-
-          // If this is a wrapped app, remove any cached API responses to force a fresh fetch
-          // This prevents the SDK from immediately thinking it's "done" based on old data
-          if (webpageName && webpageName.toLowerCase().includes('wrapped')) {
-            if (user.apiResponse || user.lastDataRequest) {
-              console.log('🧼 Cleaning old wrapped data from session to force fresh state');
-              delete user.apiResponse;
-              // We keep connectedAccounts/token but nuke the result
-              // However, keep lastDataRequest if it contains permissions, just remove the result part?
-              // Actually, lastDataRequest usually contains 'approved' array. We want to keep that.
-              // But handleDataRequestComplete merges new result anyway.
-            }
+      // ============================================
+      // NEW: Enhanced session validation with token checking
+      // ============================================
+      console.log('🔍 Checking for valid session (with token validation)...');
+      const sessionCheck = checkValidSession();
+      
+      if (sessionCheck.shouldSkipLogin) {
+        // Valid session found - skip login and go straight to data request!
+        console.log('✨ Valid session found - skipping login!');
+        console.log(`   User: ${sessionCheck.userData.email || sessionCheck.userData.username}`);
+        
+        // Clean wrapped data if needed
+        const user = sessionCheck.userData;
+        if (webpageName && webpageName.toLowerCase().includes('wrapped')) {
+          if (user.apiResponse || user.lastDataRequest) {
+            console.log('🧼 Cleaning old wrapped data from session to force fresh state');
+            delete user.apiResponse;
           }
-          
-          // Add session timestamp for smart caching
-          if (!user.lastSessionTime) {
-            user.lastSessionTime = new Date().toISOString();
-            localStorage.setItem('onairosUser', JSON.stringify(user));
-          }
-          
-          setUserData(user);
-          // SMART CACHING: If user has completed onboarding and PIN setup, go directly to data request
-          // This provides seamless re-authentication for returning users
-          if (user.onboardingComplete && user.pinCreated) {
-            console.log(`✨ Welcome back ${user.email || 'user'}! Auto-navigating to data request...`);
-            setCurrentFlow('dataRequest');
-          } else if (user.verified && !user.onboardingComplete) {
-            setCurrentFlow('onboarding');
-          } else if (user.onboardingComplete && !user.pinCreated) {
-            setCurrentFlow('pin');
-          }
-        } catch (error) {
-          console.error('Error parsing saved user data:', error);
+        }
+        
+        // Extend session on activity (bump expiry forward)
+        extendSession();
+        
+        setUserData(user);
+        setCurrentFlow('dataRequest');
+        return;
+      }
+      
+      // Session exists but incomplete or expired
+      if (sessionCheck.hasSession && !sessionCheck.shouldSkipLogin) {
+        console.log('⚠️ Session exists but incomplete or expired');
+        const user = sessionCheck.userData;
+        
+        // Check if session is expired
+        if (!isSessionValid()) {
+          console.log('❌ Session expired - user must re-authenticate');
           localStorage.removeItem('onairosUser');
+          localStorage.removeItem('onairos_user_token');
+          localStorage.removeItem('onairos_session_expiry');
+          setCurrentFlow('welcome');
+          return;
+        }
+        
+        // Session valid but onboarding incomplete
+        setUserData(user);
+        if (user.verified && !user.onboardingComplete) {
+          setCurrentFlow('onboarding');
+        } else if (user.onboardingComplete && !user.pinCreated) {
+          setCurrentFlow('pin');
+        } else {
+          setCurrentFlow('welcome');
         }
       }
     };
@@ -704,10 +718,14 @@ export function OnairosButton({
 
   const handleLogout = () => {
     console.log('🚪 User logout initiated');
-    // Clear all user data and tokens
+    
+    // ============================================
+    // NEW: Use session manager to destroy session
+    // ============================================
+    destroySession();
+    
+    // Clear additional OAuth-specific storage
     try {
-      localStorage.removeItem('onairosUser');
-      localStorage.removeItem('onairos_user_token');
       localStorage.removeItem('onairos_gmail_success');
       localStorage.removeItem('onairos_gmail_timestamp');
       localStorage.removeItem('onairos_gmail_email');
@@ -715,9 +733,8 @@ export function OnairosButton({
       localStorage.removeItem('onairos_return_url');
       localStorage.removeItem('onairos_oauth_context');
       localStorage.removeItem('onairos_post_oauth_flow');
-      sessionStorage.clear();
     } catch (e) {
-      console.warn('⚠️ Error clearing storage during logout:', e);
+      console.warn('⚠️ Error clearing additional storage during logout:', e);
     }
     
     // Reset component state
@@ -884,8 +901,18 @@ export function OnairosButton({
       }
     }
     
-    setUserData(newUserData);
-    localStorage.setItem('onairosUser', JSON.stringify(newUserData));
+    // ============================================
+    // NEW: Create persistent session (30-day default)
+    // ============================================
+    const sessionData = createSession(newUserData, emailToken);
+    setUserData(sessionData || newUserData);
+    
+    // Fallback if createSession fails
+    if (!sessionData) {
+      localStorage.setItem('onairosUser', JSON.stringify(newUserData));
+    }
+    
+    console.log('✅ Persistent session created - user can skip login for 30 days');
     
     // Flow decision logic:
     // - New users: go to UniversalOnboarding (connectors)

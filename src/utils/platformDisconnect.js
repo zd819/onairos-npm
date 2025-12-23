@@ -196,59 +196,9 @@ export async function disconnectMultiplePlatforms(platforms, username) {
   return results;
 }
 
-/**
- * Delete all Wrapped dashboard data for the authenticated user
- * @param {boolean} resetNumber - Whether to also reset wrappedUserNumber (admin only)
- * @returns {Promise<Object>} Response object
- */
-export async function destructWrappedData(resetNumber = false) {
-  try {
-    const token = getAuthToken();
-    
-    if (!token) {
-      throw new Error('No authentication token found. User must be signed in.');
-    }
-    
-    const baseUrl = API_CONFIG.getBaseUrl();
-    const url = `${baseUrl}/onairos-wrapped/destruct${resetNumber ? '?resetNumber=true' : ''}`;
-    
-    console.log('🗑️ Deleting Wrapped dashboard data...');
-    console.log('📡 URL:', url);
-    console.log('🔑 Token:', token.substring(0, 20) + '...');
-    
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.error || data.message || `HTTP ${response.status}`);
-    }
-    
-    console.log('✅ Wrapped data deleted successfully');
-    console.log('📊 Details:', data.details);
-    
-    return {
-      success: true,
-      message: data.message || 'Wrapped data deleted successfully',
-      details: data.details || {},
-      data: data
-    };
-    
-  } catch (error) {
-    console.error('❌ Error deleting Wrapped data:', error);
-    return {
-      success: false,
-      error: error.message,
-      message: `Failed to delete Wrapped data: ${error.message}`
-    };
-  }
-}
+// NOTE: Wrapped dashboard destruct functionality removed
+// Wrapped features are app-level, not SDK-level
+// Apps should implement their own destruct endpoints as needed
 
 /**
  * Update local storage after disconnecting a platform
@@ -278,35 +228,8 @@ export function updateLocalStorageAfterDisconnect(platform) {
   }
 }
 
-/**
- * Update local storage after deleting wrapped data
- * Clears wrapped-related fields from userData
- */
-export function updateLocalStorageAfterDestruct() {
-  try {
-    const userData = localStorage.getItem('onairosUser');
-    if (!userData) return;
-    
-    const user = JSON.parse(userData);
-    
-    // Clear wrapped-related data
-    if (user.apiResponse?.slides) {
-      delete user.apiResponse.slides;
-    }
-    if (user.apiResponse?.dashboard) {
-      delete user.apiResponse.dashboard;
-    }
-    if (user.wrappedDashboard) {
-      delete user.wrappedDashboard;
-    }
-    
-    console.log('🔄 Updated local storage - cleared wrapped data');
-    
-    localStorage.setItem('onairosUser', JSON.stringify(user));
-  } catch (error) {
-    console.error('❌ Error updating local storage:', error);
-  }
-}
+// NOTE: updateLocalStorageAfterDestruct removed
+// Wrapped data management is app-level, not SDK-level
 
 /**
  * Check if user has authentication token
@@ -336,9 +259,7 @@ export function isPlatformSupported(platform) {
 export default {
   disconnectPlatform,
   disconnectMultiplePlatforms,
-  destructWrappedData,
   updateLocalStorageAfterDisconnect,
-  updateLocalStorageAfterDestruct,
   hasAuthToken,
   getSupportedPlatforms,
   isPlatformSupported
