@@ -2,6 +2,62 @@
 
 All notable changes to the Onairos SDK will be documented in this file.
 
+## [4.3.5] - 2024-12-24
+
+### 🐛 Critical Fix - Google Sign-In Account Creation
+
+#### Problem Fixed
+- **New Google users were NOT getting accounts created in the backend**
+- After Google Sign-In, frontend only checked if account exists but never created it
+- This caused platform connection failures: "Account doesn't exist" error when connecting YouTube
+- Backend diagnostics showed: `/getAccountInfo/email` called but NO account creation endpoint called
+
+#### Solution Implemented
+- **Added `/google/google` endpoint call** after Google Sign-In to create/login account
+- Frontend now properly authenticates with backend and receives JWT token
+- Backend creates account if it doesn't exist, or logs in existing user
+- Platform connections now succeed for new Google users
+
+#### Technical Details
+
+**Before (BROKEN):**
+```javascript
+// Google Sign-In → Get email
+// Call /getAccountInfo/email → "No Account Found"
+// ❌ No backend call to create account
+// Proceed to YouTube connection → FAILS
+```
+
+**After (FIXED):**
+```javascript
+// Google Sign-In → Get email + access token
+// Call /google/google with credential → Account created + JWT token returned
+// ✅ Account exists in backend
+// Proceed to YouTube connection → SUCCESS
+```
+
+#### Files Changed
+- `src/components/EmailAuth.js`:
+  - Updated `handleOAuthSuccess()` to call `/google/google` endpoint
+  - Pass Google access token as `credential` to backend
+  - Receive and store JWT token from backend response
+  - Updated `googleLogin` hook to pass access token to handler
+
+#### Impact
+- ✅ NEW Google users now get accounts created properly
+- ✅ Platform connections (YouTube, etc.) succeed for new users
+- ✅ JWT tokens properly issued and stored
+- ✅ Existing Google users continue to work (login flow)
+
+#### Backend Integration
+- Uses existing `/google/google` endpoint
+- Sends: `{ credential: googleAccessToken }`
+- Receives: `{ body: { token, username, isNewUser } }`
+
+For full technical analysis, see `GOOGLE_SIGNIN_ACCOUNT_CREATION_BUG.md`
+
+---
+
 ## [4.2.3] - 2025-12-14
 
 ### 🐛 Critical Fix - Email Authentication Routing (Corrects 4.2.2)

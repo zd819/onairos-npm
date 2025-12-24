@@ -154,7 +154,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
     throw new Error('Verification failed');
   };
 
-  const handleOAuthSuccess = async (gmailEmail) => {
+  const handleOAuthSuccess = async (gmailEmail, credential) => {
     try {
       setIsLoading(true);
       console.log('✅ Google OAuth completed successfully, email:', gmailEmail);
@@ -162,74 +162,108 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
       const normalizedEmail = (gmailEmail || '').trim().toLowerCase();
       setEmail(normalizedEmail);
 
-      // Check if this email already has an account in the backend
       const baseUrl = (typeof window !== 'undefined' && window.onairosBaseUrl) || 'https://api2.onairos.uk';
       const apiKey = (typeof window !== 'undefined' && window.onairosApiKey) || 'ona_VvoHNg1fdCCUa9eBy4Iz3IfvXdgLfMFI7TNcyHLDKEadPogkbjAeE2iDOs6M7Aey';
 
-      let accountInfo = null;
-      let accountStatus = null;
-      let existingUser = false;
-
+      // STEP 1: Call backend to create/login account
+      console.log('🔐 Authenticating with backend via /google/google...');
+      
       try {
-        console.log('🔍 Checking if account exists for:', normalizedEmail);
-        const accountCheckResponse = await fetch(`${baseUrl}/getAccountInfo/email`, {
+        const authResponse = await fetch(`${baseUrl}/google/google`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-api-key': apiKey,
           },
           body: JSON.stringify({
-            Info: {
-              identifier: normalizedEmail
-            }
+            credential: credential  // Google access token from SDK
           })
         });
 
-        if (accountCheckResponse.ok) {
-          const accountData = await accountCheckResponse.json();
-          
-          if (accountData.AccountInfo) {
-            accountInfo = accountData.AccountInfo;
-            accountStatus = accountData.accountStatus;
-            existingUser = accountStatus?.exists || false;
-            
-            console.log('✅ Account check complete:', {
-              exists: existingUser,
-              accountStatus: accountStatus
-            });
-          } else {
-            console.log('ℹ️ No existing account found - new user');
-          }
-        } else {
-          console.log('ℹ️ Account check returned non-OK status - treating as new user');
+        if (!authResponse.ok) {
+          const errorData = await authResponse.json();
+          throw new Error(errorData.body?.message || 'Failed to authenticate with backend');
         }
-      } catch (accountCheckError) {
-        console.warn('⚠️ Could not check account status, treating as new user:', accountCheckError);
-      }
 
-      setStep('success');
-      setIsLoading(false);
-
-      setTimeout(() => {
-        onSuccess({
-          email: normalizedEmail,
-          verified: true,
-          token: null,
-          userName: normalizedEmail.split('@')[0],
-          existingUser: existingUser,
-          accountInfo: accountInfo,
-          accountStatus: accountStatus,
-          isNewUser: !existingUser,
-          flowType: existingUser ? 'dataRequest' : 'onboarding',
-          adminMode: false,
-          userCreated: !existingUser,
-          accountDetails: existingUser ? accountInfo : {
-            email: normalizedEmail,
-            createdAt: new Date().toISOString(),
-            ssoProvider: 'gmail'
-          }
+        const authData = await authResponse.json();
+        console.log('✅ Backend authentication successful:', {
+          username: authData.body?.username,
+          isNewUser: authData.body?.isNewUser
         });
-      }, 400);
+
+        // Extract data from backend response
+        const jwtToken = authData.body?.token;
+        const username = authData.body?.username || normalizedEmail;
+        const isNewUser = authData.body?.isNewUser !== false; // Default to true if not specified
+
+        // STEP 2: Check account status for additional info
+        let accountInfo = null;
+        let accountStatus = null;
+
+        try {
+          console.log('🔍 Fetching account status...');
+          const accountCheckResponse = await fetch(`${baseUrl}/getAccountInfo/email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+            },
+            body: JSON.stringify({
+              Info: {
+                identifier: normalizedEmail
+              }
+            })
+          });
+
+          if (accountCheckResponse.ok) {
+            const accountData = await accountCheckResponse.json();
+            if (accountData.AccountInfo) {
+              accountInfo = accountData.AccountInfo;
+              accountStatus = accountData.accountStatus;
+              console.log('✅ Account status retrieved:', {
+                exists: accountStatus?.exists,
+                connectedPlatforms: accountStatus?.connectedPlatforms
+              });
+            }
+          }
+        } catch (accountCheckError) {
+          console.warn('⚠️ Could not fetch account status (non-critical):', accountCheckError);
+        }
+
+        setStep('success');
+        setIsLoading(false);
+
+        // STEP 3: Return success with token and user data
+        setTimeout(() => {
+          onSuccess({
+            email: normalizedEmail,
+            verified: true,
+            token: jwtToken,  // ✅ NOW we have a JWT token from backend!
+            jwtToken: jwtToken,
+            userName: username,
+            username: username,
+            existingUser: !isNewUser,
+            accountInfo: accountInfo,
+            accountStatus: accountStatus,
+            isNewUser: isNewUser,
+            flowType: isNewUser ? 'onboarding' : 'dataRequest',
+            adminMode: false,
+            userCreated: isNewUser,
+            provider: 'google',
+            accountDetails: accountInfo || {
+              email: normalizedEmail,
+              createdAt: new Date().toISOString(),
+              ssoProvider: 'google'
+            }
+          });
+        }, 400);
+
+      } catch (authError) {
+        console.error('❌ Backend authentication failed:', authError);
+        setError(authError.message || 'Failed to authenticate with backend. Please try again.');
+        setIsLoading(false);
+        return;
+      }
     
     } catch (error) {
       console.error('❌ Error handling OAuth success:', error);
@@ -240,12 +274,13 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
 
   // Note: No OAuth callback checking needed - frontend SDK handles everything automatically
 
-  // Google Sign-In using frontend SDK (no backend call needed)
+  // Google Sign-In using frontend SDK
   // Only requests basic scopes: openid, email, profile (NO Gmail reading permissions)
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
         console.log('✅ Google OAuth successful');
+        console.log('🔑 Access token received from Google');
         
         // Get user info from Google
         const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -259,8 +294,9 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         const userInfo = await userInfoResponse.json();
         console.log('✅ Google user info retrieved:', { email: userInfo.email, name: userInfo.name });
         
-        // Handle OAuth success with user email
-        await handleOAuthSuccess(userInfo.email);
+        // Handle OAuth success with user email AND access token (credential)
+        // Backend needs the access token to verify and create account
+        await handleOAuthSuccess(userInfo.email, tokenResponse.access_token);
         
       } catch (error) {
         console.error('❌ Error fetching Google user info:', error);
