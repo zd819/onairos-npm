@@ -2,6 +2,75 @@
 
 All notable changes to the Onairos SDK will be documented in this file.
 
+## [4.3.6] - 2024-12-24
+
+### 🐛 Critical Fix - Google Sign-In Token Type (ID Token vs Access Token)
+
+#### Problem Fixed
+- **Backend error: "Wrong number of segments in token"**
+- SDK was sending **access token** (`ya29.xxx...`) instead of **ID token** (JWT `eyJhbGciOiJ...`)
+- Backend expects ID token (JWT with 3 segments) for authentication verification
+- Access tokens cannot be decoded/verified as JWTs
+
+#### Solution Implemented
+- **Switched from `useGoogleLogin` hook to `GoogleLogin` component**
+- `useGoogleLogin` returns access token (for API calls) ❌
+- `GoogleLogin` returns ID token (for authentication) ✅
+- Backend now receives proper JWT ID token for verification
+
+#### Technical Details
+
+**Token Format Comparison:**
+| Token Type | Format | Segments | Use Case |
+|------------|--------|----------|----------|
+| ID Token (JWT) ✅ | `eyJhbGciOiJ...` | 3 (header.payload.signature) | Authentication |
+| Access Token ❌ | `ya29.xxx...` | Variable | API calls |
+
+**Before (BROKEN):**
+```javascript
+// Using useGoogleLogin - returns access token
+const googleLogin = useGoogleLogin({
+  onSuccess: (tokenResponse) => {
+    const accessToken = tokenResponse.access_token;  // ya29.xxx
+    // Send to backend → JWT decode fails!
+  }
+});
+```
+
+**After (FIXED):**
+```javascript
+// Using GoogleLogin component - returns ID token
+<GoogleLogin
+  onSuccess={(credentialResponse) => {
+    const idToken = credentialResponse.credential;  // eyJhbGciOiJ... (JWT)
+    // Send to backend → JWT decode succeeds! ✅
+  }}
+/>
+```
+
+#### Files Changed
+- `src/components/EmailAuth.js`:
+  - Changed import: `useGoogleLogin` → `GoogleLogin`
+  - Removed custom `GoogleButton` component (no longer needed)
+  - Implemented `handleGoogleSuccess()` to handle ID token
+  - Decode JWT to extract email before sending to backend
+  - Updated comments to clarify ID token vs access token
+  - Replaced custom button with official `<GoogleLogin>` component
+
+#### Impact
+- ✅ Backend receives proper JWT ID token (3 segments)
+- ✅ JWT verification succeeds in backend
+- ✅ Google Sign-In authentication works correctly
+- ✅ Account creation succeeds
+- ✅ Platform connections work for new Google users
+
+#### Backend Integration
+- Endpoint: `POST /google/google`
+- Receives: `{ credential: "eyJhbGciOiJ..." }` (ID token, not access token)
+- Backend can now decode and verify JWT successfully
+
+---
+
 ## [4.3.5] - 2024-12-24
 
 ### 🐛 Critical Fix - Google Sign-In Account Creation

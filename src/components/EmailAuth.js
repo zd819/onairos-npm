@@ -5,43 +5,7 @@ import { COLORS } from '../theme/colors.js';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { isMobileBrowser } from '../utils/capacitorDetection';
-import { useGoogleLogin } from '@react-oauth/google';
-
-// Custom Google Button for consistent dimensions
-const GoogleButton = ({ onPress, disabled }) => {
-  const [isPressed, setIsPressed] = useState(false);
-
-  return (
-    <button
-      onClick={onPress}
-      disabled={disabled}
-      onMouseDown={() => setIsPressed(true)}
-      onMouseUp={() => setIsPressed(false)}
-      onMouseLeave={() => setIsPressed(false)}
-      onTouchStart={() => setIsPressed(true)}
-      onTouchEnd={() => setIsPressed(false)}
-      className={`w-full h-14 bg-[#FAFAFA] rounded-lg border border-[#E5E5E5] flex items-center justify-center px-4 transition-all ${isPressed ? 'bg-[#F0F0F0] border-[#D0D0D0] scale-[0.98]' : 'shadow-sm'}`}
-      style={{ 
-        outline: 'none',
-        // Match dimensions of the email input (h-14 = 3.5rem = 56px)
-        height: '56px'
-      }}
-      type="button"
-    >
-      <img 
-        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
-        alt="Google" 
-        className="w-5 h-5 mr-3" 
-      />
-      <span 
-        className="text-base font-medium text-[#1F242F]"
-        style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
-      >
-        Continue with Google
-      </span>
-    </button>
-  );
-};
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function EmailAuth({ onSuccess, testMode = false }) {
   const [email, setEmail] = useState('');
@@ -167,6 +131,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
 
       // STEP 1: Call backend to create/login account
       console.log('🔐 Authenticating with backend via /google/google...');
+      console.log('🔑 Sending ID token (JWT format) to backend for verification');
       
       try {
         const authResponse = await fetch(`${baseUrl}/google/google`, {
@@ -176,7 +141,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
             'x-api-key': apiKey,
           },
           body: JSON.stringify({
-            credential: credential  // Google access token from SDK
+            credential: credential  // Google ID token (JWT) - NOT access token!
           })
         });
 
@@ -274,59 +239,56 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
 
   // Note: No OAuth callback checking needed - frontend SDK handles everything automatically
 
-  // Google Sign-In using frontend SDK
-  // Only requests basic scopes: openid, email, profile (NO Gmail reading permissions)
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        console.log('✅ Google OAuth successful');
-        console.log('🔑 Access token received from Google');
-        
-        // Get user info from Google
-        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-        });
-        
-        if (!userInfoResponse.ok) {
-          throw new Error('Failed to get user info from Google');
-        }
-        
-        const userInfo = await userInfoResponse.json();
-        console.log('✅ Google user info retrieved:', { email: userInfo.email, name: userInfo.name });
-        
-        // Handle OAuth success with user email AND access token (credential)
-        // Backend needs the access token to verify and create account
-        await handleOAuthSuccess(userInfo.email, tokenResponse.access_token);
-        
-      } catch (error) {
-        console.error('❌ Error fetching Google user info:', error);
-        setError('Failed to get your Google account information. Please try again.');
-        setIsLoading(false);
-      }
-    },
-    onError: (error) => {
-      console.error('❌ Google Sign In failed:', error);
-      setError('Failed to sign in with Google. Please try again.');
-      setIsLoading(false);
-    },
-    scope: 'openid email profile', // Basic scopes only - NO Gmail reading permissions
-    flow: 'implicit'
-  });
-
-  const handleGoogleSignIn = async () => {
+  // Google Sign-In success handler
+  // Receives ID token (JWT) from Google - this is the CORRECT token type for authentication
+  const handleGoogleSuccess = async (credentialResponse) => {
     try {
       setIsLoading(true);
       setError('');
-      console.log('🔐 Initiating Google Sign-In (basic auth only)...');
+      console.log('✅ Google OAuth successful - ID token received');
       
-      // Trigger Google login
-      googleLogin();
+      // credentialResponse.credential is the ID token (JWT format: eyJhbGciOiJ...)
+      const idToken = credentialResponse.credential;
       
-    } catch (e) {
-      console.error('❌ Google Sign In failed:', e);
-      setError('Failed to initialize Google Sign In. Please try again.');
+      if (!idToken) {
+        throw new Error('No ID token received from Google');
+      }
+      
+      console.log('🔑 ID token format:', idToken.substring(0, 20) + '...');
+      
+      // Decode the JWT to get user email (without verifying - backend will verify)
+      try {
+        const base64Url = idToken.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
+        const payload = JSON.parse(jsonPayload);
+        const userEmail = payload.email;
+        
+        console.log('✅ Decoded email from ID token:', userEmail);
+        
+        // Handle OAuth success with email and ID token (not access token!)
+        await handleOAuthSuccess(userEmail, idToken);
+        
+      } catch (decodeError) {
+        console.error('❌ Failed to decode ID token:', decodeError);
+        setError('Failed to process Google authentication. Please try again.');
+        setIsLoading(false);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error handling Google success:', error);
+      setError('Failed to sign in with Google. Please try again.');
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleError = (error) => {
+    console.error('❌ Google Sign In failed:', error);
+    setError('Failed to sign in with Google. Please try again.');
+    setIsLoading(false);
   };
 
   // Auto-focus code input
@@ -576,7 +538,14 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
 
             {/* Google Button */}
             <div className="mb-8 w-full">
-              <GoogleButton onPress={handleGoogleSignIn} disabled={isLoading} />
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                text="continue_with"
+                size="large"
+                width="100%"
+                disabled={isLoading}
+              />
         </div>
 
         {error && (
@@ -622,7 +591,14 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
             <div className="flex-grow border-t border-gray-300"></div>
           </div>
 
-          <GoogleButton onPress={handleGoogleSignIn} disabled={isLoading} />
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            text="continue_with"
+            size="large"
+            width="100%"
+            disabled={isLoading}
+          />
           
           {error && <p className="mt-2 text-sm text-red-500" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>{error}</p>}
       </div>
