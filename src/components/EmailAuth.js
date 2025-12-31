@@ -537,7 +537,7 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
             </div>
 
             {/* Google Button */}
-            <div className="mb-8 w-full">
+            <div className="mb-8 w-full google-button-container">
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={handleGoogleError}
@@ -546,6 +546,19 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
                 width="100%"
                 disabled={isLoading}
               />
+              <style>{`
+                .google-button-container {
+                  height: 56px;
+                }
+                .google-button-container > div {
+                  height: 56px !important;
+                  width: 100% !important;
+                }
+                .google-button-container iframe {
+                  height: 56px !important;
+                  width: 100% !important;
+                }
+              `}</style>
         </div>
 
         {error && (
@@ -579,8 +592,8 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
         <button
           onClick={handleEmailSubmit}
           disabled={isLoading || !email.trim()}
-            className="w-full bg-black text-white font-medium py-2 rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
-            style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+            className="w-full bg-black text-white font-medium rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
+            style={{ fontFamily: 'Inter, system-ui, sans-serif', height: '44px', minHeight: '44px' }}
         >
             {isLoading ? 'Sending...' : 'Continue with Email'}
         </button>
@@ -591,14 +604,29 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
             <div className="flex-grow border-t border-gray-300"></div>
           </div>
 
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={handleGoogleError}
-            text="continue_with"
-            size="large"
-            width="100%"
-            disabled={isLoading}
-          />
+          <div className="google-button-container-desktop">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              text="continue_with"
+              size="large"
+              width="100%"
+              disabled={isLoading}
+            />
+            <style>{`
+              .google-button-container-desktop {
+                height: 44px;
+              }
+              .google-button-container-desktop > div {
+                height: 44px !important;
+                width: 100% !important;
+              }
+              .google-button-container-desktop iframe {
+                height: 44px !important;
+                width: 100% !important;
+              }
+            `}</style>
+          </div>
           
           {error && <p className="mt-2 text-sm text-red-500" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>{error}</p>}
       </div>

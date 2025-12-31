@@ -5,25 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OAuth Callback - Onairos</title>
     <style>
-        /* Make the callback visually minimal and auto-close quickly.
-           The real UX is handled by the parent window via postMessage. */
+        /* Plain white page for OAuth callback - minimal UI */
         body {
             margin: 0;
-            padding: 20px;
+            padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            color: white;
+            color: #333;
         }
         .container {
             text-align: center;
-            background: rgba(255, 255, 255, 0.95);
+            background: #ffffff;
             padding: 40px 30px;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             max-width: 400px;
             color: #333;
         }
@@ -54,11 +51,18 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Hide all content by default for success state */
+        #success-state .success-icon,
+        #success-state .message,
+        #success-state .details {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="loading-state">
+        <!-- Start with blank page for all success cases -->
+        <div id="loading-state" style="display: none;">
             <div class="spinner"></div>
             <div class="message">Processing your connection...</div>
             <div class="details">Please wait while we complete the setup.</div>
@@ -147,9 +151,9 @@
             // Success flow
             console.log(`✅ OAuth success for platform: ${platform}`);
             
-            // Show success state
+            // Keep the page plain white - hide all content
             loadingState.style.display = 'none';
-            successState.style.display = 'block';
+            successState.style.display = 'none';
             
             // Signal success to parent window via localStorage (works across tabs)
             localStorage.setItem(`onairos_${platform}_success`, 'true');
@@ -360,9 +364,9 @@
             // No clear success or error - treat as potential success
             console.log('🤔 Ambiguous OAuth callback, treating as success');
             
+            // Keep the page plain white - hide all content
             loadingState.style.display = 'none';
-            successState.style.display = 'block';
-            successDetails.textContent = 'Processing...';
+            successState.style.display = 'none';
             
             if (platform) {
                 localStorage.setItem(`onairos_${platform}_success`, 'true');

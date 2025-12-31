@@ -150,8 +150,8 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
       github: 'GitHub',
       facebook: 'Facebook',
       gmail: 'Gmail',
-      twitter: 'Twitter',
-      x: 'Twitter',
+      twitter: 'X',
+      x: 'X',
       chatgpt: 'ChatGPT',
       claude: 'Claude',
       gemini: 'Gemini',
@@ -448,6 +448,7 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
             </div>
             <div className="flex items-center justify-center gap-2 overflow-x-auto whitespace-nowrap pb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
               {platforms.map((platform, index) => {
+                const xLogo = 'data:image/svg+xml,%3Csvg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath fill="%23000000" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/%3E%3C/svg%3E';
                 const logoMap = {
                   Instagram: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png',
                   YouTube: 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg',
@@ -457,7 +458,8 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
                   GitHub: 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png',
                   Facebook: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg',
                   Gmail: 'https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg',
-                  Twitter: 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg',
+                  X: xLogo,
+                  Twitter: xLogo, // Twitter and X are the same - both use X logo
                   ChatGPT: 'https://anushkasirv.sirv.com/openai.png',
                   Claude: 'https://anushkasirv.sirv.com/claude-color.png',
                   Gemini: 'https://anushkasirv.sirv.com/gemini-color.png',

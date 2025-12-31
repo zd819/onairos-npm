@@ -6,6 +6,7 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
     length: false,
     uppercase: false,
     number: false,
+    specialChar: false,
   });
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const scrollAreaRef = useRef(null);
@@ -22,6 +23,7 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
       length: pin.length >= 6,
       uppercase: /[A-Z]/.test(pin),
       number: /\d/.test(pin),
+      specialChar: /[!@#$%^&*()\-_=+\[\]{};:'",.<>/?\\|`~]/.test(pin),
     });
   }, [pin]);
 
@@ -54,7 +56,7 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
     };
   }, [isMobileViewport]);
 
-  const allRequirementsMet = pinRequirements.length && pinRequirements.uppercase && pinRequirements.number;
+  const allRequirementsMet = pinRequirements.length && pinRequirements.uppercase && pinRequirements.number && pinRequirements.specialChar;
 
   const handleSubmit = () => {
     if (allRequirementsMet) {
@@ -79,8 +81,8 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
         }}
       >
         <div className="mb-6 flex-shrink-0">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>Create a PIN</h1>
-          <p className="text-gray-600 text-base" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>A PIN so only you have the access to your data</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif' }}>Create a Secret Code</h1>
+          <p className="text-gray-600 text-base" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>A secret code so only you have access to your data</p>
         </div>
 
         <div className="mb-6 flex-shrink-0">
@@ -90,7 +92,7 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-center text-lg font-medium focus:border-gray-900 focus:outline-none bg-white !text-black"
-            placeholder="Enter your PIN"
+            placeholder="Enter your secret code"
             maxLength={20}
             onFocus={() => {
               if (!isMobileViewport) return;
@@ -113,7 +115,7 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
 
         {/* Requirements list - NO SCROLL ISOLATION to prevent nesting issues */}
         <div className="pb-4">
-          <p className="text-gray-900 font-medium mb-4">Your PIN must:</p>
+          <p className="text-gray-900 font-medium mb-4">Your secret code must:</p>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div
@@ -150,6 +152,18 @@ export default function PinSetup({ onComplete, onBack, userEmail }) {
                 )}
               </div>
               <span className="text-gray-700">Contain a number.</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-5 h-5 rounded-full border-2 ${pinRequirements.specialChar ? "border-green-500 bg-green-500" : "border-gray-300 bg-white"}`}
+              >
+                {pinRequirements.specialChar && (
+                  <svg className="w-3 h-3 text-white m-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-gray-700">Contain a special character/symbol.</span>
             </div>
           </div>
         </div>

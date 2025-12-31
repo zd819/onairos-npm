@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import Lottie from 'lottie-react';
 
-export default function WrappedLoadingPage({ appName }) {
+export default function WrappedLoadingPage({ appName, isComplete = false, onTransitionComplete }) {
+  console.log('🎨 WrappedLoadingPage rendered with props:', { appName, isComplete });
+  
   // CRITICAL: Do not render anything for non-wrapped apps
   // This component should NEVER be called for non-wrapped apps
   const isWrappedApp = appName && appName.toLowerCase().includes('wrapped');
@@ -14,6 +16,7 @@ export default function WrappedLoadingPage({ appName }) {
   const [animationData, setAnimationData] = useState(null);
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
+  const [isAnimatingToComplete, setIsAnimatingToComplete] = useState(false);
 
   // Whimsical rotating messages
   const messages = [
@@ -50,6 +53,9 @@ export default function WrappedLoadingPage({ appName }) {
 
   // Animate progress bar over ~2 minutes (API can take 1-3 minutes)
   useEffect(() => {
+    // Don't animate if we're already animating to complete
+    if (isAnimatingToComplete) return;
+    
     const duration = 120000; // 2 minutes in ms
     const interval = 100; // Update every 100ms
     const increment = (interval / duration) * 100;
@@ -63,7 +69,45 @@ export default function WrappedLoadingPage({ appName }) {
     }, interval);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [isAnimatingToComplete]);
+
+  // When isComplete becomes true, animate progress to 100%
+  useEffect(() => {
+    if (!isComplete || isAnimatingToComplete) return;
+    
+    console.log('🎁 Wrapped data ready - animating progress to 100%');
+    setIsAnimatingToComplete(true);
+    
+    // Animate from current progress to 100% over 500ms
+    const startProgress = progress;
+    const duration = 500;
+    const startTime = Date.now();
+    
+    const animateToComplete = () => {
+      const elapsed = Date.now() - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      
+      // Ease out animation
+      const eased = 1 - Math.pow(1 - t, 3);
+      const currentProgress = startProgress + (100 - startProgress) * eased;
+      
+      setProgress(currentProgress);
+      
+      if (t < 1) {
+        requestAnimationFrame(animateToComplete);
+      } else {
+        // Animation complete - wait a brief moment then notify parent
+        setTimeout(() => {
+          console.log('✅ Progress reached 100% - notifying parent');
+          if (onTransitionComplete) {
+            onTransitionComplete();
+          }
+        }, 200);
+      }
+    };
+    
+    requestAnimationFrame(animateToComplete);
+  }, [isComplete, isAnimatingToComplete, progress, onTransitionComplete]);
 
   // Rotate messages every 4 seconds
   useEffect(() => {

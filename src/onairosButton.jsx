@@ -49,6 +49,12 @@ export function OnairosButton({
   const [error, setError] = useState(null);
   const [oauthReturnDetected, setOauthReturnDetected] = useState(false);
   const [returnToDataRequestAfterOnboarding, setReturnToDataRequestAfterOnboarding] = useState(false);
+  const [wrappedDataReady, setWrappedDataReady] = useState(false); // Track when wrapped data is ready to show
+  
+  // Debug: Log flow changes
+  useEffect(() => {
+    console.log('🔄 FLOW CHANGED TO:', currentFlow);
+  }, [currentFlow]);
   
   // Detect mobile for conditional styling (MOBILE ONLY changes)
   // Use a safer check that doesn't rely on window/navigator being immediately available
@@ -929,6 +935,7 @@ export function OnairosButton({
   const handleOnboardingComplete = (onboardingData) => {
     console.log('🎯 Onboarding completed:', onboardingData);
     console.log('🔍 Connected accounts from onboarding:', onboardingData.connectedAccounts);
+    console.log('🆕 Newly connected platforms:', onboardingData.newlyConnected, 'hasNewPlatforms:', onboardingData.hasNewPlatforms);
     
     // DEFENSIVE: Ensure we don't overwrite session with null if state was lost
     const currentData = userData || JSON.parse(localStorage.getItem('onairosUser') || '{}');
@@ -936,7 +943,10 @@ export function OnairosButton({
     const updatedUserData = {
       ...currentData,
       onboardingComplete: true,
-      connectedAccounts: onboardingData.connectedAccounts || []
+      connectedAccounts: onboardingData.connectedAccounts || [],
+      // Store info about newly connected platforms for cache invalidation
+      hasNewPlatforms: onboardingData.hasNewPlatforms || false,
+      newlyConnected: onboardingData.newlyConnected || []
     };
     
     // Recover email if missing from currentData but present in onboardingData (unlikely but safe)
@@ -1081,9 +1091,16 @@ export function OnairosButton({
 
   const handleDataRequestComplete = async (requestResult) => {
     console.log('🔥 OnairosButton: Data request completed:', requestResult);
+    console.log('📋 Request result details:', {
+      approved: requestResult.approved,
+      approvedLength: requestResult.approved?.length,
+      autoFetch,
+      webpageName
+    });
     
     // Check if this is a wrapped app
     const isWrappedApp = webpageName && webpageName.toLowerCase().includes('wrapped');
+    console.log('🎁 Is wrapped app?', isWrappedApp);
     
     // For non-wrapped apps, training and inference already happened in TrainingScreen
     // No need to run it again here
@@ -1221,13 +1238,27 @@ export function OnairosButton({
           // Backend will return:
           // - cached dashboard instantly when available and connections unchanged
           // - processing + poll until a freshly-generated dashboard is ready otherwise
+          // EXCEPTION: If new platforms were just connected, force a fresh generation
           if (isWrappedApp) {
              console.log('🎁 WRAPPED APP DETECTED - Using traits-only endpoint from backend:', fetchUrl);
              console.log('🎁 Wrapped policy: backend decides cached vs fresh (no fallback dashboards)');
+             
+             // Check if new platforms were just connected (requires fresh dashboard)
+             const hasNewPlatforms = updatedUserData?.hasNewPlatforms || false;
+             const newlyConnected = updatedUserData?.newlyConnected || [];
+             
+             console.log('🔍 Checking for newly connected platforms:', {
+               hasNewPlatforms,
+               newlyConnected,
+               willForceFresh: hasNewPlatforms
+             });
+             
              fetchBody = {
                ...fetchBody,
                // Keep cacheBust only as a cache-buster hint for proxies; backend should not treat this as "force fresh"
                cacheBust: Date.now(),
+               // Force fresh generation if new platforms were just connected
+               forceFresh: hasNewPlatforms
              };
              
              // Append cachebuster to URL to prevent any edge/proxy caching
@@ -1245,8 +1276,18 @@ export function OnairosButton({
                url: fetchUrl,
                body: fetchBody,
                isRetry: fetchBody.retry,
-               note: 'Backend will compare connection signatures to decide'
+               forceFresh: fetchBody.forceFresh,
+               note: hasNewPlatforms ? `🆕 Forcing fresh generation due to new platforms: ${newlyConnected.join(', ')}` : 'Backend will compare connection signatures to decide'
              });
+             
+             // Clear the hasNewPlatforms flag after using it (so subsequent calls don't force fresh)
+             if (hasNewPlatforms) {
+               console.log('🧹 Clearing hasNewPlatforms flag after forcing fresh generation');
+               updatedUserData.hasNewPlatforms = false;
+               updatedUserData.newlyConnected = [];
+               setUserData(updatedUserData);
+               localStorage.setItem('onairosUser', JSON.stringify(updatedUserData));
+             }
           } else {
             // Non-wrapped: do NOT re-run training here. Use apiUrl from getAPIurlMobile for traits/inference.
             fetchBody = {
@@ -1315,8 +1356,8 @@ export function OnairosButton({
             
             // Check if this was a fast response (cached data)
             const fetchDuration = Date.now() - fetchStartTime;
-            const isCachedResponse = fetchDuration < 1000; // Less than 1 second = likely cached
             const hasActualDashboard = !!(apiResponse?.slides || apiResponse?.dashboard || apiResponse?.data?.dashboard);
+            const isProcessing = apiResponse?.status === 'processing';
             
             console.log('🔍 Parsed API response:', {
               isWrappedApp,
@@ -1325,16 +1366,21 @@ export function OnairosButton({
               hasSlides: !!apiResponse.slides,
               hasDashboard: hasActualDashboard,
               fetchDuration: `${fetchDuration}ms`,
-              isCachedResponse,
+              isProcessing,
               responseKeys: Object.keys(apiResponse)
             });
             
-            // For wrapped apps: Only show loading screen if response is NOT cached
-            if (isWrappedApp && !isCachedResponse) {
+            // For wrapped apps: ALWAYS show loading screen and animate to 100% before showing results
+            // This ensures a consistent UX whether data is cached or freshly generated
+            if (isWrappedApp) {
+              console.log('📊 Setting flow to wrappedLoading for wrapped app...', {
+                hasActualDashboard,
+                isProcessing,
+                currentFlow: currentFlow
+              });
+              setWrappedDataReady(false); // Reset wrapped data ready state
               setCurrentFlow('wrappedLoading');
-              console.log('📊 Showing wrapped loading screen (fresh generation in progress)');
-            } else if (isWrappedApp && isCachedResponse && hasActualDashboard) {
-              console.log('✨ Cached wrapped data detected - skipping loading screen');
+              console.log('✅ Flow set to wrappedLoading - loading screen should now be visible');
             }
 
             // ─────────────────────────────────────────────────────────────
@@ -1510,6 +1556,14 @@ export function OnairosButton({
             console.log('📦 Has slides?', !!apiResponse.slides);
             if (apiResponse.slides) {
               console.log('📊 Slides keys:', Object.keys(apiResponse.slides));
+            }
+            
+            // For wrapped apps: If dashboard data is ready (not processing), signal completion
+            // so the loading bar animates to 100% before showing results
+            if (isWrappedApp && apiResponse?.slides && apiResponse.status !== 'processing') {
+              console.log('✅ Wrapped dashboard data is ready (cached or fresh) - will signal completion after processing');
+              // Note: We set wrappedDataReady to true later in handleDataRequestComplete
+              // after all processing is done, so it happens in the right sequence
             }
             
           } catch (fetchErr) {
@@ -1717,7 +1771,7 @@ export function OnairosButton({
     }
 
     // WRAPPED APPS:
-    // If the dashboard data is READY (slides/dashboard present), close the overlay automatically.
+    // If the dashboard data is READY (slides/dashboard present), signal the loading page to complete.
     // Only wait for an explicit ready signal when the backend is still processing.
     if (isWrappedApp) {
       const hasWrappedDashboardNow =
@@ -1730,8 +1784,9 @@ export function OnairosButton({
         !hasWrappedDashboardNow;
 
       if (!stillProcessingNow) {
-        console.log('🎁 Wrapped dashboard ready (slides present) - auto-closing SDK overlay');
-        handleCloseOverlay();
+        console.log('🎁 Wrapped dashboard ready (slides present) - signaling loading complete');
+        setWrappedDataReady(true);
+        // Note: handleCloseOverlay will be called after WrappedLoadingPage animates to 100%
         return;
       }
 
@@ -1740,9 +1795,10 @@ export function OnairosButton({
 
       // Listen for custom event from the wrapped app indicating dashboard is ready
       const handleDashboardReady = (event) => {
-        console.log('✅✅✅ Dashboard ready signal received - closing SDK overlay');
+        console.log('✅✅✅ Dashboard ready signal received - signaling loading complete');
         console.log('📊 Event details:', event);
-        handleCloseOverlay();
+        setWrappedDataReady(true);
+        // Note: handleCloseOverlay will be called after WrappedLoadingPage animates to 100%
         window.removeEventListener('onairos-dashboard-ready', handleDashboardReady);
       };
 
@@ -1823,6 +1879,8 @@ export function OnairosButton({
       isMobile: isMobileDevice,
       testMode: testMode
     };
+
+    console.log('🎨 renderContent called with currentFlow:', currentFlow);
 
     switch (currentFlow) {
       case 'welcome':
@@ -1958,6 +2016,7 @@ export function OnairosButton({
         );
       case 'wrappedLoading':
         // CRITICAL: Only render WrappedLoadingPage for wrapped apps
+        console.log('🎨 Rendering wrappedLoading with wrappedDataReady:', wrappedDataReady);
         const isWrappedAppCheck = webpageName && webpageName.toLowerCase().includes('wrapped');
         if (!isWrappedAppCheck) {
           console.warn('⚠️ wrappedLoading case should not be reached for non-wrapped app');
@@ -1965,7 +2024,14 @@ export function OnairosButton({
         }
         return (
           <div className="flex-1 min-h-0">
-            <WrappedLoadingPage appName={webpageName} />
+            <WrappedLoadingPage 
+              appName={webpageName} 
+              isComplete={wrappedDataReady}
+              onTransitionComplete={() => {
+                console.log('✅ WrappedLoadingPage transition complete - closing overlay');
+                handleCloseOverlay();
+              }}
+            />
           </div>
         );
       case 'loading':

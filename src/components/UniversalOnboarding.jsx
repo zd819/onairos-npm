@@ -52,6 +52,12 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   };
 
   const [connectedAccounts, setConnectedAccounts] = useState(getInitialState);
+  // Track which platforms were connected BEFORE this session started (for cache invalidation)
+  const initialPlatformsRef = useRef(new Set(
+    initialConnectedAccounts && Array.isArray(initialConnectedAccounts) 
+      ? initialConnectedAccounts 
+      : []
+  ));
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState(null);
   const [selected, setSelected] = useState('Instagram');
@@ -159,8 +165,13 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
       ),
     Twitter: (
       <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
-        <path fill="#1DA1F2" d="M23.643 4.937c-.835.37-1.732.62-2.675.733.962-.576 1.7-1.49 2.048-2.578-.9.534-1.897.922-2.958 1.13-.85-.904-2.06-1.47-3.4-1.47-2.572 0-4.658 2.086-4.658 4.66 0 .364.042.718.12 1.06-3.873-.195-7.304-2.05-9.602-4.868-.4.69-.63 1.49-.63 2.342 0 1.616.823 3.043 2.072 3.878-.764-.025-1.482-.234-2.11-.583v.06c0 2.257 1.605 4.14 3.737 4.568-.392.106-.803.162-1.227.162-.3 0-.593-.028-.877-.082.593 1.85 2.313 3.198 4.352 3.234-1.595 1.25-3.604 1.995-5.786 1.995-.376 0-.747-.022-1.112-.065 2.062 1.323 4.51 2.093 7.14 2.093 8.57 0 13.255-7.098 13.255-13.254 0-.2-.005-.402-.014-.602.91-.658 1.7-1.477 2.323-2.41z"/>
-        </svg>
+        <path fill="#000000" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+      </svg>
+      ),
+    X: (
+      <svg viewBox="0 0 24 24" aria-hidden width="100%" height="100%">
+        <path fill="#000000" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+      </svg>
       ),
   };
 
@@ -177,6 +188,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     Gemini: <>We study your <strong className="font-semibold">search patterns</strong> and <strong className="font-semibold">multimodal usage</strong> to improve response accuracy.</>,
     Grok: <>We adapt to your <strong className="font-semibold">X posting style</strong> and <strong className="font-semibold">meme literacy</strong> to match your tone.</>,
     Twitter: <>We analyze your <strong className="font-semibold">tweets</strong> and <strong className="font-semibold">interests</strong> to understand your preferences.</>,
+    X: <>We observe your <strong className="font-semibold">likes</strong> and <strong className="font-semibold">bookmarks</strong> to understand your interests and preferences.</>,
     YouTube: <>We study your <strong className="font-semibold">watch history</strong> and <strong className="font-semibold">interactions</strong> to learn your interests.</>,
     Reddit: <>We examine your <strong className="font-semibold">search history</strong> and <strong className="font-semibold">discussions</strong> to understand your interests.</>,
     Instagram: <>We analyze your <strong className="font-semibold">photos</strong> and <strong className="font-semibold">interactions</strong> to learn visual preferences.</>,
@@ -205,6 +217,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     { name: 'YouTube', connector: 'youtube', icon: Brand.YouTube },
     { name: 'Pinterest', connector: 'pinterest', icon: Brand.Pinterest },
     { name: 'Reddit', connector: 'reddit', icon: Brand.Reddit },
+    { name: 'X', connector: 'x', icon: Brand.X },
   ];
 
     const isWrappedApp = typeof appName === 'string' && appName.toLowerCase().includes('onairos-wrapped');
@@ -588,6 +601,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           github: ['githubURL','githubUrl','github_url'],
           facebook: ['facebookURL','facebookUrl','facebook_url'],
           gmail: ['gmailURL','gmailUrl','gmail_url'],
+          x: ['xURL','xUrl','x_url','twitterURL','twitterUrl','twitter_url'],
         }[plat.connector]
       ) || [`${plat.connector}URL`, `${plat.connector}Url`, `${plat.connector}_url`, 'platformURL', 'authUrl', 'url'];
 
@@ -1012,7 +1026,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
   useEffect(() => {
     if (!lottieRef.current) return;
     const totalFrames = (personaAnim.op || 0) - (personaAnim.ip || 0);
-    const TOTAL_PLATFORMS = isWrappedApp ? 3 : 9; // 3 for wrapped app, 9 for other apps
+    const TOTAL_PLATFORMS = isWrappedApp ? 4 : 9; // 4 for wrapped app (YouTube, Pinterest, Reddit, X), 9 for other apps
     const progress = connectedCount / TOTAL_PLATFORMS;
     const target = Math.max(0, Math.floor(progress * totalFrames));
     const start = lastFrameRef.current || 0;
@@ -1370,8 +1384,24 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                     .map(([k]) => canonicalizePlatformName(k))
                     .filter(Boolean);
                   
-                  console.log('✅ Sending to onComplete:', { connectedAccounts: connectedList, totalConnections: connectedList.length });
-                  onComplete?.({ connectedAccounts: connectedList, totalConnections: connectedList.length });
+                  // Detect newly connected platforms (for cache invalidation)
+                  const newlyConnected = connectedList.filter(p => !initialPlatformsRef.current.has(p));
+                  const hasNewPlatforms = newlyConnected.length > 0;
+                  
+                  console.log('✅ Sending to onComplete:', { 
+                    connectedAccounts: connectedList, 
+                    totalConnections: connectedList.length,
+                    newlyConnected,
+                    hasNewPlatforms,
+                    initialPlatforms: Array.from(initialPlatformsRef.current)
+                  });
+                  
+                  onComplete?.({ 
+                    connectedAccounts: connectedList, 
+                    totalConnections: connectedList.length,
+                    newlyConnected,
+                    hasNewPlatforms
+                  });
                 }}
               >
                 Continue
