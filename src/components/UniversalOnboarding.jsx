@@ -205,7 +205,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     // Page 2
     { name: 'Claude', connector: 'claude', icon: Brand.Claude, directLink: aiLinks.Claude },
     { name: 'Gemini', connector: 'gemini', icon: Brand.Gemini, directLink: aiLinks.Gemini },
-    { name: 'Twitter', connector: 'twitter', icon: Brand.Twitter },
+    { name: 'X', connector: 'x', icon: Brand.X, description: descriptions.X }, // Twitter is now X
     // Page 3
     { name: 'LinkedIn', connector: 'linkedin', icon: Brand.LinkedIn },
     { name: 'Reddit', connector: 'reddit', icon: Brand.Reddit },
@@ -230,6 +230,12 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
     const raw = String(value || '').trim();
     if (!raw) return '';
     const lower = raw.toLowerCase();
+    
+    // Handle Twitter/X aliasing (twitter and x are the same platform)
+    if (lower === 'twitter') {
+      return 'X';
+    }
+    
     const byConnector = allPlatforms.find((p) => String(p.connector).toLowerCase() === lower);
     if (byConnector) return byConnector.name;
     const byName = allPlatforms.find((p) => String(p.name).toLowerCase() === lower);
@@ -997,7 +1003,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
         }
         
         console.log(`🔴 Calling backend /revoke for ${name}...`);
-        await fetch(`${baseUrl}/revoke`, {
+        const revokeResponse = await fetch(`${baseUrl}/revoke`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1011,6 +1017,29 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
           })
         });
         console.log(`✅ Backend revoke successful for ${name}`);
+        
+        // CRITICAL FIX: Invalidate cached dashboard after disconnect
+        // The backend should do this automatically, but we force it here as a workaround
+        // for the bug where /revoke doesn't invalidate the dashboard cache
+        if (revokeResponse.ok) {
+          console.log(`🗑️ Invalidating cached dashboard for ${userIdentifier}...`);
+          try {
+            await fetch(`${baseUrl}/invalidate-dashboard-cache`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(userToken && { 'Authorization': `Bearer ${userToken}` })
+              },
+              body: JSON.stringify({
+                username: userIdentifier,
+                reason: `Disconnected ${name}`
+              })
+            });
+            console.log(`✅ Dashboard cache invalidated for ${userIdentifier}`);
+          } catch (cacheError) {
+            console.warn(`⚠️ Failed to invalidate dashboard cache (non-critical):`, cacheError);
+          }
+        }
       } catch (revokeError) {
         console.warn(`⚠️ Backend revoke failed for ${name}:`, revokeError);
         // Don't block UI - disconnection still works locally

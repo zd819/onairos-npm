@@ -1,6 +1,6 @@
 {
   "name": "onairos",
-  "version": "4.3.7",
+  "version": "4.3.8",
   "dependencies": {
     "@capacitor/app": "^8.0.0",
     "@capacitor/browser": "^8.0.0",

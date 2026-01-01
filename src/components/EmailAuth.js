@@ -548,15 +548,19 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
               />
               <style>{`
                 .google-button-container {
-                  height: 56px;
+                  width: 100% !important;
+                  min-width: 100% !important;
+                  max-width: 100% !important;
                 }
                 .google-button-container > div {
-                  height: 56px !important;
                   width: 100% !important;
+                  min-width: 100% !important;
+                  max-width: 100% !important;
                 }
                 .google-button-container iframe {
-                  height: 56px !important;
                   width: 100% !important;
+                  min-width: 100% !important;
+                  max-width: 100% !important;
                 }
               `}</style>
         </div>
@@ -615,15 +619,19 @@ export default function EmailAuth({ onSuccess, testMode = false }) {
             />
             <style>{`
               .google-button-container-desktop {
-                height: 44px;
+                width: 100% !important;
+                min-width: 100% !important;
+                max-width: 100% !important;
               }
               .google-button-container-desktop > div {
-                height: 44px !important;
                 width: 100% !important;
+                min-width: 100% !important;
+                max-width: 100% !important;
               }
               .google-button-container-desktop iframe {
-                height: 44px !important;
                 width: 100% !important;
+                min-width: 100% !important;
+                max-width: 100% !important;
               }
             `}</style>
           </div>

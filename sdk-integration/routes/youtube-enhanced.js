@@ -126,8 +126,9 @@ router.get('/callback', async (req, res) => {
 
             await updateUserWithYoutubeConnection(stateObject.username, youtubeChannelTitle, access_token, refresh_token, expiry_date);
             
-            // Redirect back to Onairos home page
-            res.redirect("https://onairos.uk/Home");
+            // Redirect to oauth-callback.html with success signal
+            // This allows the frontend to properly detect the connection and update UI
+            res.redirect(`https://api2.onairos.uk/oauth-callback.html?success=true&platform=youtube`);
 
         } catch (error) {
             console.error(error);

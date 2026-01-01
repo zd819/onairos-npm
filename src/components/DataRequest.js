@@ -187,15 +187,19 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
         // Check if it's an array
         if (Array.isArray(u.connectedAccounts)) {
           const normalized = u.connectedAccounts.map(normalizePlatformName).filter(Boolean);
-          console.log('✅ Using localStorage connectedAccounts (array):', u.connectedAccounts, '→', normalized);
-          return normalized;
+          // Deduplicate: remove duplicates (e.g., both "X" and "Twitter" normalize to "X")
+          const unique = [...new Set(normalized)];
+          console.log('✅ Using localStorage connectedAccounts (array):', u.connectedAccounts, '→', unique);
+          return unique;
         }
         // Check if it's an object
         if (typeof u.connectedAccounts === "object") {
           const mappedRaw = Object.entries(u.connectedAccounts).filter(([_, v]) => Boolean(v)).map(([k]) => k);
           const mapped = mappedRaw.map(normalizePlatformName).filter(Boolean);
-          console.log('✅ Using localStorage connectedAccounts (object):', mappedRaw, '→', mapped);
-          return mapped;
+          // Deduplicate: remove duplicates (e.g., both "X" and "Twitter" normalize to "X")
+          const unique = [...new Set(mapped)];
+          console.log('✅ Using localStorage connectedAccounts (object):', mappedRaw, '→', unique);
+          return unique;
         }
       }
     } catch (e) {
@@ -206,16 +210,20 @@ const DataRequest = ({ appName = "My App", onComplete, onConnectMoreApps, connec
     // If array provided, use it
     if (Array.isArray(connectedPlatforms) && connectedPlatforms.length > 0) {
       const normalized = connectedPlatforms.map(normalizePlatformName).filter(Boolean);
-      console.log('✅ Using connectedPlatforms prop (array):', connectedPlatforms, '→', normalized);
-      return normalized;
+      // Deduplicate: remove duplicates (e.g., both "X" and "Twitter" normalize to "X")
+      const unique = [...new Set(normalized)];
+      console.log('✅ Using connectedPlatforms prop (array):', connectedPlatforms, '→', unique);
+      return unique;
     }
     
     // If object provided, map truthy keys
     if (connectedPlatforms && typeof connectedPlatforms === "object" && !Array.isArray(connectedPlatforms)) {
       const mappedRaw = Object.entries(connectedPlatforms).filter(([_, v]) => Boolean(v)).map(([k]) => k);
       const mapped = mappedRaw.map(normalizePlatformName).filter(Boolean);
-      console.log('✅ Using connectedPlatforms prop (object):', mappedRaw, '→', mapped);
-      return mapped;
+      // Deduplicate: remove duplicates (e.g., both "X" and "Twitter" normalize to "X")
+      const unique = [...new Set(mapped)];
+      console.log('✅ Using connectedPlatforms prop (object):', mappedRaw, '→', unique);
+      return unique;
     }
     
     console.log('⚠️ No connected platforms found');

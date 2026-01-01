@@ -872,8 +872,8 @@ export function OnairosButton({
         pinterest: 'Pinterest',
         github: 'GitHub',
         gmail: 'Gmail',
-        twitter: 'Twitter',
-        x: 'Twitter',
+        twitter: 'X', // Twitter and X are the same platform
+        x: 'X',
         chatgpt: 'ChatGPT',
         claude: 'Claude',
         gemini: 'Gemini',
@@ -885,7 +885,9 @@ export function OnairosButton({
       const fromAccountStatus = Array.isArray(accountStatus?.connectedPlatforms)
         ? accountStatus.connectedPlatforms
         : [];
+      console.log('🔍 [AUTH] Raw connectedPlatforms from backend:', fromAccountStatus);
       const normalized = fromAccountStatus.map(normalizePlatformName).filter(Boolean);
+      console.log('✅ [AUTH] Normalized connectedAccounts:', normalized);
       if (normalized.length > 0) {
         newUserData.connectedAccounts = normalized;
       }

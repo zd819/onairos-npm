@@ -140,8 +140,9 @@ router.get('/callback', async (req, res) => {
             
             console.log('✅ Gmail connection updated successfully');
             
-            // Redirect back to Onairos home page
-            res.redirect("https://onairos.uk/Home");
+            // Redirect to oauth-callback.html with success signal
+            // This allows the frontend to properly detect the connection and update UI
+            res.redirect(`https://api2.onairos.uk/oauth-callback.html?success=true&platform=gmail&email=${encodeURIComponent(gmailEmail)}`);
 
         } catch (error) {
             console.error('❌ Failed to retrieve Gmail data:', error);
