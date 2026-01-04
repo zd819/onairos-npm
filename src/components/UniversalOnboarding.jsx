@@ -1197,7 +1197,7 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                       type="button"
                       onClick={() => { 
                         // Mobile: AI direct-link platforms are display-only (no-op on tap)
-                        const aiNoopOnMobile = ['chatgpt', 'claude', 'gemini', 'grok'];
+                        const aiNoopOnMobile = ['claude', 'gemini', 'grok'];
                         if (isMobile && aiNoopOnMobile.includes(p.connector)) {
                           console.log(`📱 ${p.name} disabled on mobile - no action`);
                           return;
@@ -1231,16 +1231,10 @@ export default function UniversalOnboarding({ onComplete, onBack, appIcon, appNa
                           return;
                         }
 
-                        // For ChatGPT, show modal ONLY on DESKTOP (not mobile browser or native app)
-                        if (p.connector === 'chatgpt' && !isNativePlatform && !isMobileBrowser) {
-                          console.log('🤖 Opening ChatGPT Connect Modal (Desktop Only)');
+                        // For ChatGPT, show modal on both Desktop and Mobile Browser (since we have a mobile flow now)
+                        if (p.connector === 'chatgpt' && !isNativePlatform) {
+                          console.log('🤖 Opening ChatGPT Connect Modal');
                           setShowChatGPTModal(true);
-                          return;
-                        }
-                        
-                        // On mobile browser, ChatGPT card is visible but clicking does nothing (like Instagram)
-                        if (p.connector === 'chatgpt' && isMobileBrowser) {
-                          console.log('📱 ChatGPT disabled on mobile browser - visual selection only');
                           return;
                         }
 
